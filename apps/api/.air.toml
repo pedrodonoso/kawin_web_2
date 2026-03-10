@@ -1,0 +1,8 @@
+[build]
+  cmd = "go build -o ./tmp/api ./cmd/main.go"
+  bin = "./tmp/api"
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor"]
+
+[misc]
+  clean_on_exit = true
