@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/pedrodonoso/kawin/api/internal/db"
 	"github.com/pedrodonoso/kawin/api/internal/middleware"
 	"github.com/pedrodonoso/kawin/api/internal/routes"
 )
@@ -15,15 +16,20 @@ func main() {
 		log.Println("No .env file found, using environment variables")
 	}
 
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		databaseURL = "postgres://kawin:kawin@db:5432/kawin?sslmode=disable"
+	}
+	db.Connect(databaseURL)
+	defer db.Close()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
 	r := gin.Default()
-
 	r.Use(middleware.CORS())
-
 	routes.Register(r)
 
 	log.Printf("Kawin API running on :%s", port)
