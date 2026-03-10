@@ -57,6 +57,7 @@ export interface Workshop {
   instructor?: { name: string; avatar_url?: string; bio?: string };
   instructor_name?: string;
   instructor_bio?: string;
+  schedule?: string;
   category_id?: string;
   category_name?: string;
   category_slug?: string;

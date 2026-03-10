@@ -21,9 +21,10 @@ type createWorkshopInput struct {
 	Currency    string          `json:"currency"`
 	Capacity    *int            `json:"capacity"`
 	Location    string          `json:"location"`
-	CategoryID  string          `json:"category_id"`
-	Status      string          `json:"status"`
-	Sessions    []sessionInput  `json:"sessions"`
+	CategoryID  string         `json:"category_id"`
+	Schedule    string         `json:"schedule"`
+	Status      string         `json:"status"`
+	Sessions    []sessionInput `json:"sessions"`
 }
 
 type sessionInput struct {
@@ -59,12 +60,12 @@ func CreateWorkshop(c *gin.Context) {
 	err := db.Pool.QueryRow(context.Background(),
 		`INSERT INTO workshops
 		 (instructor_id, category_id, title, slug, description, type, modality,
-		  price, currency, capacity, location, status)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		  price, currency, capacity, location, schedule, status)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 		 RETURNING id`,
 		userID, catID, input.Title, slug, input.Description,
 		input.Type, input.Modality, input.Price, input.Currency,
-		input.Capacity, input.Location, input.Status,
+		input.Capacity, input.Location, input.Schedule, input.Status,
 	).Scan(&workshopID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al crear taller: " + err.Error()})

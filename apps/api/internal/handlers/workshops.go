@@ -34,6 +34,7 @@ type Workshop struct {
 	CategorySlug    string    `json:"category_slug,omitempty"`
 	InstructorName  string    `json:"instructor_name,omitempty"`
 	InstructorBio   string    `json:"instructor_bio,omitempty"`
+	Schedule        string    `json:"schedule,omitempty"`
 	Sessions        []Session `json:"sessions,omitempty"`
 	CreatedAt       string    `json:"created_at"`
 }
@@ -118,7 +119,7 @@ func GetWorkshop(c *gin.Context) {
 		       w.capacity, COALESCE(w.location,''), COALESCE(w.cover_image_url,''),
 		       w.status, COALESCE(w.created_at::text,''),
 		       COALESCE(c.id::text,''), COALESCE(c.name,''), COALESCE(c.slug,''),
-		       COALESCE(p.name,''), COALESCE(p.bio,'')
+		       COALESCE(p.name,''), COALESCE(p.bio,''), COALESCE(w.schedule,'')
 		FROM workshops w
 		LEFT JOIN categories c ON c.id = w.category_id
 		LEFT JOIN profiles p ON p.user_id = w.instructor_id
@@ -129,7 +130,7 @@ func GetWorkshop(c *gin.Context) {
 		&w.Capacity, &w.Location, &w.CoverImageURL,
 		&w.Status, &w.CreatedAt,
 		&w.CategoryID, &w.CategoryName, &w.CategorySlug,
-		&w.InstructorName, &w.InstructorBio,
+		&w.InstructorName, &w.InstructorBio, &w.Schedule,
 	)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})

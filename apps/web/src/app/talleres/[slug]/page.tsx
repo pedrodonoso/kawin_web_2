@@ -147,10 +147,23 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             ))}
           </div>
 
+          {/* Schedule (recurring classes) */}
+          {workshop.schedule && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">Horario</h2>
+              <div className="flex items-center gap-3 p-4 border rounded-lg bg-amber-50 border-amber-200">
+                <Clock className="h-5 w-5 text-amber-600 shrink-0" />
+                <p className="text-amber-900 font-medium">{workshop.schedule}</p>
+              </div>
+            </div>
+          )}
+
           {/* Sessions */}
           {workshop.sessions && workshop.sessions.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Fechas disponibles</h2>
+              <h2 className="text-xl font-semibold">
+                {workshop.type === "class" ? "Próximas clases" : "Fechas disponibles"}
+              </h2>
               <div className="space-y-3">
                 {workshop.sessions.map((s) => (
                   <div key={s.id} className="flex items-start gap-3 p-4 border rounded-lg bg-white">

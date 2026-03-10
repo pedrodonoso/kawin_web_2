@@ -42,6 +42,7 @@ export default function NuevoTallerPage() {
     capacity: "",
     location: "",
     category_id: "",
+    schedule: "",
     status: "draft",
   });
 
@@ -254,10 +255,33 @@ export default function NuevoTallerPage() {
             </CardContent>
           </Card>
 
+          {/* Horario recurrente (solo para clases) */}
+          {form.type === "class" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Horario recurrente</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Label htmlFor="schedule">¿Cuándo se repite esta clase?</Label>
+                <Input
+                  id="schedule"
+                  placeholder="Ej: Todos los martes a las 19:00 hrs (90 min)"
+                  value={form.schedule}
+                  onChange={(e) => set("schedule", e.target.value)}
+                />
+                <p className="text-xs text-zinc-400">
+                  Este texto aparecerá destacado en la página del taller.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Fechas / Sesiones */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Sesiones</CardTitle>
+              <CardTitle className="text-base">
+                {form.type === "class" ? "Próximas clases" : "Sesiones"}
+              </CardTitle>
               <Button type="button" variant="outline" size="sm" onClick={addSession}>
                 <Plus className="h-4 w-4 mr-1" />
                 Agregar fecha
