@@ -1,17 +1,19 @@
 # Development stage
-FROM golang:1.23-alpine AS development
+FROM golang:1.24-alpine AS development
 WORKDIR /app
-RUN go install github.com/air-verse/air@latest
-COPY go.mod go.sum* ./
-RUN go mod download
+RUN go install github.com/air-verse/air@v1.61.7
+COPY go.mod ./
+RUN go mod tidy || true
 COPY . .
+RUN go mod tidy
 CMD ["air", "-c", ".air.toml"]
 
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
-COPY go.mod go.sum* ./
-RUN go mod download
+COPY go.mod ./
+COPY . .
+RUN go mod tidy
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o api ./cmd/main.go
 

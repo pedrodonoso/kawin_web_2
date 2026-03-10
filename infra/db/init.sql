@@ -54,7 +54,7 @@ CREATE TABLE categories (
 CREATE TABLE workshops (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   instructor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  category_id UUID REFERENCES categories(id) ON SET NULL,
+  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
   title VARCHAR(255) NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
   description TEXT,
