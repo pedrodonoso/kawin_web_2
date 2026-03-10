@@ -142,3 +142,44 @@ INSERT INTO categories (name, slug, icon) VALUES
   ('Negocios', 'negocios', 'briefcase'),
   ('Fotografía', 'fotografia', 'camera'),
   ('Artesanía', 'artesania', 'scissors');
+
+-- Seed demo user (password: test1234)
+INSERT INTO users (id, email, password_hash, role) VALUES
+  ('878d88c7-c219-4e2e-8aa9-bf67256c70cc', 'maria@kawin.app',
+   '$2a$10$Nzrv5VvLqIYfRfI9HmjkHOpfRmYJg6vvFqNQ5g7Y6aM1j3Kcj0fyi', 'instructor')
+  ON CONFLICT DO NOTHING;
+
+INSERT INTO profiles (user_id, name, bio) VALUES
+  ('878d88c7-c219-4e2e-8aa9-bf67256c70cc', 'María González',
+   'Artista visual con 10 años de experiencia. Estudié Bellas Artes en la Universidad de Chile.')
+  ON CONFLICT DO NOTHING;
+
+-- Seed demo workshops
+INSERT INTO workshops (instructor_id, category_id, title, slug, description, type, modality, price, currency, capacity, location, status)
+SELECT
+  '878d88c7-c219-4e2e-8aa9-bf67256c70cc',
+  c.id,
+  w.title, w.slug, w.description, w.type::workshop_type, w.modality::workshop_modality,
+  w.price, 'CLP', w.capacity, w.location, 'published'::workshop_status
+FROM (VALUES
+  ('Acuarela para principiantes', 'acuarela-principiantes',
+   'Aprende las bases de la acuarela en un ambiente relajado y creativo. Técnicas húmedo sobre húmedo, degradados y mezcla de colores. Todos los materiales incluidos.',
+   'workshop', 'in-person', 25000, 12, 'Barrio Italia, Santiago', 'arte-creatividad'),
+  ('Cocina italiana desde cero', 'cocina-italiana',
+   'Pasta, risotto y salsas auténticas con ingredientes locales. Un viaje gastronómico sin salir de Santiago.',
+   'course', 'in-person', 45000, 8, 'Providencia, Santiago', 'cocina-gastronomia'),
+  ('Guitarra flamenca online', 'guitarra-flamenca',
+   'Técnica y ritmo flamenco para músicos con conocimientos básicos. Clases en vivo con grabación disponible.',
+   'class', 'online', 15000, NULL, NULL, 'musica-danza'),
+  ('Yoga restaurativo', 'yoga-restaurativo',
+   'Práctica suave enfocada en la recuperación y el bienestar profundo. Ideal para reducir el estrés.',
+   'class', 'hybrid', 12000, 15, 'Las Condes, Santiago', 'bienestar-salud'),
+  ('Fotografía callejera', 'fotografia-callejera',
+   'Salimos a las calles de Santiago a capturar el momento decisivo. Cámara propia requerida.',
+   'workshop', 'in-person', 30000, 6, 'Barrio Italia, Santiago', 'fotografia'),
+  ('Cerámica a torno', 'ceramica-torno',
+   'Iníciate en el fascinante mundo de la cerámica con torno eléctrico. Arcilla y materiales incluidos.',
+   'workshop', 'in-person', 55000, 6, 'Ñuñoa, Santiago', 'artesania')
+) AS w(title, slug, description, type, modality, price, capacity, location, cat_slug)
+JOIN categories c ON c.slug = w.cat_slug
+ON CONFLICT DO NOTHING;

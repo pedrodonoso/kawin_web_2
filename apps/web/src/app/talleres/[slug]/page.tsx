@@ -5,11 +5,13 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Users, Calendar, Clock, Globe, CheckCircle } from "lucide-react";
 import { api, type Workshop } from "@/lib/api";
-import { notFound } from "next/navigation";
+import Link from "next/link";
 
 async function getWorkshop(slug: string): Promise<Workshop | null> {
   try {
-    return await api.get<Workshop>(`/api/v1/workshops/${slug}`);
+    const res = await api.get<{ data: Workshop } | Workshop>(`/api/v1/workshops/${slug}`);
+    if (res && "data" in res) return (res as { data: Workshop }).data;
+    return res as Workshop;
   } catch {
     return null;
   }
@@ -69,7 +71,16 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const workshop = (await getWorkshop(slug)) ?? (slug === "acuarela-principiantes" ? MOCK_WORKSHOP : null);
 
-  if (!workshop) notFound();
+  if (!workshop) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center gap-4 text-zinc-500">
+        <p className="text-xl font-semibold">Taller no encontrado</p>
+        <Button asChild variant="outline">
+          <Link href="/buscar">Ver todos los talleres</Link>
+        </Button>
+      </main>
+    );
+  }
 
   const modalityLabel: Record<string, string> = {
     "in-person": "Presencial",

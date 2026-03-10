@@ -68,7 +68,7 @@ export default function DashboardPage() {
     setUserName(u.email?.split("@")[0] ?? "tallerista");
 
     api
-      .get<Workshop[]>("/api/v1/workshops/mine")
+      .getList<Workshop>("/api/v1/my-workshops")
       .then(setWorkshops)
       .catch(() => setWorkshops(MOCK_WORKSHOPS))
       .finally(() => setLoading(false));
