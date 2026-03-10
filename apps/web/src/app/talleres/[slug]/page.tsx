@@ -10,8 +10,15 @@ import Link from "next/link";
 async function getWorkshop(slug: string): Promise<Workshop | null> {
   try {
     const res = await api.get<{ data: Workshop } | Workshop>(`/api/v1/workshops/${slug}`);
-    if (res && "data" in res) return (res as { data: Workshop }).data;
-    return res as Workshop;
+    const w = (res && "data" in res) ? (res as { data: Workshop }).data : res as Workshop;
+    // Normalize flat API fields to nested shape used by the page
+    if (w && w.instructor_name && !w.instructor) {
+      w.instructor = { name: w.instructor_name, bio: w.instructor_bio };
+    }
+    if (w && w.category_name && !w.category) {
+      w.category = { id: w.category_id ?? "", name: w.category_name, slug: w.category_slug ?? "" };
+    }
+    return w;
   } catch {
     return null;
   }

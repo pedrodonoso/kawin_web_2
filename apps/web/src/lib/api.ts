@@ -1,4 +1,7 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_BASE =
+  typeof window === "undefined"
+    ? (process.env.API_INTERNAL_URL ?? "http://api:8080")
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080");
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -52,6 +55,11 @@ export interface Workshop {
   status: "draft" | "published" | "archived";
   category?: { id: string; name: string; slug: string };
   instructor?: { name: string; avatar_url?: string; bio?: string };
+  instructor_name?: string;
+  instructor_bio?: string;
+  category_id?: string;
+  category_name?: string;
+  category_slug?: string;
   sessions?: Session[];
   created_at: string;
 }

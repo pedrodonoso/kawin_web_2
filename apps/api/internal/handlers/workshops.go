@@ -9,24 +9,33 @@ import (
 	"github.com/pedrodonoso/kawin/api/internal/db"
 )
 
+type Session struct {
+	ID       string `json:"id"`
+	StartsAt string `json:"starts_at"`
+	EndsAt   string `json:"ends_at"`
+	Notes    string `json:"notes,omitempty"`
+}
+
 type Workshop struct {
-	ID             string   `json:"id"`
-	Title          string   `json:"title"`
-	Slug           string   `json:"slug"`
-	Description    string   `json:"description"`
-	Type           string   `json:"type"`
-	Modality       string   `json:"modality"`
-	Price          float64  `json:"price"`
-	Currency       string   `json:"currency"`
-	Capacity       *int     `json:"capacity,omitempty"`
-	Location       string   `json:"location,omitempty"`
-	CoverImageURL  string   `json:"cover_image_url,omitempty"`
-	Status         string   `json:"status"`
-	CategoryID     string   `json:"category_id,omitempty"`
-	CategoryName   string   `json:"category_name,omitempty"`
-	CategorySlug   string   `json:"category_slug,omitempty"`
-	InstructorName string   `json:"instructor_name,omitempty"`
-	CreatedAt      string   `json:"created_at"`
+	ID              string    `json:"id"`
+	Title           string    `json:"title"`
+	Slug            string    `json:"slug"`
+	Description     string    `json:"description"`
+	Type            string    `json:"type"`
+	Modality        string    `json:"modality"`
+	Price           float64   `json:"price"`
+	Currency        string    `json:"currency"`
+	Capacity        *int      `json:"capacity,omitempty"`
+	Location        string    `json:"location,omitempty"`
+	CoverImageURL   string    `json:"cover_image_url,omitempty"`
+	Status          string    `json:"status"`
+	CategoryID      string    `json:"category_id,omitempty"`
+	CategoryName    string    `json:"category_name,omitempty"`
+	CategorySlug    string    `json:"category_slug,omitempty"`
+	InstructorName  string    `json:"instructor_name,omitempty"`
+	InstructorBio   string    `json:"instructor_bio,omitempty"`
+	Sessions        []Session `json:"sessions,omitempty"`
+	CreatedAt       string    `json:"created_at"`
 }
 
 func GetWorkshops(c *gin.Context) {
@@ -109,7 +118,7 @@ func GetWorkshop(c *gin.Context) {
 		       w.capacity, COALESCE(w.location,''), COALESCE(w.cover_image_url,''),
 		       w.status, COALESCE(w.created_at::text,''),
 		       COALESCE(c.id::text,''), COALESCE(c.name,''), COALESCE(c.slug,''),
-		       COALESCE(p.name,'')
+		       COALESCE(p.name,''), COALESCE(p.bio,'')
 		FROM workshops w
 		LEFT JOIN categories c ON c.id = w.category_id
 		LEFT JOIN profiles p ON p.user_id = w.instructor_id
@@ -120,11 +129,25 @@ func GetWorkshop(c *gin.Context) {
 		&w.Capacity, &w.Location, &w.CoverImageURL,
 		&w.Status, &w.CreatedAt,
 		&w.CategoryID, &w.CategoryName, &w.CategorySlug,
-		&w.InstructorName,
+		&w.InstructorName, &w.InstructorBio,
 	)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})
 		return
+	}
+
+	// Fetch sessions
+	srows, err := db.Pool.Query(context.Background(),
+		`SELECT id, starts_at::text, ends_at::text, COALESCE(notes,'')
+		 FROM sessions WHERE workshop_id = $1 ORDER BY starts_at`, w.ID)
+	if err == nil {
+		defer srows.Close()
+		for srows.Next() {
+			var s Session
+			if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Notes) == nil {
+				w.Sessions = append(w.Sessions, s)
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": w})
