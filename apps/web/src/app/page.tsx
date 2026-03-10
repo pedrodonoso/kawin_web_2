@@ -1,4 +1,10 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Search, MapPin, Users, Star } from "lucide-react";
 
 const categories = [
@@ -13,19 +19,17 @@ const categories = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const params = query ? `?q=${encodeURIComponent(query)}` : "";
+    router.push(`/buscar${params}`);
+  }
+
   return (
     <main className="min-h-screen">
-      {/* Nav */}
-      <header className="border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="text-xl font-bold tracking-tight">kawin</span>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm">Iniciar sesión</Button>
-            <Button size="sm">Soy tallerista</Button>
-          </div>
-        </div>
-      </header>
-
       {/* Hero */}
       <section className="bg-zinc-950 text-white py-24 px-4">
         <div className="max-w-3xl mx-auto text-center space-y-6">
@@ -38,20 +42,21 @@ export default function Home() {
             Conectamos talleristas apasionados con personas que quieren aprender.
           </p>
 
-          {/* Search bar */}
-          <div className="flex gap-2 max-w-xl mx-auto mt-8">
+          <form onSubmit={handleSearch} className="flex gap-2 max-w-xl mx-auto mt-8">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 h-4 w-4" />
-              <input
+              <Input
                 type="text"
                 placeholder="¿Qué quieres aprender?"
-                className="w-full pl-10 pr-4 py-3 rounded-lg bg-white text-zinc-900 outline-none"
+                className="pl-10 bg-white text-zinc-900 border-0 h-12"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <Button size="lg" className="bg-white text-zinc-900 hover:bg-zinc-100">
+            <Button size="lg" type="submit" className="bg-white text-zinc-900 hover:bg-zinc-100 h-12">
               Buscar
             </Button>
-          </div>
+          </form>
         </div>
       </section>
 
@@ -61,13 +66,14 @@ export default function Home() {
           <h2 className="text-2xl font-bold mb-8">Explorar por categoría</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {categories.map((cat) => (
-              <button
+              <Link
                 key={cat.slug}
+                href={`/buscar?categoria=${cat.slug}`}
                 className="flex flex-col items-center gap-2 p-6 border rounded-xl hover:border-zinc-900 hover:shadow-sm transition-all text-center"
               >
                 <span className="text-3xl">{cat.icon}</span>
                 <span className="text-sm font-medium">{cat.name}</span>
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -108,8 +114,8 @@ export default function Home() {
             Crea tu perfil de tallerista, publica tu taller y comienza a recibir reservas.
             Sin complicaciones.
           </p>
-          <Button size="lg" className="mt-4">
-            Comenzar como tallerista
+          <Button size="lg" className="mt-4" asChild>
+            <Link href="/registro">Comenzar como tallerista</Link>
           </Button>
         </div>
       </section>

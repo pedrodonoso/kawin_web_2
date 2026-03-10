@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Navbar } from "@/components/layout/navbar";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,8 +24,7 @@ export const metadata: Metadata = {
   keywords: ["talleres", "cursos", "clases", "América Latina", "aprendizaje"],
   openGraph: {
     title: "Kawin — Talleres y Cursos en América Latina",
-    description:
-      "Descubre y reserva talleres, cursos y clases cerca de ti.",
+    description: "Descubre y reserva talleres, cursos y clases cerca de ti.",
     type: "website",
     locale: "es_CL",
   },
@@ -36,10 +37,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Navbar />
         {children}
+        <Toaster richColors />
       </body>
     </html>
   );
