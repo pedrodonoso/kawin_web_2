@@ -234,14 +234,21 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                 {workshop.capacity && (
                   <div className="flex items-center gap-2 text-zinc-600">
                     <Users className="h-4 w-4 shrink-0" />
-                    Máximo {workshop.capacity} personas
+                    {workshop.capacity - (workshop.bookings_count ?? 0) > 0
+                      ? `${workshop.capacity - (workshop.bookings_count ?? 0)} de ${workshop.capacity} cupos disponibles`
+                      : "Sin cupos disponibles"}
                   </div>
                 )}
               </div>
 
               <Separator />
 
-              <BookingButton workshopId={workshop.id} workshopType={workshop.type} />
+              <BookingButton
+                workshopId={workshop.id}
+                workshopType={workshop.type}
+                capacity={workshop.capacity ?? null}
+                bookingsCount={workshop.bookings_count ?? 0}
+              />
             </CardContent>
           </Card>
         </div>

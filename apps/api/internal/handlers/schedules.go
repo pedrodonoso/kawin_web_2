@@ -487,7 +487,7 @@ func BulkAction(c *gin.Context) {
 		} else {
 			// migrate_all: keep same session date, move to new schedule
 			targetDateStr := r.sessionDate.Format("2006-01-02")
-			startsAt := targetDateStr + "T" + newSchedTimeStart + ":00Z"
+			startsAt := targetDateStr + "T" + newSchedTimeStart + "Z"
 			startTime, _ := time.Parse("2006-01-02T15:04:05Z", startsAt)
 			endsAt := startTime.Add(time.Duration(newSchedDurationMin) * time.Minute).Format("2006-01-02T15:04:05Z")
 

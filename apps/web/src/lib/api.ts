@@ -65,6 +65,7 @@ export interface Workshop {
   category_slug?: string;
   sessions?: Session[];
   schedules?: Schedule[];
+  bookings_count?: number;
   upcoming_sessions?: UpcomingSession[];
   created_at: string;
 }

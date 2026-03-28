@@ -9,17 +9,21 @@ import { api } from "@/lib/api";
 interface Props {
   workshopId: string;
   workshopType: string;
+  capacity?: number | null;
+  bookingsCount?: number;
 }
 
 /**
  * Sidebar booking button for non-class workshops (workshop, course, event).
  * For type=class, the per-session buttons in UpcomingSessionCard handle booking.
  */
-export function BookingButton({ workshopId, workshopType }: Props) {
+export function BookingButton({ workshopId, workshopType, capacity, bookingsCount = 0 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
+  const [currentCount, setCurrentCount] = useState(bookingsCount);
+  const isFull = capacity != null && currentCount >= capacity;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -57,6 +61,7 @@ export function BookingButton({ workshopId, workshopType }: Props) {
     try {
       await api.post("/api/v1/bookings", { workshop_id: workshopId });
       setBooked(true);
+      setCurrentCount((c) => c + 1);
       toast.success("¡Reserva confirmada! Te contactaremos pronto.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al reservar");
@@ -79,6 +84,14 @@ export function BookingButton({ workshopId, workshopType }: Props) {
           Recibirás los detalles pronto.
         </p>
       </div>
+    );
+  }
+
+  if (isFull) {
+    return (
+      <Button className="w-full" size="lg" disabled variant="outline">
+        Sin cupos disponibles
+      </Button>
     );
   }
 

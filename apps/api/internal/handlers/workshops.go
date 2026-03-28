@@ -55,6 +55,7 @@ type Workshop struct {
 	Sessions         []Session         `json:"sessions,omitempty"`
 	Schedules        []Schedule        `json:"schedules,omitempty"`
 	UpcomingSessions []UpcomingSession `json:"upcoming_sessions,omitempty"`
+	BookingsCount    int               `json:"bookings_count"`
 	CreatedAt        string            `json:"created_at"`
 }
 
@@ -361,6 +362,12 @@ func GetWorkshop(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})
 		return
 	}
+
+	// Count confirmed bookings for this workshop
+	db.Pool.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM bookings WHERE workshop_id = $1 AND status = 'confirmed'`,
+		w.ID,
+	).Scan(&w.BookingsCount) //nolint:errcheck
 
 	if w.Type == "class" {
 		// Virtual session engine: compute upcoming sessions from schedule rules
