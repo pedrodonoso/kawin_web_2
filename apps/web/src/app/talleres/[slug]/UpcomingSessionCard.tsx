@@ -156,9 +156,11 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, isInstr
             {session.time} – {endTime}
             <span className="text-zinc-400">({session.duration_min} min)</span>
           </p>
-          {session.spots_remaining !== undefined && !isCancelled && (
+          {!isCancelled && (
             <p className="text-xs mt-1 text-zinc-400">
-              {session.spots_remaining === 0
+              {session.spots_remaining === null || session.spots_remaining === undefined
+                ? "Cupos disponibles"
+                : session.spots_remaining === 0
                 ? "Sin cupos"
                 : `${session.spots_remaining} cupo${session.spots_remaining !== 1 ? "s" : ""} disponible${session.spots_remaining !== 1 ? "s" : ""}`}
             </p>
