@@ -94,7 +94,9 @@ CREATE TABLE sessions (
   ends_at     TIMESTAMPTZ NOT NULL,
   cancelled   BOOLEAN NOT NULL DEFAULT FALSE,
   notes       TEXT,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Prevents duplicate materialized sessions for the same class occurrence
+  UNIQUE (workshop_id, schedule_id, starts_at)
 );
 
 -- Bookings

@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Users, Calendar, Clock, Globe, CheckCircle } from "lucide-react";
-import { api, type Workshop, type UpcomingSession } from "@/lib/api";
+import { api, type Workshop } from "@/lib/api";
+import { UpcomingSessionCard } from "./UpcomingSessionCard";
 import Link from "next/link";
 
 async function getWorkshop(slug: string): Promise<Workshop | null> {
@@ -74,68 +75,6 @@ function formatTime(start: string, end: string) {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-/** Formats a "YYYY-MM-DD" string into "Lun 7 abr" */
-function formatSessionDate(dateStr: string) {
-  // Append T12:00:00 to avoid timezone shifts on date-only strings
-  return new Date(`${dateStr}T12:00:00`).toLocaleDateString("es-CL", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-}
-
-/** Adds duration_min minutes to "HH:MM" and returns "HH:MM" */
-function addMinutes(time: string, minutes: number) {
-  const [h, m] = time.split(":").map(Number);
-  const total = h * 60 + m + minutes;
-  return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
-
-function UpcomingSessionCard({ session }: { session: UpcomingSession }) {
-  const isCancelled = session.status === "cancelled";
-  const isFull = session.status === "full";
-  const endTime = addMinutes(session.time, session.duration_min);
-
-  return (
-    <div
-      className={`flex items-start justify-between gap-3 p-4 border rounded-lg bg-white ${
-        isCancelled ? "opacity-60" : ""
-      }`}
-    >
-      <div className="flex items-start gap-3 min-w-0">
-        <Calendar className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
-        <div>
-          <p className={`font-medium capitalize ${isCancelled ? "line-through text-zinc-400" : ""}`}>
-            {formatSessionDate(session.date)}
-          </p>
-          <p className="text-sm text-zinc-500 flex items-center gap-1 mt-0.5">
-            <Clock className="h-3 w-3" />
-            {session.time} – {endTime}
-            <span className="text-zinc-400">({session.duration_min} min)</span>
-          </p>
-          {session.spots_remaining !== undefined && !isCancelled && (
-            <p className="text-xs mt-1 text-zinc-400">
-              {session.spots_remaining === 0
-                ? "Sin cupos"
-                : `${session.spots_remaining} cupo${session.spots_remaining !== 1 ? "s" : ""} disponible${session.spots_remaining !== 1 ? "s" : ""}`}
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="shrink-0">
-        {isCancelled && (
-          <Badge variant="destructive" className="text-xs">Cancelada</Badge>
-        )}
-        {isFull && !isCancelled && (
-          <Badge variant="secondary" className="text-xs">Completo</Badge>
-        )}
-        {session.status === "available" && (
-          <Badge className="text-xs bg-green-100 text-green-800 border-green-200">Disponible</Badge>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default async function TallerPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -227,7 +166,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
               <h2 className="text-xl font-semibold">Próximas clases</h2>
               <div className="space-y-3">
                 {workshop.upcoming_sessions.map((s) => (
-                  <UpcomingSessionCard key={`${s.schedule_id}-${s.date}`} session={s} />
+                  <UpcomingSessionCard key={`${s.schedule_id}-${s.date}`} session={s} workshopId={workshop.id} />
                 ))}
               </div>
             </div>
