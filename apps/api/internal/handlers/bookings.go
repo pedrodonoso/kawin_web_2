@@ -123,7 +123,8 @@ func CreateBooking(c *gin.Context) {
 		defer tx.Rollback(ctx) //nolint:errcheck
 
 		// Upsert session (materialize if not exists)
-		startsAt := input.Date + "T" + timeStart + ":00Z"
+		// timeStart comes as "HH:MM:SS" from postgres time::text, append Z for UTC
+		startsAt := input.Date + "T" + timeStart + "Z"
 		// Compute ends_at from duration
 		startTime, _ := time.Parse("2006-01-02T15:04:05Z", startsAt)
 		endsAt := startTime.Add(time.Duration(durationMin) * time.Minute).Format("2006-01-02T15:04:05Z")
@@ -457,7 +458,7 @@ func MigrateBooking(c *gin.Context) {
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	// Upsert target session
-	startsAt := input.TargetDate + "T" + timeStart + ":00Z"
+	startsAt := input.TargetDate + "T" + timeStart + "Z"
 	startTime, _ := time.Parse("2006-01-02T15:04:05Z", startsAt)
 	endsAt := startTime.Add(time.Duration(durationMin) * time.Minute).Format("2006-01-02T15:04:05Z")
 
