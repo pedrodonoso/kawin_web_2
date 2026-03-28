@@ -225,7 +225,10 @@ func GetMyBookings(c *gin.Context) {
 	rows, err := db.Pool.Query(context.Background(),
 		`SELECT b.id, b.workshop_id, w.title, w.slug,
 		        b.session_id::text, b.status, b.payment_status, b.amount,
-		        COALESCE(s.starts_at::text, ''), b.created_at::text
+		        COALESCE(s.starts_at::text, ''),
+		        COALESCE(s.schedule_id::text, ''),
+		        COALESCE((s.starts_at AT TIME ZONE 'UTC')::date::text, ''),
+		        b.created_at::text
 		 FROM bookings b
 		 JOIN workshops w ON w.id = b.workshop_id
 		 LEFT JOIN sessions s ON s.id = b.session_id
@@ -250,6 +253,8 @@ func GetMyBookings(c *gin.Context) {
 		PaymentStatus string  `json:"payment_status"`
 		Amount        float64 `json:"amount"`
 		SessionDate   string  `json:"session_date,omitempty"`
+		ScheduleID    string  `json:"schedule_id,omitempty"`
+		SessionDay    string  `json:"session_day,omitempty"` // "YYYY-MM-DD"
 		CreatedAt     string  `json:"created_at"`
 	}
 
@@ -260,7 +265,7 @@ func GetMyBookings(c *gin.Context) {
 		if err := rows.Scan(
 			&b.ID, &b.WorkshopID, &b.WorkshopTitle, &b.WorkshopSlug,
 			&sessionIDStr, &b.Status, &b.PaymentStatus, &b.Amount,
-			&b.SessionDate, &b.CreatedAt,
+			&b.SessionDate, &b.ScheduleID, &b.SessionDay, &b.CreatedAt,
 		); err != nil {
 			continue
 		}

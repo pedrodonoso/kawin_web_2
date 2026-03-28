@@ -49,18 +49,42 @@ function getCommissionZone(sessionDateStr: string): "instructor" | "platform" {
 export function UpcomingSessionCard({ session, workshopId, instructorId, isInstructor: isInstructorProp = false }: Props) {
   const router = useRouter();
   const [booking, setBooking] = useState(false);
+  const [alreadyBooked, setAlreadyBooked] = useState(false);
+  const [checkingBooking, setCheckingBooking] = useState(true);
   const [cancelling, setCancelling] = useState(false);
-  // Use state to avoid hydration mismatch (localStorage is only available client-side)
   const [isInstructor, setIsInstructor] = useState(isInstructorProp);
 
   useEffect(() => {
-    if (isInstructorProp) { setIsInstructor(true); return; }
-    if (!instructorId) return;
-    try {
-      const user = JSON.parse(localStorage.getItem("user") ?? "{}");
-      setIsInstructor(user?.id === instructorId);
-    } catch { /* ignore */ }
-  }, [instructorId, isInstructorProp]);
+    // Check instructor status
+    if (isInstructorProp) { setIsInstructor(true); }
+    else if (instructorId) {
+      try {
+        const user = JSON.parse(localStorage.getItem("user") ?? "{}");
+        setIsInstructor(user?.id === instructorId);
+      } catch { /* ignore */ }
+    }
+
+    // Check if user already has a confirmed booking for this session
+    const token = localStorage.getItem("token");
+    if (!token) { setCheckingBooking(false); return; }
+
+    api
+      .getList<{ workshop_id: string; schedule_id: string; session_day: string; status: string }>(
+        "/api/v1/my-bookings"
+      )
+      .then((bookings) => {
+        const found = bookings.some(
+          (b) =>
+            b.workshop_id === workshopId &&
+            b.schedule_id === session.schedule_id &&
+            b.session_day === session.date &&
+            b.status === "confirmed"
+        );
+        setAlreadyBooked(found);
+      })
+      .catch(() => {})
+      .finally(() => setCheckingBooking(false));
+  }, [workshopId, session.schedule_id, session.date, instructorId, isInstructorProp]);
 
   const isCancelled = session.status === "cancelled";
   const isFull = session.status === "full";
@@ -81,7 +105,7 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, isInstr
         date: session.date,
       });
       toast.success("¡Reserva confirmada!");
-      router.refresh();
+      setAlreadyBooked(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al reservar");
     } finally {
@@ -151,7 +175,15 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, isInstr
             Sin cupos
           </Badge>
         )}
-        {isAvailable && (
+        {isAvailable && checkingBooking && (
+          <Button size="sm" disabled variant="outline">...</Button>
+        )}
+        {isAvailable && !checkingBooking && alreadyBooked && (
+          <Badge className="bg-green-100 text-green-700 text-xs px-2 py-1">
+            ✓ Reservado
+          </Badge>
+        )}
+        {isAvailable && !checkingBooking && !alreadyBooked && (
           <Button size="sm" onClick={handleBook} disabled={booking || cancelling}>
             {booking ? "Reservando..." : "Reservar esta clase"}
           </Button>
