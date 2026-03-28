@@ -23,10 +23,11 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       toast.success("¡Bienvenido de vuelta!");
+      // Use full reload so the navbar re-mounts and reads the updated localStorage
       if (data.user.role === "instructor" || data.user.role === "both") {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       } else {
-        router.push("/buscar");
+        window.location.href = "/buscar";
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al iniciar sesión");
