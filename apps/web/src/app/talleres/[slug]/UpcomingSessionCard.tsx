@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api, type UpcomingSession } from "@/lib/api";
 
 /** Formats a "YYYY-MM-DD" string into "Lun 7 abr" */
@@ -176,7 +177,10 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, isInstr
           </Badge>
         )}
         {isAvailable && checkingBooking && (
-          <Button size="sm" disabled variant="outline">...</Button>
+          <div className="flex flex-col items-center gap-1">
+            <Skeleton className="h-8 w-32 rounded-md" />
+            <span className="text-xs text-zinc-400">Cargando...</span>
+          </div>
         )}
         {isAvailable && !checkingBooking && alreadyBooked && (
           <Badge className="bg-green-100 text-green-700 text-xs px-2 py-1">
