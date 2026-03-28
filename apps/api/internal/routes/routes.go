@@ -34,6 +34,10 @@ func Register(r *gin.Engine) {
 			auth.POST("/workshops/:id/schedules", handlers.CreateSchedule)
 			auth.GET("/workshops/:id/schedules", handlers.GetSchedules)
 			auth.DELETE("/schedules/:id", handlers.DeleteSchedule)
+
+			// Bookings (Sprint 3)
+			auth.POST("/bookings", handlers.CreateBooking)
+			auth.GET("/my-bookings", handlers.GetMyBookings)
 		}
 	}
 }

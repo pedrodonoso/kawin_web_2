@@ -26,11 +26,34 @@ interface SessionDraft {
   notes: string;
 }
 
+interface ScheduleDraft {
+  days_of_week: number[];
+  time_start: string;
+  duration_min: number;
+  valid_from: string;
+  valid_until: string;
+}
+
+const DAYS = [
+  { label: "Lun", value: 1 },
+  { label: "Mar", value: 2 },
+  { label: "Mié", value: 3 },
+  { label: "Jue", value: 4 },
+  { label: "Vie", value: 5 },
+  { label: "Sáb", value: 6 },
+  { label: "Dom", value: 0 },
+];
+
+function emptySchedule(): ScheduleDraft {
+  return { days_of_week: [], time_start: "", duration_min: 60, valid_from: "", valid_until: "" };
+}
+
 export default function NuevoTallerPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleDraft[]>([emptySchedule()]);
 
   const [form, setForm] = useState({
     title: "",
@@ -42,7 +65,6 @@ export default function NuevoTallerPage() {
     capacity: "",
     location: "",
     category_id: "",
-    schedule: "",
     status: "draft",
   });
 
@@ -56,6 +78,7 @@ export default function NuevoTallerPage() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  // --- Session helpers ---
   function addSession() {
     setSessions((s) => [...s, { starts_at: "", ends_at: "", notes: "" }]);
   }
@@ -68,16 +91,67 @@ export default function NuevoTallerPage() {
     setSessions((s) => s.map((sess, idx) => (idx === i ? { ...sess, [field]: value } : sess)));
   }
 
+  // --- Schedule helpers ---
+  function addSchedule() {
+    setSchedules((s) => [...s, emptySchedule()]);
+  }
+
+  function removeSchedule(i: number) {
+    setSchedules((s) => s.filter((_, idx) => idx !== i));
+  }
+
+  function updateSchedule<K extends keyof ScheduleDraft>(i: number, field: K, value: ScheduleDraft[K]) {
+    setSchedules((s) => s.map((sch, idx) => (idx === i ? { ...sch, [field]: value } : sch)));
+  }
+
+  function toggleDay(scheduleIdx: number, day: number) {
+    setSchedules((s) =>
+      s.map((sch, idx) => {
+        if (idx !== scheduleIdx) return sch;
+        const has = sch.days_of_week.includes(day);
+        return {
+          ...sch,
+          days_of_week: has
+            ? sch.days_of_week.filter((d) => d !== day)
+            : [...sch.days_of_week, day],
+        };
+      })
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/api/v1/workshops", {
-        ...form,
-        price: Number(form.price),
-        capacity: form.capacity ? Number(form.capacity) : undefined,
-        sessions,
-      });
+      if (form.type === "class") {
+        // Create workshop first, then post schedules
+        const res = await api.post<{ data: { id: string } }>("/api/v1/workshops", {
+          ...form,
+          price: Number(form.price),
+          capacity: form.capacity ? Number(form.capacity) : undefined,
+        });
+        const workshopId = res?.data?.id;
+        if (workshopId) {
+          for (const sch of schedules) {
+            if (sch.days_of_week.length > 0 && sch.time_start) {
+              await api.post(`/api/v1/workshops/${workshopId}/schedules`, {
+                days_of_week: sch.days_of_week,
+                time_start: sch.time_start,
+                duration_min: sch.duration_min,
+                valid_from: sch.valid_from || undefined,
+                valid_until: sch.valid_until || undefined,
+              });
+            }
+          }
+        }
+      } else {
+        await api.post<{ data: { id: string } }>("/api/v1/workshops", {
+          ...form,
+          price: Number(form.price),
+          capacity: form.capacity ? Number(form.capacity) : undefined,
+          sessions,
+        });
+      }
       toast.success("¡Taller creado exitosamente!");
       router.push("/dashboard");
     } catch (err) {
@@ -255,85 +329,162 @@ export default function NuevoTallerPage() {
             </CardContent>
           </Card>
 
-          {/* Horario recurrente (solo para clases) */}
+          {/* Schedule editor — only for type === "class" */}
           {form.type === "class" && (
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Horario recurrente</CardTitle>
+                <Button type="button" variant="outline" size="sm" onClick={addSchedule}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Agregar franja
+                </Button>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <Label htmlFor="schedule">¿Cuándo se repite esta clase?</Label>
-                <Input
-                  id="schedule"
-                  placeholder="Ej: Todos los martes a las 19:00 hrs (90 min)"
-                  value={form.schedule}
-                  onChange={(e) => set("schedule", e.target.value)}
-                />
-                <p className="text-xs text-zinc-400">
-                  Este texto aparecerá destacado en la página del taller.
-                </p>
+              <CardContent className="space-y-4">
+                {schedules.map((sch, i) => (
+                  <div key={i} className="border rounded-lg p-4 space-y-4 relative">
+                    {schedules.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSchedule(i)}
+                        className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    <Badge variant="outline" className="text-xs">Franja {i + 1}</Badge>
+
+                    {/* Day picker */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">Días de la semana</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        {DAYS.map((d) => {
+                          const active = sch.days_of_week.includes(d.value);
+                          return (
+                            <button
+                              key={d.value}
+                              type="button"
+                              onClick={() => toggleDay(i, d.value)}
+                              className={`w-10 h-10 rounded-full text-xs font-semibold border-2 transition-all ${
+                                active
+                                  ? "bg-zinc-900 text-white border-zinc-900"
+                                  : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Time and duration */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Hora de inicio *</Label>
+                        <Input
+                          type="time"
+                          value={sch.time_start}
+                          onChange={(e) => updateSchedule(i, "time_start", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Duración (minutos)</Label>
+                        <Input
+                          type="number"
+                          min="15"
+                          step="15"
+                          placeholder="60"
+                          value={sch.duration_min}
+                          onChange={(e) =>
+                            updateSchedule(i, "duration_min", Number(e.target.value))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    {/* Valid range */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Válido desde (opcional)</Label>
+                        <Input
+                          type="date"
+                          value={sch.valid_from}
+                          onChange={(e) => updateSchedule(i, "valid_from", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Válido hasta (opcional)</Label>
+                        <Input
+                          type="date"
+                          value={sch.valid_until}
+                          onChange={(e) => updateSchedule(i, "valid_until", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
 
-          {/* Fechas / Sesiones */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">
-                {form.type === "class" ? "Próximas clases" : "Sesiones"}
-              </CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addSession}>
-                <Plus className="h-4 w-4 mr-1" />
-                Agregar fecha
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {sessions.length === 0 ? (
-                <p className="text-sm text-zinc-400 text-center py-4">
-                  Sin fechas — puedes agregarlas ahora o más tarde.
-                </p>
-              ) : (
-                sessions.map((s, i) => (
-                  <div key={i} className="border rounded-lg p-4 space-y-3 relative">
-                    <button
-                      type="button"
-                      onClick={() => removeSession(i)}
-                      className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                    <Badge variant="outline" className="text-xs">Sesión {i + 1}</Badge>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Inicio</Label>
-                        <Input
-                          type="datetime-local"
-                          value={s.starts_at}
-                          onChange={(e) => updateSession(i, "starts_at", e.target.value)}
-                        />
+          {/* Manual sessions editor — for non-class types */}
+          {form.type !== "class" && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-base">Sesiones</CardTitle>
+                <Button type="button" variant="outline" size="sm" onClick={addSession}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Agregar fecha
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {sessions.length === 0 ? (
+                  <p className="text-sm text-zinc-400 text-center py-4">
+                    Sin fechas — puedes agregarlas ahora o más tarde.
+                  </p>
+                ) : (
+                  sessions.map((s, i) => (
+                    <div key={i} className="border rounded-lg p-4 space-y-3 relative">
+                      <button
+                        type="button"
+                        onClick={() => removeSession(i)}
+                        className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                      <Badge variant="outline" className="text-xs">Sesión {i + 1}</Badge>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Inicio</Label>
+                          <Input
+                            type="datetime-local"
+                            value={s.starts_at}
+                            onChange={(e) => updateSession(i, "starts_at", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fin</Label>
+                          <Input
+                            type="datetime-local"
+                            value={s.ends_at}
+                            onChange={(e) => updateSession(i, "ends_at", e.target.value)}
+                          />
+                        </div>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Fin</Label>
+                        <Label className="text-xs">Notas (opcional)</Label>
                         <Input
-                          type="datetime-local"
-                          value={s.ends_at}
-                          onChange={(e) => updateSession(i, "ends_at", e.target.value)}
+                          placeholder="Ej: Materiales incluidos"
+                          value={s.notes}
+                          onChange={(e) => updateSession(i, "notes", e.target.value)}
                         />
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Notas (opcional)</Label>
-                      <Input
-                        placeholder="Ej: Materiales incluidos"
-                        value={s.notes}
-                        onChange={(e) => updateSession(i, "notes", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Separator />
 
