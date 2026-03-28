@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -50,15 +50,17 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, isInstr
   const router = useRouter();
   const [booking, setBooking] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // Use state to avoid hydration mismatch (localStorage is only available client-side)
+  const [isInstructor, setIsInstructor] = useState(isInstructorProp);
 
-  // Determine if the current user is the instructor
-  const isInstructor = isInstructorProp || (() => {
-    if (typeof window === "undefined" || !instructorId) return false;
+  useEffect(() => {
+    if (isInstructorProp) { setIsInstructor(true); return; }
+    if (!instructorId) return;
     try {
       const user = JSON.parse(localStorage.getItem("user") ?? "{}");
-      return user?.id === instructorId;
-    } catch { return false; }
-  })();
+      setIsInstructor(user?.id === instructorId);
+    } catch { /* ignore */ }
+  }, [instructorId, isInstructorProp]);
 
   const isCancelled = session.status === "cancelled";
   const isFull = session.status === "full";
