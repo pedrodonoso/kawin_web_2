@@ -73,29 +73,46 @@ CREATE TABLE workshops (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Sessions (for multi-session courses)
+-- Schedules (recurring class rules for type=class workshops)
+CREATE TABLE schedules (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workshop_id  UUID NOT NULL REFERENCES workshops(id) ON DELETE CASCADE,
+  days_of_week INTEGER[] NOT NULL,        -- 0=Sun, 1=Mon, ..., 6=Sat (Go time.Weekday)
+  time_start   TIME NOT NULL,             -- e.g. '19:00'
+  duration_min INTEGER NOT NULL DEFAULT 60,
+  valid_from   DATE NOT NULL DEFAULT CURRENT_DATE,
+  valid_until  DATE,                      -- NULL = active indefinitely
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Sessions (for multi-session courses and materialized class instances)
 CREATE TABLE sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   workshop_id UUID NOT NULL REFERENCES workshops(id) ON DELETE CASCADE,
-  starts_at TIMESTAMPTZ NOT NULL,
-  ends_at TIMESTAMPTZ NOT NULL,
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  schedule_id UUID REFERENCES schedules(id) ON DELETE SET NULL, -- NULL for manual sessions
+  starts_at   TIMESTAMPTZ NOT NULL,
+  ends_at     TIMESTAMPTZ NOT NULL,
+  cancelled   BOOLEAN NOT NULL DEFAULT FALSE,
+  notes       TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Bookings
 CREATE TABLE bookings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  workshop_id UUID NOT NULL REFERENCES workshops(id),
-  session_id UUID REFERENCES sessions(id),
-  student_id UUID NOT NULL REFERENCES users(id),
-  status booking_status NOT NULL DEFAULT 'pending',
-  payment_status payment_status NOT NULL DEFAULT 'pending',
-  amount NUMERIC(10,2) NOT NULL,
-  commission NUMERIC(10,2) NOT NULL DEFAULT 0,
-  mp_payment_id VARCHAR(255),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workshop_id              UUID NOT NULL REFERENCES workshops(id),
+  session_id               UUID REFERENCES sessions(id),
+  student_id               UUID NOT NULL REFERENCES users(id),
+  status                   booking_status NOT NULL DEFAULT 'pending',
+  payment_status           payment_status NOT NULL DEFAULT 'pending',
+  amount                   NUMERIC(10,2) NOT NULL,
+  commission               NUMERIC(10,2) NOT NULL DEFAULT 0,
+  commission_absorbed_by   VARCHAR(20),   -- 'instructor' | 'platform' (set on cancellation)
+  cancelled_reason         VARCHAR(50),   -- 'schedule_change' | 'instructor_cancel' | 'student_cancel'
+  migrated_from_session_id UUID REFERENCES sessions(id),
+  mp_payment_id            VARCHAR(255),
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Reviews
@@ -129,6 +146,9 @@ CREATE INDEX idx_workshops_search ON workshops USING gin(to_tsvector('spanish', 
 CREATE INDEX idx_bookings_student ON bookings(student_id);
 CREATE INDEX idx_bookings_workshop ON bookings(workshop_id);
 CREATE INDEX idx_reviews_workshop ON reviews(workshop_id);
+CREATE INDEX idx_schedules_workshop ON schedules(workshop_id);
+CREATE INDEX idx_sessions_schedule ON sessions(schedule_id);
+CREATE INDEX idx_sessions_cancelled ON sessions(cancelled);
 
 -- Seed categories
 INSERT INTO categories (name, slug, icon) VALUES

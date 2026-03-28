@@ -2,41 +2,264 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pedrodonoso/kawin/api/internal/db"
 )
 
 type Session struct {
-	ID       string `json:"id"`
-	StartsAt string `json:"starts_at"`
-	EndsAt   string `json:"ends_at"`
-	Notes    string `json:"notes,omitempty"`
+	ID        string `json:"id"`
+	StartsAt  string `json:"starts_at"`
+	EndsAt    string `json:"ends_at"`
+	Cancelled bool   `json:"cancelled,omitempty"`
+	Notes     string `json:"notes,omitempty"`
+}
+
+// UpcomingSession represents a computed (virtual or materialized) class instance.
+// Returned only for workshops of type "class".
+type UpcomingSession struct {
+	Date           string  `json:"date"`            // "YYYY-MM-DD"
+	Time           string  `json:"time"`            // "HH:MM"
+	DurationMin    int     `json:"duration_min"`
+	ScheduleID     string  `json:"schedule_id"`
+	SessionID      *string `json:"session_id"`      // nil = not yet materialized
+	SpotsRemaining *int    `json:"spots_remaining"` // nil = no capacity limit
+	Status         string  `json:"status"`          // "available" | "cancelled" | "full"
 }
 
 type Workshop struct {
-	ID              string    `json:"id"`
-	Title           string    `json:"title"`
-	Slug            string    `json:"slug"`
-	Description     string    `json:"description"`
-	Type            string    `json:"type"`
-	Modality        string    `json:"modality"`
-	Price           float64   `json:"price"`
-	Currency        string    `json:"currency"`
-	Capacity        *int      `json:"capacity,omitempty"`
-	Location        string    `json:"location,omitempty"`
-	CoverImageURL   string    `json:"cover_image_url,omitempty"`
-	Status          string    `json:"status"`
-	CategoryID      string    `json:"category_id,omitempty"`
-	CategoryName    string    `json:"category_name,omitempty"`
-	CategorySlug    string    `json:"category_slug,omitempty"`
-	InstructorName  string    `json:"instructor_name,omitempty"`
-	InstructorBio   string    `json:"instructor_bio,omitempty"`
-	Schedule        string    `json:"schedule,omitempty"`
-	Sessions        []Session `json:"sessions,omitempty"`
-	CreatedAt       string    `json:"created_at"`
+	ID               string            `json:"id"`
+	Title            string            `json:"title"`
+	Slug             string            `json:"slug"`
+	Description      string            `json:"description"`
+	Type             string            `json:"type"`
+	Modality         string            `json:"modality"`
+	Price            float64           `json:"price"`
+	Currency         string            `json:"currency"`
+	Capacity         *int              `json:"capacity,omitempty"`
+	Location         string            `json:"location,omitempty"`
+	CoverImageURL    string            `json:"cover_image_url,omitempty"`
+	Status           string            `json:"status"`
+	CategoryID       string            `json:"category_id,omitempty"`
+	CategoryName     string            `json:"category_name,omitempty"`
+	CategorySlug     string            `json:"category_slug,omitempty"`
+	InstructorName   string            `json:"instructor_name,omitempty"`
+	InstructorBio    string            `json:"instructor_bio,omitempty"`
+	Schedule         string            `json:"schedule,omitempty"`
+	Sessions         []Session         `json:"sessions,omitempty"`
+	UpcomingSessions []UpcomingSession `json:"upcoming_sessions,omitempty"`
+	CreatedAt        string            `json:"created_at"`
+}
+
+// =============================================================================
+// Virtual session engine
+// =============================================================================
+
+type materializedSession struct {
+	ID        string
+	Cancelled bool
+}
+
+// computeUpcomingSessions calculates the upcoming class instances for a given set
+// of schedules within [from, to], merging any already-materialized sessions.
+// Pure function: no DB calls.
+func computeUpcomingSessions(
+	schedules []Schedule,
+	from, to time.Time,
+	materialized map[string]materializedSession, // key: "scheduleID:YYYY-MM-DD"
+	bookingCounts map[string]int,                // key: session_id → confirmed bookings
+	capacity *int,
+) []UpcomingSession {
+	var result []UpcomingSession
+
+	for _, sched := range schedules {
+		// Parse valid_from (stored as "YYYY-MM-DD" or "YYYY-MM-DDT...")
+		validFrom, err := time.Parse("2006-01-02", sched.ValidFrom[:10])
+		if err != nil {
+			continue
+		}
+
+		// Parse valid_until (nil = active indefinitely)
+		var validUntil *time.Time
+		if sched.ValidUntil != nil && len(*sched.ValidUntil) >= 10 {
+			t, err := time.Parse("2006-01-02", (*sched.ValidUntil)[:10])
+			if err == nil {
+				validUntil = &t
+			}
+		}
+
+		// Build a set of active weekdays
+		daySet := make(map[time.Weekday]bool)
+		for _, d := range sched.DaysOfWeek {
+			daySet[time.Weekday(d)] = true
+		}
+
+		// Parse time_start — PostgreSQL returns TIME as "HH:MM:SS" or "HH:MM"
+		parts := strings.SplitN(sched.TimeStart, ":", 3)
+		if len(parts) < 2 {
+			continue
+		}
+		hour, _ := strconv.Atoi(parts[0])
+		minute, _ := strconv.Atoi(parts[1])
+		timeStr := fmt.Sprintf("%02d:%02d", hour, minute)
+
+		// Walk every day in the query range
+		for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
+			if !daySet[d.Weekday()] {
+				continue
+			}
+			dayOnly := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC)
+			if dayOnly.Before(validFrom) {
+				continue
+			}
+			if validUntil != nil && dayOnly.After(*validUntil) {
+				continue
+			}
+
+			dateStr := d.Format("2006-01-02")
+			key := sched.ID + ":" + dateStr
+
+			status := "available"
+			var sessionID *string
+			var spotsRemaining *int
+
+			if mat, ok := materialized[key]; ok {
+				id := mat.ID
+				sessionID = &id
+				if mat.Cancelled {
+					status = "cancelled"
+				} else if capacity != nil {
+					count := bookingCounts[mat.ID]
+					remaining := *capacity - count
+					if remaining <= 0 {
+						status = "full"
+						remaining = 0
+					}
+					spotsRemaining = &remaining
+				}
+			} else if capacity != nil {
+				// Not materialized → no bookings yet → full capacity available
+				remaining := *capacity
+				spotsRemaining = &remaining
+			}
+
+			result = append(result, UpcomingSession{
+				Date:           dateStr,
+				Time:           timeStr,
+				DurationMin:    sched.DurationMin,
+				ScheduleID:     sched.ID,
+				SessionID:      sessionID,
+				SpotsRemaining: spotsRemaining,
+				Status:         status,
+			})
+		}
+	}
+
+	// Sort chronologically, then by time within the same day
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Date == result[j].Date {
+			return result[i].Time < result[j].Time
+		}
+		return result[i].Date < result[j].Date
+	})
+
+	return result
+}
+
+// loadActiveSchedules returns schedules whose validity window overlaps [from, to].
+func loadActiveSchedules(workshopID string, from, to time.Time) ([]Schedule, error) {
+	rows, err := db.Pool.Query(context.Background(), `
+		SELECT id, workshop_id, days_of_week, time_start::text, duration_min,
+		       valid_from::text, valid_until::text, created_at::text
+		FROM schedules
+		WHERE workshop_id = $1
+		  AND valid_from <= $2
+		  AND (valid_until IS NULL OR valid_until >= $3)
+		ORDER BY valid_from, time_start`,
+		workshopID, to.Format("2006-01-02"), from.Format("2006-01-02"),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var schedules []Schedule
+	for rows.Next() {
+		var s Schedule
+		var validUntil *string
+		if err := rows.Scan(
+			&s.ID, &s.WorkshopID, &s.DaysOfWeek, &s.TimeStart, &s.DurationMin,
+			&s.ValidFrom, &validUntil, &s.CreatedAt,
+		); err != nil {
+			continue
+		}
+		s.ValidUntil = validUntil
+		schedules = append(schedules, s)
+	}
+	return schedules, nil
+}
+
+// loadMaterializedSessions returns already-materialized sessions (those with a schedule_id)
+// in the upcoming window, keyed by "scheduleID:YYYY-MM-DD".
+func loadMaterializedSessions(workshopID string, from, to time.Time) (map[string]materializedSession, error) {
+	rows, err := db.Pool.Query(context.Background(), `
+		SELECT id, schedule_id::text, (starts_at AT TIME ZONE 'UTC')::date::text, cancelled
+		FROM sessions
+		WHERE workshop_id = $1
+		  AND schedule_id IS NOT NULL
+		  AND starts_at >= $2
+		  AND starts_at <= $3`,
+		workshopID,
+		from.Format("2006-01-02"),
+		to.Add(24*time.Hour).Format("2006-01-02"),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	m := make(map[string]materializedSession)
+	for rows.Next() {
+		var id, scheduleID, dateStr string
+		var cancelled bool
+		if rows.Scan(&id, &scheduleID, &dateStr, &cancelled) == nil {
+			m[scheduleID+":"+dateStr] = materializedSession{ID: id, Cancelled: cancelled}
+		}
+	}
+	return m, nil
+}
+
+// loadBookingCounts returns confirmed booking counts per session_id for a workshop.
+func loadBookingCounts(workshopID string) (map[string]int, error) {
+	rows, err := db.Pool.Query(context.Background(), `
+		SELECT session_id::text, COUNT(*)
+		FROM bookings
+		WHERE workshop_id = $1
+		  AND session_id IS NOT NULL
+		  AND status != 'cancelled'
+		GROUP BY session_id`,
+		workshopID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int)
+	for rows.Next() {
+		var sessionID string
+		var count int
+		if rows.Scan(&sessionID, &count) == nil {
+			counts[sessionID] = count
+		}
+	}
+	return counts, nil
 }
 
 func GetWorkshops(c *gin.Context) {
@@ -110,7 +333,7 @@ func GetWorkshops(c *gin.Context) {
 }
 
 func GetWorkshop(c *gin.Context) {
-	slug := c.Param("slug")
+	slug := c.Param("id")
 
 	var w Workshop
 	err := db.Pool.QueryRow(context.Background(), `
@@ -137,16 +360,28 @@ func GetWorkshop(c *gin.Context) {
 		return
 	}
 
-	// Fetch sessions
-	srows, err := db.Pool.Query(context.Background(),
-		`SELECT id, starts_at::text, ends_at::text, COALESCE(notes,'')
-		 FROM sessions WHERE workshop_id = $1 ORDER BY starts_at`, w.ID)
-	if err == nil {
-		defer srows.Close()
-		for srows.Next() {
-			var s Session
-			if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Notes) == nil {
-				w.Sessions = append(w.Sessions, s)
+	if w.Type == "class" {
+		// Virtual session engine: compute upcoming sessions from schedule rules
+		from := time.Now().UTC().Truncate(24 * time.Hour)
+		to := from.AddDate(0, 0, 56) // 8 weeks ahead
+
+		schedules, _ := loadActiveSchedules(w.ID, from, to)
+		materialized, _ := loadMaterializedSessions(w.ID, from, to)
+		bookingCounts, _ := loadBookingCounts(w.ID)
+
+		w.UpcomingSessions = computeUpcomingSessions(schedules, from, to, materialized, bookingCounts, w.Capacity)
+	} else {
+		// Manual sessions for workshop / course / event types
+		srows, err := db.Pool.Query(context.Background(),
+			`SELECT id, starts_at::text, ends_at::text, cancelled, COALESCE(notes,'')
+			 FROM sessions WHERE workshop_id = $1 ORDER BY starts_at`, w.ID)
+		if err == nil {
+			defer srows.Close()
+			for srows.Next() {
+				var s Session
+				if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Cancelled, &s.Notes) == nil {
+					w.Sessions = append(w.Sessions, s)
+				}
 			}
 		}
 	}
