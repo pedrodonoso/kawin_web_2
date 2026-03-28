@@ -38,6 +38,13 @@ func Register(r *gin.Engine) {
 			// Bookings (Sprint 3)
 			auth.POST("/bookings", handlers.CreateBooking)
 			auth.GET("/my-bookings", handlers.GetMyBookings)
+
+			// Sprint 4
+			auth.PUT("/schedules/:id", handlers.UpdateSchedule)
+			auth.GET("/schedules/:id/affected-bookings", handlers.GetAffectedBookings)
+			auth.POST("/bookings/:id/migrate", handlers.MigrateBooking)
+			auth.POST("/bookings/:id/refund", handlers.RefundBooking)
+			auth.POST("/schedules/:id/bulk-action", handlers.BulkAction)
 		}
 	}
 }
