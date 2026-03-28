@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,25 @@ export function BookingButton({ workshopId, workshopType }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token || workshopType === "class") {
+      setCheckingStatus(false);
+      return;
+    }
+    api
+      .getList<{ workshop_id: string; status: string }>("/api/v1/my-bookings")
+      .then((bookings) => {
+        const existing = bookings.find(
+          (b) => b.workshop_id === workshopId && b.status === "confirmed"
+        );
+        if (existing) setBooked(true);
+      })
+      .catch(() => {})
+      .finally(() => setCheckingStatus(false));
+  }, [workshopId, workshopType]);
 
   if (workshopType === "class") {
     return (
@@ -29,7 +48,7 @@ export function BookingButton({ workshopId, workshopType }: Props) {
   }
 
   async function handleBook() {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login");
       return;
@@ -44,6 +63,10 @@ export function BookingButton({ workshopId, workshopType }: Props) {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingStatus) {
+    return <Button className="w-full" size="lg" disabled>Cargando...</Button>;
   }
 
   if (booked) {
