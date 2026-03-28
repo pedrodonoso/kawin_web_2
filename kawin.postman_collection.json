@@ -8,7 +8,9 @@
     { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
     { "key": "token",    "value": "",                     "type": "string" },
     { "key": "workshop_id",   "value": "", "type": "string" },
-    { "key": "schedule_id",   "value": "", "type": "string" }
+    { "key": "schedule_id",   "value": "", "type": "string" },
+    { "key": "booking_id",    "value": "", "type": "string" },
+    { "key": "new_schedule_id", "value": "", "type": "string" }
   ],
   "item": [
     {
@@ -264,6 +266,173 @@
           "request": {
             "method": "GET",
             "url": { "raw": "{{base_url}}/api/v1/categories", "host": ["{{base_url}}"], "path": ["api","v1","categories"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings (Sprint 3)",
+      "item": [
+        {
+          "name": "Reservar clase (type=class)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/bookings", "host": ["{{base_url}}"], "path": ["api","v1","bookings"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workshop_id\": \"{{workshop_id}}\",\n  \"schedule_id\": \"{{schedule_id}}\",\n  \"date\": \"2026-04-07\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reservar taller (otros tipos)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/bookings", "host": ["{{base_url}}"], "path": ["api","v1","bookings"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workshop_id\": \"{{workshop_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Mis reservas (como estudiante)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/my-bookings", "host": ["{{base_url}}"], "path": ["api","v1","my-bookings"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schedule Changes (Sprint 4)",
+      "item": [
+        {
+          "name": "Cambiar horario de schedule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/schedules/{{schedule_id}}", "host": ["{{base_url}}"], "path": ["api","v1","schedules","{{schedule_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"days_of_week\": [2, 4],\n  \"time_start\": \"20:00\",\n  \"duration_min\": 90,\n  \"change_date\": \"2026-04-14\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reservas afectadas por cambio",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/schedules/{{schedule_id}}/affected-bookings?change_date=2026-04-14",
+              "host": ["{{base_url}}"],
+              "path": ["api","v1","schedules","{{schedule_id}}","affected-bookings"],
+              "query": [
+                { "key": "change_date", "value": "2026-04-14" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Migrar reserva a nuevo horario",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/bookings/{{booking_id}}/migrate", "host": ["{{base_url}}"], "path": ["api","v1","bookings","{{booking_id}}","migrate"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target_schedule_id\": \"{{new_schedule_id}}\",\n  \"target_date\": \"2026-04-16\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Devolver reserva",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/bookings/{{booking_id}}/refund", "host": ["{{base_url}}"], "path": ["api","v1","bookings","{{booking_id}}","refund"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Acción masiva (migrar o devolver todas)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/schedules/{{schedule_id}}/bulk-action", "host": ["{{base_url}}"], "path": ["api","v1","schedules","{{schedule_id}}","bulk-action"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"migrate_all\",\n  \"new_schedule_id\": \"{{new_schedule_id}}\",\n  \"change_date\": \"2026-04-14\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sessions & Dashboard (Sprint 5)",
+      "item": [
+        {
+          "name": "Cancelar instancia de clase",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/sessions/cancel", "host": ["{{base_url}}"], "path": ["api","v1","sessions","cancel"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule_id\": \"{{schedule_id}}\",\n  \"date\": \"2026-04-07\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reservas del tallerista (panel)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/instructor-bookings", "host": ["{{base_url}}"], "path": ["api","v1","instructor-bookings"] }
+          }
+        },
+        {
+          "name": "Archivar taller",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/workshops/{{workshop_id}}", "host": ["{{base_url}}"], "path": ["api","v1","workshops","{{workshop_id}}"] }
           }
         }
       ]
