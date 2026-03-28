@@ -168,7 +168,7 @@ INSERT INTO categories (name, slug, icon) VALUES
 -- Seed demo user (password: test1234)
 INSERT INTO users (id, email, password_hash, role) VALUES
   ('878d88c7-c219-4e2e-8aa9-bf67256c70cc', 'maria@kawin.app',
-   '$2a$10$Nzrv5VvLqIYfRfI9HmjkHOpfRmYJg6vvFqNQ5g7Y6aM1j3Kcj0fyi', 'instructor')
+   '$2a$10$8lU7Wn25aYsRnBURkQB.Q.ZeOcDorE1W9h3RSMxwuMAoW.xlV/rhW', 'instructor')
   ON CONFLICT DO NOTHING;
 
 INSERT INTO profiles (user_id, name, bio) VALUES
@@ -222,7 +222,7 @@ ON CONFLICT DO NOTHING;
 -- Seed demo student user (password: test1234)
 INSERT INTO users (id, email, password_hash, role) VALUES
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'carlos@kawin.app',
-   '$2a$10$Nzrv5VvLqIYfRfI9HmjkHOpfRmYJg6vvFqNQ5g7Y6aM1j3Kcj0fyi', 'student')
+   '$2a$10$8lU7Wn25aYsRnBURkQB.Q.ZeOcDorE1W9h3RSMxwuMAoW.xlV/rhW', 'student')
   ON CONFLICT DO NOTHING;
 
 INSERT INTO profiles (user_id, name, bio) VALUES
