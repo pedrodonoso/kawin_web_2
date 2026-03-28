@@ -55,13 +55,13 @@ export default function CondicionesInstructorPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Ejemplo práctico</h2>
           <div className="rounded-lg border bg-white p-4 text-sm text-zinc-600 space-y-2">
-            <p>Tienes una clase el <strong>miércoles 2 de abril</strong>. La semana comienza el domingo 30 de marzo.</p>
+            <p>Tienes una clase el <strong>miércoles 2 de abril</strong>. La semana comienza el lunes 31 de marzo.</p>
             <p>
-              Si cambias el horario <strong>antes del domingo 30 de marzo</strong> →{" "}
+              Si cambias el horario <strong>antes del lunes 31 de marzo</strong> →{" "}
               <span className="text-green-700 font-medium">Sin cargo</span>
             </p>
             <p>
-              Si cambias el horario <strong>el domingo 30 de marzo o después</strong> →{" "}
+              Si cambias el horario <strong>el lunes 31 de marzo o después</strong> →{" "}
               <span className="text-red-700 font-medium">Comisión a tu cargo (15%)</span>
             </p>
           </div>

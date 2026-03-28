@@ -277,12 +277,15 @@ type affectedBookingRow struct {
 	CommissionZone string  `json:"commission_zone"`
 }
 
-// commissionZone returns "instructor" if now is past the Sunday before sessionDate,
-// or "platform" if the change is still in advance.
+// commissionZone returns "instructor" if now is on or past the Monday that starts
+// the ISO week of sessionDate (week = Mon–Sun). Returns "platform" if the class
+// is still in a future week.
 func commissionZone(sessionDate time.Time) string {
-	weekday := int(sessionDate.Weekday()) // 0=Sun
-	cutoffSunday := sessionDate.AddDate(0, 0, -weekday)
-	if time.Now().UTC().Before(cutoffSunday) {
+	weekday := int(sessionDate.Weekday()) // 0=Sun,1=Mon,...,6=Sat
+	daysFromMonday := (weekday + 6) % 7   // Mon→0, Tue→1, ..., Sun→6
+	cutoffMonday := sessionDate.AddDate(0, 0, -daysFromMonday)
+	cutoffMonday = time.Date(cutoffMonday.Year(), cutoffMonday.Month(), cutoffMonday.Day(), 0, 0, 0, 0, time.UTC)
+	if time.Now().UTC().Before(cutoffMonday) {
 		return "platform"
 	}
 	return "instructor"

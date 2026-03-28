@@ -40,11 +40,12 @@ interface Props {
  */
 function getCommissionZone(sessionDateStr: string): "instructor" | "platform" {
   const sessionDate = new Date(`${sessionDateStr}T12:00:00`);
-  const weekday = sessionDate.getDay(); // 0 = Sun
-  const cutoffSunday = new Date(sessionDate);
-  cutoffSunday.setDate(sessionDate.getDate() - weekday);
-  cutoffSunday.setHours(0, 0, 0, 0);
-  return new Date() >= cutoffSunday ? "instructor" : "platform";
+  const weekday = sessionDate.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const daysFromMonday = (weekday + 6) % 7; // Mon→0, Tue→1, ..., Sun→6
+  const cutoffMonday = new Date(sessionDate);
+  cutoffMonday.setDate(sessionDate.getDate() - daysFromMonday);
+  cutoffMonday.setHours(0, 0, 0, 0);
+  return new Date() >= cutoffMonday ? "instructor" : "platform";
 }
 
 export function UpcomingSessionCard({ session, workshopId, instructorId, isInstructor: isInstructorProp = false }: Props) {
