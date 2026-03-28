@@ -11,6 +11,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { AlertTriangle } from "lucide-react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 
 export interface AffectedBooking {
@@ -79,6 +81,25 @@ export default function AffectedBookingsModal({
           serán afectadas a partir del{" "}
           <span className="font-semibold text-zinc-800">{changeDate}</span>
         </p>
+
+        {affectedBookings.some((b) => b.commission_zone === "instructor") && (
+          <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+            <span>
+              Algunas reservas están marcadas como{" "}
+              <strong>Comisión a tu cargo</strong> porque pertenecen a clases
+              de la semana actual o pasada. Al cancelarlas o migrarlas, la
+              comisión de plataforma será descontada de tu próximo pago.{" "}
+              <Link
+                href="/condiciones-instructor"
+                target="_blank"
+                className="underline font-medium hover:text-amber-900"
+              >
+                Ver condiciones completas
+              </Link>
+            </span>
+          </div>
+        )}
 
         <div className="overflow-y-auto flex-1 mt-2">
           <table className="w-full text-sm">
