@@ -28,9 +28,10 @@ function addMinutes(time: string, minutes: number) {
 interface Props {
   session: UpcomingSession;
   workshopId: string;
-  /** The workshop's instructor_id — compared to localStorage user.id to show the cancel button */
   instructorId?: string;
   isInstructor?: boolean;
+  /** Pre-computed by parent (UpcomingSessionsList). undefined = still loading. */
+  alreadyBooked?: boolean;
 }
 
 /**
@@ -48,45 +49,29 @@ function getCommissionZone(sessionDateStr: string): "instructor" | "platform" {
   return new Date() >= cutoffMonday ? "instructor" : "platform";
 }
 
-export function UpcomingSessionCard({ session, workshopId, instructorId, isInstructor: isInstructorProp = false }: Props) {
+export function UpcomingSessionCard({ session, workshopId, instructorId, isInstructor: isInstructorProp = false, alreadyBooked: alreadyBookedProp }: Props) {
   const router = useRouter();
   const [booking, setBooking] = useState(false);
   const [alreadyBooked, setAlreadyBooked] = useState(false);
-  const [checkingBooking, setCheckingBooking] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [isInstructor, setIsInstructor] = useState(isInstructorProp);
 
+  // Sync alreadyBooked from parent when it resolves
   useEffect(() => {
-    // Check instructor status
-    if (isInstructorProp) { setIsInstructor(true); }
-    else if (instructorId) {
-      try {
-        const user = JSON.parse(localStorage.getItem("user") ?? "{}");
-        setIsInstructor(user?.id === instructorId);
-      } catch { /* ignore */ }
-    }
+    if (alreadyBookedProp !== undefined) setAlreadyBooked(alreadyBookedProp);
+  }, [alreadyBookedProp]);
 
-    // Check if user already has a confirmed booking for this session
-    const token = localStorage.getItem("token");
-    if (!token) { setCheckingBooking(false); return; }
+  useEffect(() => {
+    if (isInstructorProp) { setIsInstructor(true); return; }
+    if (!instructorId) return;
+    try {
+      const user = JSON.parse(localStorage.getItem("user") ?? "{}");
+      setIsInstructor(user?.id === instructorId);
+    } catch { /* ignore */ }
+  }, [instructorId, isInstructorProp]);
 
-    api
-      .getList<{ workshop_id: string; schedule_id: string; session_day: string; status: string }>(
-        "/api/v1/my-bookings"
-      )
-      .then((bookings) => {
-        const found = bookings.some(
-          (b) =>
-            b.workshop_id === workshopId &&
-            b.schedule_id === session.schedule_id &&
-            b.session_day === session.date &&
-            b.status === "confirmed"
-        );
-        setAlreadyBooked(found);
-      })
-      .catch(() => {})
-      .finally(() => setCheckingBooking(false));
-  }, [workshopId, session.schedule_id, session.date, instructorId, isInstructorProp]);
+  // checkingBooking: true while parent hasn't resolved yet (alreadyBookedProp === undefined)
+  const checkingBooking = alreadyBookedProp === undefined;
 
   const isCancelled = session.status === "cancelled";
   const isFull = session.status === "full";

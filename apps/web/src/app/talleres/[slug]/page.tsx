@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Users, Calendar, Clock, Globe, CheckCircle } from "lucide-react";
 import { api, type Workshop } from "@/lib/api";
-import { UpcomingSessionCard } from "./UpcomingSessionCard";
+import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { BookingButton } from "./BookingButton";
 import Link from "next/link";
 
@@ -131,11 +131,12 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           {workshop.type === "class" && workshop.upcoming_sessions && workshop.upcoming_sessions.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Próximas clases</h2>
-              <div className="space-y-3">
-                {workshop.upcoming_sessions.map((s) => (
-                  <UpcomingSessionCard key={`${s.schedule_id}-${s.date}`} session={s} workshopId={workshop.id} instructorId={workshop.instructor_id} />
-                ))}
-              </div>
+              <UpcomingSessionsList
+                sessions={workshop.upcoming_sessions}
+                workshopId={workshop.id}
+                workshopSlug={workshop.slug}
+                instructorId={workshop.instructor_id}
+              />
             </div>
           )}
 

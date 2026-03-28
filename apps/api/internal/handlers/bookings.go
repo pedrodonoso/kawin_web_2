@@ -222,8 +222,10 @@ func CreateBooking(c *gin.Context) {
 func GetMyBookings(c *gin.Context) {
 	studentID, _ := c.Get("userID")
 
-	rows, err := db.Pool.Query(context.Background(),
-		`SELECT b.id, b.workshop_id, w.title, w.slug,
+	workshopFilter := c.Query("workshop_id")
+	workshopSlugFilter := c.Query("workshop_slug")
+
+	query := `SELECT b.id, b.workshop_id, w.title, w.slug,
 		        b.session_id::text, b.status, b.payment_status, b.amount,
 		        COALESCE(s.starts_at::text, ''),
 		        COALESCE(s.schedule_id::text, ''),
@@ -232,11 +234,19 @@ func GetMyBookings(c *gin.Context) {
 		 FROM bookings b
 		 JOIN workshops w ON w.id = b.workshop_id
 		 LEFT JOIN sessions s ON s.id = b.session_id
-		 WHERE b.student_id = $1
-		 ORDER BY b.created_at DESC
-		 LIMIT 50`,
-		studentID.(string),
-	)
+		 WHERE b.student_id = $1`
+
+	args := []any{studentID.(string)}
+	if workshopFilter != "" {
+		args = append(args, workshopFilter)
+		query += ` AND b.workshop_id = $` + itoa(len(args))
+	} else if workshopSlugFilter != "" {
+		args = append(args, workshopSlugFilter)
+		query += ` AND w.slug = $` + itoa(len(args))
+	}
+	query += ` ORDER BY b.created_at DESC LIMIT 50`
+
+	rows, err := db.Pool.Query(context.Background(), query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener reservas"})
 		return
