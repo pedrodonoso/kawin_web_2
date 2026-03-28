@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -270,6 +271,92 @@ func GetMyBookings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": bookings})
+}
+
+// GetInstructorBookings handles GET /api/v1/instructor-bookings.
+// Returns all bookings for workshops owned by the authenticated instructor.
+// Optional query params: ?workshop_id=, ?status=, ?from= (date), ?to= (date)
+func GetInstructorBookings(c *gin.Context) {
+	instructorID, _ := c.Get("userID")
+	ctx := context.Background()
+
+	workshopIDFilter := c.Query("workshop_id")
+	statusFilter := c.Query("status")
+	fromFilter := c.Query("from")
+	toFilter := c.Query("to")
+
+	query := `SELECT b.id, b.workshop_id, w.title, p.name,
+	                 COALESCE(s.starts_at::text, ''), b.status, b.payment_status, b.amount, b.created_at::text
+	          FROM bookings b
+	          JOIN workshops w ON w.id = b.workshop_id
+	          JOIN profiles p ON p.user_id = b.student_id
+	          LEFT JOIN sessions s ON s.id = b.session_id
+	          WHERE w.instructor_id = $1`
+
+	args := []interface{}{instructorID.(string)}
+	argIdx := 2
+
+	if workshopIDFilter != "" {
+		query += " AND b.workshop_id = $" + itoa(argIdx)
+		args = append(args, workshopIDFilter)
+		argIdx++
+	}
+	if statusFilter != "" {
+		query += " AND b.status = $" + itoa(argIdx)
+		args = append(args, statusFilter)
+		argIdx++
+	}
+	if fromFilter != "" {
+		query += " AND b.created_at >= $" + itoa(argIdx) + "::date"
+		args = append(args, fromFilter)
+		argIdx++
+	}
+	if toFilter != "" {
+		query += " AND b.created_at < ($" + itoa(argIdx) + "::date + interval '1 day')"
+		args = append(args, toFilter)
+		argIdx++
+	}
+	_ = argIdx
+
+	query += " ORDER BY b.created_at DESC LIMIT 100"
+
+	rows, err := db.Pool.Query(ctx, query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener reservas: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type instructorBooking struct {
+		ID            string  `json:"booking_id"`
+		WorkshopID    string  `json:"workshop_id"`
+		WorkshopTitle string  `json:"workshop_title"`
+		StudentName   string  `json:"student_name"`
+		SessionDate   string  `json:"session_date,omitempty"`
+		Status        string  `json:"status"`
+		PaymentStatus string  `json:"payment_status"`
+		Amount        float64 `json:"amount"`
+		CreatedAt     string  `json:"created_at"`
+	}
+
+	bookings := []instructorBooking{}
+	for rows.Next() {
+		var b instructorBooking
+		if err := rows.Scan(
+			&b.ID, &b.WorkshopID, &b.WorkshopTitle, &b.StudentName,
+			&b.SessionDate, &b.Status, &b.PaymentStatus, &b.Amount, &b.CreatedAt,
+		); err != nil {
+			continue
+		}
+		bookings = append(bookings, b)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": bookings})
+}
+
+// itoa converts an int to its decimal string representation.
+func itoa(n int) string {
+	return strconv.Itoa(n)
 }
 
 // migrateBookingInput is the request body for POST /api/v1/bookings/:id/migrate.

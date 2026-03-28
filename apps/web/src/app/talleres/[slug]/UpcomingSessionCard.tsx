@@ -27,11 +27,29 @@ function addMinutes(time: string, minutes: number) {
 interface Props {
   session: UpcomingSession;
   workshopId: string;
+  // TODO: hide cancel button for non-instructors once instructor_id is exposed in the API response.
+  // For now the button is shown for all logged-in users; the server enforces ownership.
+  isInstructor?: boolean;
 }
 
-export function UpcomingSessionCard({ session, workshopId }: Props) {
+/**
+ * Returns "instructor" if today is on or after the Sunday that starts the week
+ * containing sessionDate (i.e. the class is in the current or past week).
+ * Returns "platform" if the class is in a future week.
+ */
+function getCommissionZone(sessionDateStr: string): "instructor" | "platform" {
+  const sessionDate = new Date(`${sessionDateStr}T12:00:00`);
+  const weekday = sessionDate.getDay(); // 0 = Sun
+  const cutoffSunday = new Date(sessionDate);
+  cutoffSunday.setDate(sessionDate.getDate() - weekday);
+  cutoffSunday.setHours(0, 0, 0, 0);
+  return new Date() >= cutoffSunday ? "instructor" : "platform";
+}
+
+export function UpcomingSessionCard({ session, workshopId, isInstructor = false }: Props) {
   const router = useRouter();
   const [booking, setBooking] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const isCancelled = session.status === "cancelled";
   const isFull = session.status === "full";
@@ -57,6 +75,31 @@ export function UpcomingSessionCard({ session, workshopId }: Props) {
       toast.error(err instanceof Error ? err.message : "Error al reservar");
     } finally {
       setBooking(false);
+    }
+  }
+
+  async function handleCancel() {
+    const zone = getCommissionZone(session.date);
+    const dateLabel = formatSessionDate(session.date);
+    const message =
+      zone === "instructor"
+        ? `¿Cancelar la clase del ${dateLabel}? La comisión será descontada de tu próximo pago.`
+        : `¿Cancelar la clase del ${dateLabel}? No se aplicará cargo.`;
+
+    if (!window.confirm(message)) return;
+
+    setCancelling(true);
+    try {
+      await api.post("/api/v1/sessions/cancel", {
+        schedule_id: session.schedule_id,
+        date: session.date,
+      });
+      toast.success("Clase cancelada");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al cancelar");
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -86,7 +129,7 @@ export function UpcomingSessionCard({ session, workshopId }: Props) {
           )}
         </div>
       </div>
-      <div className="shrink-0">
+      <div className="shrink-0 flex items-center gap-2">
         {isCancelled && (
           <Badge variant="secondary" className="text-xs text-zinc-400 line-through">
             Cancelada
@@ -98,8 +141,19 @@ export function UpcomingSessionCard({ session, workshopId }: Props) {
           </Badge>
         )}
         {isAvailable && (
-          <Button size="sm" onClick={handleBook} disabled={booking}>
+          <Button size="sm" onClick={handleBook} disabled={booking || cancelling}>
             {booking ? "Reservando..." : "Reservar esta clase"}
+          </Button>
+        )}
+        {isAvailable && isInstructor && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-red-600 border-red-200 hover:bg-red-50"
+            onClick={handleCancel}
+            disabled={cancelling || booking}
+          >
+            {cancelling ? "Cancelando..." : "Cancelar esta clase"}
           </Button>
         )}
       </div>
