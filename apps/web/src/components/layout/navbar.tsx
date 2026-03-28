@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, LayoutDashboard, User } from "lucide-react";
+import { LogOut, LayoutDashboard, User, CalendarCheck } from "lucide-react";
 
 interface AuthUser {
   email: string;
@@ -68,6 +68,11 @@ export function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/perfil" className="flex items-center gap-2">
                     <User className="h-4 w-4" /> Mi perfil
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/mis-reservas" className="flex items-center gap-2">
+                    <CalendarCheck className="h-4 w-4" /> Mis reservas
                   </Link>
                 </DropdownMenuItem>
                 {(user.role === "instructor" || user.role === "both") && (
