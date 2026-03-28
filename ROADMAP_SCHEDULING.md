@@ -1,6 +1,44 @@
 # KAWIN — Roadmap de Implementación: Sistema de Scheduling
 
-*Versión 1.1 — 21/03/2026*
+*Versión 1.2 — 27/03/2026*
+
+---
+
+## ✅ Estado de implementación (actualizado 27/03/2026)
+
+| Sprint | Estado | Rama | Commits clave |
+|--------|--------|------|---------------|
+| Sprint 1 — Schema + CRUD schedules | ✅ **Completo** | `feat/sprint-1-2-scheduling` → `dev` | `6efdc51` |
+| Sprint 2 — Motor sesiones virtuales | ✅ **Completo** | `feat/sprint-1-2-scheduling` → `dev` | `6efdc51` |
+| Sprint 3 — Editor schedules UI + reserva por sesión | ✅ **Completo** | `sprint-3/bookings-reservation` → `dev` | `ee003ee` |
+| Sprint 4 — Cambio de horario + migración/devolución | ✅ **Completo** | `sprint-4/schedule-change-migration` → `dev` | `476489d` |
+| Sprint 5 — Cancelación instancias + panel reservas | ✅ **Completo** | `sprint-5/cancel-sessions-dashboard` → `dev` | `f525f6f` |
+
+### Entregables adicionales implementados (fuera del plan original)
+
+| Feature | Estado | Rama |
+|---------|--------|------|
+| Fix wildcard conflict Gin (`:slug` vs `:id`) | ✅ | `feat/sprint-1-2-scheduling` |
+| DELETE /workshops/:id (soft-archive) | ✅ | `fix/crud-improvements` |
+| Exponer `instructor_id` en API pública | ✅ | `fix/crud-improvements` |
+| GetMyWorkshop retorna schedules para type=class | ✅ | `fix/crud-improvements` |
+| UpdateWorkshop preserva sesiones materializadas | ✅ | `fix/crud-improvements` |
+| BookingButton.tsx (sidebar conectado) | ✅ | `feat/sidebar-booking-connect` |
+| /dashboard/reservas (panel completo tallerista) | ✅ | `feat/sidebar-booking-connect` |
+| /mis-reservas (vista estudiante) | ✅ | `feat/sidebar-booking-connect` |
+| Navbar: link "Mis reservas" | ✅ | `feat/sidebar-booking-connect` |
+| GetWorkshop acepta UUID o slug | ✅ | `fix/get-workshop-by-id-or-slug` |
+| NULL session_id en Migrate/Refund | ✅ | `fix/null-session-id-scan` |
+| Hydration fix en UpcomingSessionCard | ✅ | `fix/hydration-instructor-check` |
+| Seed schedules + usuario demo estudiante | ✅ | `feat/seed-schedules` |
+| Postman collection completa (Sprint 1-5) | ✅ | `dev` |
+| CLAUDE.md reescrito con arquitectura actual | ✅ | `docs/update-claude-md` |
+
+### Rama activa: `dev`
+
+Todo el trabajo está mergeado en `dev`. La rama `main` está en el estado anterior al scheduling. Para desplegar, mergear `dev` → `main`.
+
+---
 
 ---
 
