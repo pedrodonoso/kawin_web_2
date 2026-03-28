@@ -114,15 +114,38 @@ func GetMyWorkshop(c *gin.Context) {
 		return
 	}
 
-	srows, err := db.Pool.Query(context.Background(),
-		`SELECT id, starts_at::text, ends_at::text, COALESCE(notes,'')
-		 FROM sessions WHERE workshop_id = $1 ORDER BY starts_at`, w.ID)
-	if err == nil {
-		defer srows.Close()
-		for srows.Next() {
-			var s Session
-			if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Notes) == nil {
-				w.Sessions = append(w.Sessions, s)
+	if w.Type == "class" {
+		// Return schedules for class-type workshops
+		schedRows, err := db.Pool.Query(context.Background(), `
+			SELECT id, workshop_id, days_of_week, time_start::text, duration_min,
+			       valid_from::text, valid_until::text, created_at::text
+			FROM schedules
+			WHERE workshop_id = $1
+			  AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
+			ORDER BY valid_from, time_start`, w.ID)
+		if err == nil {
+			defer schedRows.Close()
+			for schedRows.Next() {
+				var s Schedule
+				var validUntil *string
+				if schedRows.Scan(&s.ID, &s.WorkshopID, &s.DaysOfWeek, &s.TimeStart, &s.DurationMin,
+					&s.ValidFrom, &validUntil, &s.CreatedAt) == nil {
+					s.ValidUntil = validUntil
+					w.Schedules = append(w.Schedules, s)
+				}
+			}
+		}
+	} else {
+		srows, err := db.Pool.Query(context.Background(),
+			`SELECT id, starts_at::text, ends_at::text, COALESCE(notes,'')
+			 FROM sessions WHERE workshop_id = $1 AND schedule_id IS NULL ORDER BY starts_at`, w.ID)
+		if err == nil {
+			defer srows.Close()
+			for srows.Next() {
+				var s Session
+				if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Notes) == nil {
+					w.Sessions = append(w.Sessions, s)
+				}
 			}
 		}
 	}
@@ -186,8 +209,8 @@ func UpdateWorkshop(c *gin.Context) {
 		return
 	}
 
-	// Replace sessions: delete all and re-insert
-	db.Pool.Exec(context.Background(), `DELETE FROM sessions WHERE workshop_id = $1`, id)
+	// Replace sessions: only delete manual sessions (no schedule_id) to avoid removing materialized ones
+	db.Pool.Exec(context.Background(), `DELETE FROM sessions WHERE workshop_id = $1 AND schedule_id IS NULL`, id)
 	for _, s := range input.Sessions {
 		if s.StartsAt == "" || s.EndsAt == "" {
 			continue
@@ -199,6 +222,29 @@ func UpdateWorkshop(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{"id": id}})
+}
+
+// DeleteWorkshop handles DELETE /api/v1/workshops/:id.
+// Soft-archives the workshop (status = 'archived'). Only the owner can do this.
+func DeleteWorkshop(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	id := c.Param("id")
+
+	result, err := db.Pool.Exec(context.Background(),
+		`UPDATE workshops SET status = 'archived', updated_at = NOW()
+		 WHERE id = $1 AND instructor_id = $2 AND status != 'archived'`,
+		id, userID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al archivar taller: " + err.Error()})
+		return
+	}
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o ya archivado"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"id": id, "status": "archived"}})
 }
 
 func GetMyWorkshops(c *gin.Context) {

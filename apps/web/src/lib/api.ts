@@ -55,6 +55,7 @@ export interface Workshop {
   status: "draft" | "published" | "archived";
   category?: { id: string; name: string; slug: string };
   instructor?: { name: string; avatar_url?: string; bio?: string };
+  instructor_id?: string;
   instructor_name?: string;
   instructor_bio?: string;
   schedule?: string;

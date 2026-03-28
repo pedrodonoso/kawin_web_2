@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, BookOpen, Users, DollarSign, Eye, Pencil } from "lucide-react";
+import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { api, type Workshop } from "@/lib/api";
 
 interface InstructorBooking {
@@ -93,6 +94,17 @@ export default function DashboardPage() {
       .catch(() => setBookings([]))
       .finally(() => setBookingsLoading(false));
   }, [router]);
+
+  async function archiveWorkshop(id: string, title: string) {
+    if (!window.confirm(`¿Archivar "${title}"? No aparecerá en los resultados de búsqueda.`)) return;
+    try {
+      await api.delete(`/api/v1/workshops/${id}`);
+      setWorkshops((ws) => ws.filter((w) => w.id !== id));
+      toast.success("Taller archivado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al archivar");
+    }
+  }
 
   const published = workshops.filter((w) => w.status === "published").length;
   const totalRevenue = workshops
@@ -220,6 +232,14 @@ export default function DashboardPage() {
                           <Pencil className="h-3.5 w-3.5 mr-1" />
                           Editar
                         </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => archiveWorkshop(w.id, w.title)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </CardContent>
