@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -352,11 +351,6 @@ func GetInstructorBookings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": bookings})
-}
-
-// itoa converts an int to its decimal string representation.
-func itoa(n int) string {
-	return strconv.Itoa(n)
 }
 
 // migrateBookingInput is the request body for POST /api/v1/bookings/:id/migrate.
