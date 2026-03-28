@@ -109,7 +109,12 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, isInstr
       toast.success("¡Reserva confirmada!");
       setAlreadyBooked(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al reservar");
+      const msg = err instanceof Error ? err.message : "Error al reservar";
+      toast.error(msg);
+      // If the schedule expired, reload the page to show updated sessions
+      if (msg.includes("ya no está disponible")) {
+        setTimeout(() => window.location.reload(), 2000);
+      }
     } finally {
       setBooking(false);
     }

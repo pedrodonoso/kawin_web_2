@@ -109,7 +109,7 @@ func CreateBooking(c *gin.Context) {
 		if validUntilStr != nil {
 			validUntil, _ := time.Parse("2006-01-02", (*validUntilStr)[:10])
 			if targetDate.After(validUntil) {
-				c.JSON(http.StatusBadRequest, gin.H{"message": "La fecha es posterior al fin del schedule"})
+				c.JSON(http.StatusBadRequest, gin.H{"message": "Esta clase ya no está disponible en ese horario. Recarga la página para ver la disponibilidad actualizada."})
 				return
 			}
 		}
