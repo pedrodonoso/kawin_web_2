@@ -1,0 +1,272 @@
+{
+  "info": {
+    "name": "Kawin API",
+    "description": "Colección completa de la API de Kawin. Incluye auth, workshops, schedules y sesiones virtuales.\n\nVariables requeridas:\n- `base_url`: http://localhost:8080\n- `token`: se llena automáticamente al hacer login",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
+    { "key": "token",    "value": "",                     "type": "string" },
+    { "key": "workshop_id",   "value": "", "type": "string" },
+    { "key": "schedule_id",   "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api","v1","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nuevo@kawin.app\",\n  \"password\": \"test1234\",\n  \"name\": \"Usuario Nuevo\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) {",
+                  "  pm.collectionVariables.set('token', res.token);",
+                  "  console.log('Token guardado:', res.token.substring(0, 20) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"maria@kawin.app\",\n  \"password\": \"test1234\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workshops (público)",
+      "item": [
+        {
+          "name": "Listar workshops",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/workshops",
+              "host": ["{{base_url}}"],
+              "path": ["api","v1","workshops"],
+              "query": [
+                { "key": "q",        "value": "",         "disabled": true },
+                { "key": "type",     "value": "class",    "disabled": true },
+                { "key": "modality", "value": "online",   "disabled": true },
+                { "key": "category", "value": "deportes", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Detalle workshop (class con schedules)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/workshops/guitarra-flamenca", "host": ["{{base_url}}"], "path": ["api","v1","workshops","guitarra-flamenca"] }
+          }
+        },
+        {
+          "name": "Detalle workshop (otros tipos)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/workshops/acuarela-principiantes", "host": ["{{base_url}}"], "path": ["api","v1","workshops","acuarela-principiantes"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workshops (protegido)",
+      "item": [
+        {
+          "name": "Mis workshops",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/my-workshops", "host": ["{{base_url}}"], "path": ["api","v1","my-workshops"] }
+          }
+        },
+        {
+          "name": "Obtener mi workshop por ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/my-workshops/{{workshop_id}}", "host": ["{{base_url}}"], "path": ["api","v1","my-workshops","{{workshop_id}}"] }
+          }
+        },
+        {
+          "name": "Crear workshop",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('workshop_id', res.data.id);",
+                  "  console.log('workshop_id guardado:', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/workshops", "host": ["{{base_url}}"], "path": ["api","v1","workshops"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Boxeo para principiantes\",\n  \"description\": \"Aprende los fundamentos del boxeo en un ambiente seguro.\",\n  \"type\": \"class\",\n  \"modality\": \"in-person\",\n  \"price\": 12000,\n  \"currency\": \"CLP\",\n  \"capacity\": 15,\n  \"location\": \"El Bosque, Santiago\",\n  \"category_id\": \"\",\n  \"status\": \"published\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Actualizar workshop",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/workshops/{{workshop_id}}", "host": ["{{base_url}}"], "path": ["api","v1","workshops","{{workshop_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Boxeo para principiantes (actualizado)\",\n  \"description\": \"Descripción actualizada.\",\n  \"type\": \"class\",\n  \"modality\": \"in-person\",\n  \"price\": 13000,\n  \"currency\": \"CLP\",\n  \"capacity\": 15,\n  \"location\": \"El Bosque, Santiago\",\n  \"status\": \"published\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schedules (Sprint 1)",
+      "item": [
+        {
+          "name": "Crear schedule — jueves 19:00",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.id) {",
+                  "  pm.collectionVariables.set('schedule_id', res.data.id);",
+                  "  console.log('schedule_id guardado:', res.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/workshops/{{workshop_id}}/schedules", "host": ["{{base_url}}"], "path": ["api","v1","workshops","{{workshop_id}}","schedules"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"days_of_week\": [4],\n  \"time_start\": \"19:00\",\n  \"duration_min\": 60,\n  \"valid_from\": \"2026-03-24\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear schedule — lun/mié/vie 18:30",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/workshops/{{workshop_id}}/schedules", "host": ["{{base_url}}"], "path": ["api","v1","workshops","{{workshop_id}}","schedules"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"days_of_week\": [1, 3, 5],\n  \"time_start\": \"18:30\",\n  \"duration_min\": 90,\n  \"valid_from\": \"2026-03-24\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar schedules del workshop",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/workshops/{{workshop_id}}/schedules", "host": ["{{base_url}}"], "path": ["api","v1","workshops","{{workshop_id}}","schedules"] }
+          }
+        },
+        {
+          "name": "Eliminar schedule (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/schedules/{{schedule_id}}", "host": ["{{base_url}}"], "path": ["api","v1","schedules","{{schedule_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sesiones virtuales (Sprint 2)",
+      "item": [
+        {
+          "name": "Ver sesiones virtuales (guitarra-flamenca)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/workshops/guitarra-flamenca", "host": ["{{base_url}}"], "path": ["api","v1","workshops","guitarra-flamenca"] },
+            "description": "Respuesta incluye 'upcoming_sessions' si el taller tiene schedules activos.\nCampos por sesión: date, time, duration_min, schedule_id, session_id, spots_remaining, status."
+          }
+        },
+        {
+          "name": "Ver sesiones virtuales (workshop con ID variable)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/workshops/{{workshop_id}}", "host": ["{{base_url}}"], "path": ["api","v1","workshops","{{workshop_id}}"] },
+            "description": "Usar workshop_id en lugar de slug. Solo funciona si el workshop tiene tipo 'class' y schedules activos."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categorías",
+      "item": [
+        {
+          "name": "Listar categorías",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/categories", "host": ["{{base_url}}"], "path": ["api","v1","categories"] }
+          }
+        }
+      ]
+    }
+  ]
+}

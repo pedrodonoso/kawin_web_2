@@ -62,6 +62,8 @@ export interface Workshop {
   category_name?: string;
   category_slug?: string;
   sessions?: Session[];
+  schedules?: Schedule[];
+  upcoming_sessions?: UpcomingSession[];
   created_at: string;
 }
 
@@ -69,7 +71,37 @@ export interface Session {
   id: string;
   starts_at: string;
   ends_at: string;
+  cancelled?: boolean;
   notes?: string;
+}
+
+/**
+ * Recurring schedule rule for workshops of type "class".
+ * days_of_week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+ */
+export interface Schedule {
+  id: string;
+  workshop_id: string;
+  days_of_week: number[];
+  time_start: string;       // "HH:MM"
+  duration_min: number;
+  valid_from: string;       // "YYYY-MM-DD"
+  valid_until?: string;     // "YYYY-MM-DD" | undefined = active indefinitely
+  created_at: string;
+}
+
+/**
+ * A computed (virtual or materialized) class session.
+ * Returned only for workshops of type "class".
+ */
+export interface UpcomingSession {
+  date: string;              // "YYYY-MM-DD"
+  time: string;              // "HH:MM"
+  duration_min: number;
+  schedule_id: string;
+  session_id?: string;       // undefined = not yet materialized (no bookings)
+  spots_remaining?: number;  // undefined = no capacity limit
+  status: "available" | "cancelled" | "full";
 }
 
 export interface Category {

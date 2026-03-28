@@ -85,6 +85,122 @@ func CreateWorkshop(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"data": gin.H{"id": workshopID, "slug": slug}})
 }
 
+func GetMyWorkshop(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	id := c.Param("id")
+
+	var w Workshop
+	err := db.Pool.QueryRow(context.Background(), `
+		SELECT w.id, w.title, w.slug, COALESCE(w.description,''),
+		       w.type, w.modality, w.price, w.currency,
+		       w.capacity, COALESCE(w.location,''), COALESCE(w.cover_image_url,''),
+		       w.status, COALESCE(w.created_at::text,''),
+		       COALESCE(c.id::text,''), COALESCE(c.name,''), COALESCE(c.slug,''),
+		       COALESCE(p.name,''), COALESCE(p.bio,''), COALESCE(w.schedule,'')
+		FROM workshops w
+		LEFT JOIN categories c ON c.id = w.category_id
+		LEFT JOIN profiles p ON p.user_id = w.instructor_id
+		WHERE w.id = $1 AND w.instructor_id = $2`, id, userID,
+	).Scan(
+		&w.ID, &w.Title, &w.Slug, &w.Description,
+		&w.Type, &w.Modality, &w.Price, &w.Currency,
+		&w.Capacity, &w.Location, &w.CoverImageURL,
+		&w.Status, &w.CreatedAt,
+		&w.CategoryID, &w.CategoryName, &w.CategorySlug,
+		&w.InstructorName, &w.InstructorBio, &w.Schedule,
+	)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})
+		return
+	}
+
+	srows, err := db.Pool.Query(context.Background(),
+		`SELECT id, starts_at::text, ends_at::text, COALESCE(notes,'')
+		 FROM sessions WHERE workshop_id = $1 ORDER BY starts_at`, w.ID)
+	if err == nil {
+		defer srows.Close()
+		for srows.Next() {
+			var s Session
+			if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Notes) == nil {
+				w.Sessions = append(w.Sessions, s)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": w})
+}
+
+type updateWorkshopInput struct {
+	Title       string         `json:"title" binding:"required"`
+	Description string         `json:"description"`
+	Type        string         `json:"type" binding:"required"`
+	Modality    string         `json:"modality" binding:"required"`
+	Price       float64        `json:"price"`
+	Currency    string         `json:"currency"`
+	Capacity    *int           `json:"capacity"`
+	Location    string         `json:"location"`
+	CategoryID  string         `json:"category_id"`
+	Schedule    string         `json:"schedule"`
+	Status      string         `json:"status"`
+	Sessions    []sessionInput `json:"sessions"`
+}
+
+func UpdateWorkshop(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	id := c.Param("id")
+
+	var input updateWorkshopInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	if input.Currency == "" {
+		input.Currency = "CLP"
+	}
+	if input.Status == "" {
+		input.Status = "draft"
+	}
+
+	var catID *string
+	if input.CategoryID != "" {
+		catID = &input.CategoryID
+	}
+
+	result, err := db.Pool.Exec(context.Background(),
+		`UPDATE workshops
+		 SET title=$1, description=$2, type=$3, modality=$4,
+		     price=$5, currency=$6, capacity=$7, location=$8,
+		     category_id=$9, schedule=$10, status=$11, updated_at=NOW()
+		 WHERE id=$12 AND instructor_id=$13`,
+		input.Title, input.Description, input.Type, input.Modality,
+		input.Price, input.Currency, input.Capacity, input.Location,
+		catID, input.Schedule, input.Status, id, userID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al actualizar taller: " + err.Error()})
+		return
+	}
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o sin permisos"})
+		return
+	}
+
+	// Replace sessions: delete all and re-insert
+	db.Pool.Exec(context.Background(), `DELETE FROM sessions WHERE workshop_id = $1`, id)
+	for _, s := range input.Sessions {
+		if s.StartsAt == "" || s.EndsAt == "" {
+			continue
+		}
+		db.Pool.Exec(context.Background(),
+			`INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES ($1,$2,$3,$4)`,
+			id, s.StartsAt, s.EndsAt, s.Notes,
+		)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"id": id}})
+}
+
 func GetMyWorkshops(c *gin.Context) {
 	userID, _ := c.Get("userID")
 

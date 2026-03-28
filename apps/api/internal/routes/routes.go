@@ -18,7 +18,7 @@ func Register(r *gin.Engine) {
 		// Public
 		v1.GET("/categories", handlers.GetCategories)
 		v1.GET("/workshops", handlers.GetWorkshops)
-		v1.GET("/workshops/:slug", handlers.GetWorkshop)
+		v1.GET("/workshops/:id", handlers.GetWorkshop)
 		v1.POST("/auth/register", handlers.Register)
 		v1.POST("/auth/login", handlers.Login)
 
@@ -26,7 +26,14 @@ func Register(r *gin.Engine) {
 		auth := v1.Group("/", middleware.Auth())
 		{
 			auth.GET("/my-workshops", handlers.GetMyWorkshops)
+			auth.GET("/my-workshops/:id", handlers.GetMyWorkshop)
 			auth.POST("/workshops", handlers.CreateWorkshop)
+			auth.PUT("/workshops/:id", handlers.UpdateWorkshop)
+
+			// Schedules (Sprint 1)
+			auth.POST("/workshops/:id/schedules", handlers.CreateSchedule)
+			auth.GET("/workshops/:id/schedules", handlers.GetSchedules)
+			auth.DELETE("/schedules/:id", handlers.DeleteSchedule)
 		}
 	}
 }
