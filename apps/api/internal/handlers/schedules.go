@@ -322,10 +322,11 @@ func GetAffectedBookings(c *gin.Context) {
 	}
 
 	rows, err := db.Pool.Query(ctx,
-		`SELECT b.id, u.name, s.starts_at::date::text, s.starts_at::time::text, b.amount
+		`SELECT b.id, COALESCE(p.name, u.email), s.starts_at::date::text, s.starts_at::time::text, b.amount
 		 FROM bookings b
 		 JOIN sessions s ON s.id = b.session_id
 		 JOIN users u ON u.id = b.student_id
+		 LEFT JOIN profiles p ON p.user_id = b.student_id
 		 WHERE s.schedule_id = $1
 		   AND s.starts_at >= $2::date
 		   AND b.status != 'cancelled'
