@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Users, Calendar, Clock, Globe, CheckCircle } from "lucide-react";
 import { api, type Workshop } from "@/lib/api";
 import { UpcomingSessionCard } from "./UpcomingSessionCard";
+import { BookingButton } from "./BookingButton";
 import Link from "next/link";
 
 async function getWorkshop(slug: string): Promise<Workshop | null> {
@@ -274,12 +275,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
 
               <Separator />
 
-              <Button className="w-full" size="lg">
-                Reservar cupo
-              </Button>
-              <p className="text-xs text-zinc-400 text-center">
-                No se te cobrará hasta confirmar tu reserva
-              </p>
+              <BookingButton workshopId={workshop.id} workshopType={workshop.type} />
             </CardContent>
           </Card>
         </div>

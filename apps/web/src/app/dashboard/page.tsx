@@ -255,10 +255,9 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Reservas recientes</h2>
-            {/* TODO: add /dashboard/reservas page */}
-            <button className="text-sm text-zinc-400 cursor-not-allowed" disabled>
+            <Link href="/dashboard/reservas" className="text-sm text-zinc-500 hover:text-zinc-800 underline underline-offset-2">
               Ver todas
-            </button>
+            </Link>
           </div>
 
           {bookingsLoading ? (
