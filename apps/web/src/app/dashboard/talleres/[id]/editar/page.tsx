@@ -63,7 +63,8 @@ function toLocalInput(iso: string): string {
   }
 }
 
-function formatDays(days: number[]): string {
+function formatDays(days: number[] | undefined | null): string {
+  if (!days) return "—";
   const sorted = [...days].sort((a, b) => {
     // Sort Mon-Sun: treat 0 (Sun) as 7
     const av = a === 0 ? 7 : a;
@@ -123,7 +124,6 @@ export default function EditarTallerPage() {
     capacity: "",
     location: "",
     category_id: "",
-    schedule: "",
     status: "draft",
   });
 
@@ -152,7 +152,6 @@ export default function EditarTallerPage() {
           capacity: w.capacity != null ? String(w.capacity) : "",
           location: w.location ?? "",
           category_id: w.category_id ?? "",
-          schedule: w.schedule ?? "",
           status: w.status,
         });
         setSessions(

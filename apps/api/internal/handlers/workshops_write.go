@@ -22,7 +22,6 @@ type createWorkshopInput struct {
 	Capacity    *int            `json:"capacity"`
 	Location    string          `json:"location"`
 	CategoryID  string         `json:"category_id"`
-	Schedule    string         `json:"schedule"`
 	Status      string         `json:"status"`
 	Sessions    []sessionInput `json:"sessions"`
 }
@@ -60,12 +59,12 @@ func CreateWorkshop(c *gin.Context) {
 	err := db.Pool.QueryRow(context.Background(),
 		`INSERT INTO workshops
 		 (instructor_id, category_id, title, slug, description, type, modality,
-		  price, currency, capacity, location, schedule, status)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+		  price, currency, capacity, location, status)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 		 RETURNING id`,
 		userID, catID, input.Title, slug, input.Description,
 		input.Type, input.Modality, input.Price, input.Currency,
-		input.Capacity, input.Location, input.Schedule, input.Status,
+		input.Capacity, input.Location, input.Status,
 	).Scan(&workshopID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al crear taller: " + err.Error()})
@@ -163,7 +162,6 @@ type updateWorkshopInput struct {
 	Capacity    *int           `json:"capacity"`
 	Location    string         `json:"location"`
 	CategoryID  string         `json:"category_id"`
-	Schedule    string         `json:"schedule"`
 	Status      string         `json:"status"`
 	Sessions    []sessionInput `json:"sessions"`
 }
@@ -194,11 +192,11 @@ func UpdateWorkshop(c *gin.Context) {
 		`UPDATE workshops
 		 SET title=$1, description=$2, type=$3, modality=$4,
 		     price=$5, currency=$6, capacity=$7, location=$8,
-		     category_id=$9, schedule=$10, status=$11, updated_at=NOW()
-		 WHERE id=$12 AND instructor_id=$13`,
+		     category_id=$9, status=$10, updated_at=NOW()
+		 WHERE id=$11 AND instructor_id=$12`,
 		input.Title, input.Description, input.Type, input.Modality,
 		input.Price, input.Currency, input.Capacity, input.Location,
-		catID, input.Schedule, input.Status, id, userID,
+		catID, input.Status, id, userID,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al actualizar taller: " + err.Error()})
