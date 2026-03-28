@@ -107,9 +107,9 @@ export default function DashboardPage() {
   }
 
   const published = workshops.filter((w) => w.status === "published").length;
-  const totalRevenue = workshops
-    .filter((w) => w.status === "published")
-    .reduce((acc, w) => acc + w.price, 0);
+  const totalRevenue = bookings
+    .filter((b) => b.status === "confirmed")
+    .reduce((acc, b) => acc + b.amount, 0);
 
   return (
     <main className="min-h-screen bg-zinc-50">
