@@ -379,10 +379,10 @@ func MigrateBooking(c *gin.Context) {
 	}
 
 	// Load booking + verify workshop ownership
-	var workshopID, oldSessionID, bookingStatus string
-	var ownerID string
+	var workshopID, bookingStatus, ownerID string
+	var oldSessionID *string
 	err = db.Pool.QueryRow(ctx,
-		`SELECT b.workshop_id, b.session_id::text, b.status, w.instructor_id
+		`SELECT b.workshop_id, b.session_id::text, b.status, w.instructor_id::text
 		 FROM bookings b
 		 JOIN workshops w ON w.id = b.workshop_id
 		 WHERE b.id = $1`, bookingID,
@@ -523,19 +523,23 @@ func RefundBooking(c *gin.Context) {
 	ctx := context.Background()
 
 	// Load booking + session starts_at + verify ownership
-	var workshopID, bookingStatus, paymentStatus string
-	var ownerID string
-	var startsAtStr string
+	var workshopID, bookingStatus, paymentStatus, ownerID string
+	var startsAtStrPtr *string
 	err := db.Pool.QueryRow(ctx,
-		`SELECT b.workshop_id, b.status, b.payment_status, w.instructor_id, s.starts_at::date::text
+		`SELECT b.workshop_id, b.status, b.payment_status, w.instructor_id::text,
+		        COALESCE(s.starts_at::date::text, '')
 		 FROM bookings b
 		 JOIN workshops w ON w.id = b.workshop_id
-		 JOIN sessions s ON s.id = b.session_id
+		 LEFT JOIN sessions s ON s.id = b.session_id
 		 WHERE b.id = $1`, bookingID,
-	).Scan(&workshopID, &bookingStatus, &paymentStatus, &ownerID, &startsAtStr)
+	).Scan(&workshopID, &bookingStatus, &paymentStatus, &ownerID, &startsAtStrPtr)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Reserva no encontrada"})
 		return
+	}
+	startsAtStr := ""
+	if startsAtStrPtr != nil {
+		startsAtStr = *startsAtStrPtr
 	}
 	if ownerID != userID.(string) {
 		c.JSON(http.StatusForbidden, gin.H{"message": "No tienes permiso para modificar esta reserva"})
@@ -546,10 +550,12 @@ func RefundBooking(c *gin.Context) {
 		return
 	}
 
-	sessionDate, err := time.Parse("2006-01-02", startsAtStr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al parsear fecha de sesión"})
-		return
+	// Default to today when no session date (non-class booking)
+	sessionDate := time.Now().UTC()
+	if startsAtStr != "" {
+		if t, err2 := time.Parse("2006-01-02", startsAtStr); err2 == nil {
+			sessionDate = t
+		}
 	}
 
 	zone := commissionZone(sessionDate)
