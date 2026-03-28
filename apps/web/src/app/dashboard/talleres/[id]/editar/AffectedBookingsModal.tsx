@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { api } from "@/lib/api";
 
 export interface AffectedBooking {
   booking_id: string;
@@ -28,9 +27,8 @@ interface Props {
   open: boolean;
   onClose: () => void;
   affectedBookings: AffectedBooking[];
-  oldScheduleId: string;
-  newScheduleId: string;
-  onComplete: () => void;
+  /** Called when user confirms — parent applies schedule change then bulk action */
+  onConfirm: (action: "migrate_all" | "refund_all") => Promise<void>;
   changeDate: string; // "YYYY-MM-DD"
 }
 
@@ -38,9 +36,7 @@ export default function AffectedBookingsModal({
   open,
   onClose,
   affectedBookings,
-  oldScheduleId,
-  newScheduleId,
-  onComplete,
+  onConfirm,
   changeDate,
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -48,19 +44,7 @@ export default function AffectedBookingsModal({
   async function handleBulkAction(action: "migrate_all" | "refund_all") {
     setLoading(true);
     try {
-      const res = await api.post<{
-        migrated?: number;
-        refunded?: number;
-        message?: string;
-      }>(`/api/v1/schedules/${oldScheduleId}/bulk-action`, {
-        action,
-        new_schedule_id: newScheduleId,
-        change_date: changeDate,
-      });
-      const migrated = res?.migrated ?? (action === "migrate_all" ? affectedBookings.length : 0);
-      const refunded = res?.refunded ?? (action === "refund_all" ? affectedBookings.length : 0);
-      toast.success(`Acción completada: ${migrated} migradas, ${refunded} devueltas`);
-      onComplete();
+      await onConfirm(action);
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al procesar la acción");

@@ -110,7 +110,6 @@ export default function EditarTallerPage() {
   const [affectedBookings, setAffectedBookings] = useState<AffectedBooking[]>([]);
   const [pendingScheduleChange, setPendingScheduleChange] = useState<{
     oldScheduleId: string;
-    newScheduleId: string;
     changeDate: string;
   } | null>(null);
 
@@ -257,52 +256,57 @@ export default function EditarTallerPage() {
       return;
     }
     try {
-      // PUT the schedule change
-      const updated = await api.put<ApiResponse<Schedule>>(
-        `/api/v1/schedules/${changeForm.scheduleId}`,
-        {
-          days_of_week: changeForm.days_of_week,
-          time_start: changeForm.time_start,
-          duration_min: changeForm.duration_min,
-          valid_from: changeForm.valid_from || undefined,
-          valid_until: changeForm.valid_until || undefined,
-          change_date: changeForm.change_date,
-        }
-      );
-
-      const newScheduleId = updated?.data?.id ?? changeForm.scheduleId;
-
-      // Check affected bookings
+      // First check affected bookings BEFORE making the change
       const affected = await api.getList<AffectedBooking>(
         `/api/v1/schedules/${changeForm.scheduleId}/affected-bookings?change_date=${changeForm.change_date}`
       );
 
       if (affected.length > 0) {
+        // Show modal — the actual PUT happens after the user confirms
         setAffectedBookings(affected);
         setPendingScheduleChange({
           oldScheduleId: changeForm.scheduleId,
-          newScheduleId,
           changeDate: changeForm.change_date,
         });
         setShowAffectedModal(true);
       } else {
-        // Refresh schedules
-        const updated2 = await api.getList<Schedule>(`/api/v1/workshops/${id}/schedules`);
-        setExistingSchedules(updated2);
-        setChangeForm(null);
-        toast.success("Horario actualizado");
+        // No affected bookings — apply change immediately
+        await applyScheduleChange();
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al actualizar horario");
     }
   }
 
-  function handleAffectedComplete() {
-    // Refresh schedules after bulk action
-    api
-      .getList<Schedule>(`/api/v1/workshops/${id}/schedules`)
-      .then((scheds) => setExistingSchedules(scheds))
-      .catch(() => {});
+  async function handleModalConfirm(action: "migrate_all" | "refund_all") {
+    if (!changeForm || !pendingScheduleChange) return;
+
+    // 1. Apply schedule change (PUT) → creates new schedule, closes old one
+    const updated = await api.put<ApiResponse<Schedule>>(
+      `/api/v1/schedules/${changeForm.scheduleId}`,
+      {
+        days_of_week: changeForm.days_of_week,
+        time_start: changeForm.time_start,
+        duration_min: changeForm.duration_min,
+        valid_from: changeForm.valid_from || undefined,
+        valid_until: changeForm.valid_until || undefined,
+        change_date: changeForm.change_date,
+      }
+    );
+    const newScheduleId = updated?.data?.id ?? changeForm.scheduleId;
+
+    // 2. Run bulk action now that new schedule exists
+    const res = await api.post<{ migrated?: number; refunded?: number }>(
+      `/api/v1/schedules/${pendingScheduleChange.oldScheduleId}/bulk-action`,
+      { action, new_schedule_id: newScheduleId, change_date: changeForm.change_date }
+    );
+    const migrated = res?.migrated ?? (action === "migrate_all" ? affectedBookings.length : 0);
+    const refunded = res?.refunded ?? (action === "refund_all" ? affectedBookings.length : 0);
+    toast.success(`Horario actualizado: ${migrated} migradas, ${refunded} devueltas`);
+
+    // 3. Refresh schedule list
+    const scheds = await api.getList<Schedule>(`/api/v1/workshops/${id}/schedules`);
+    setExistingSchedules(scheds);
     setChangeForm(null);
     setPendingScheduleChange(null);
   }
@@ -938,10 +942,8 @@ export default function EditarTallerPage() {
           open={showAffectedModal}
           onClose={() => setShowAffectedModal(false)}
           affectedBookings={affectedBookings}
-          oldScheduleId={pendingScheduleChange.oldScheduleId}
-          newScheduleId={pendingScheduleChange.newScheduleId}
           changeDate={pendingScheduleChange.changeDate}
-          onComplete={handleAffectedComplete}
+          onConfirm={handleModalConfirm}
         />
       )}
     </main>
