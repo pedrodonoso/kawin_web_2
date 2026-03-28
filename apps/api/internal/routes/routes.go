@@ -45,6 +45,10 @@ func Register(r *gin.Engine) {
 			auth.POST("/bookings/:id/migrate", handlers.MigrateBooking)
 			auth.POST("/bookings/:id/refund", handlers.RefundBooking)
 			auth.POST("/schedules/:id/bulk-action", handlers.BulkAction)
+
+			// Sprint 5
+			auth.POST("/sessions/cancel", handlers.CancelSession)
+			auth.GET("/instructor-bookings", handlers.GetInstructorBookings)
 		}
 	}
 }

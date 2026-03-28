@@ -166,7 +166,9 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
               <h2 className="text-xl font-semibold">Próximas clases</h2>
               <div className="space-y-3">
                 {workshop.upcoming_sessions.map((s) => (
-                  <UpcomingSessionCard key={`${s.schedule_id}-${s.date}`} session={s} workshopId={workshop.id} />
+                  // TODO: pass isInstructor={true} when instructor_id is exposed in the Workshop API response.
+                  // Currently isInstructor defaults to false; the UpcomingSessionCard handles the check client-side.
+                  <UpcomingSessionCard key={`${s.schedule_id}-${s.date}`} session={s} workshopId={workshop.id} isInstructor={false} />
                 ))}
               </div>
             </div>

@@ -11,6 +11,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, BookOpen, Users, DollarSign, Eye, Pencil } from "lucide-react";
 import { api, type Workshop } from "@/lib/api";
 
+interface InstructorBooking {
+  booking_id: string;
+  workshop_id: string;
+  workshop_title: string;
+  student_name: string;
+  session_date: string;
+  status: string;
+  payment_status: string;
+  amount: number;
+  created_at: string;
+}
+
 const MOCK_WORKSHOPS: Workshop[] = [
   {
     id: "1",
@@ -57,6 +69,8 @@ export default function DashboardPage() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
+  const [bookings, setBookings] = useState<InstructorBooking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
 
   useEffect(() => {
     const raw = localStorage.getItem("user");
@@ -72,6 +86,12 @@ export default function DashboardPage() {
       .then(setWorkshops)
       .catch(() => setWorkshops(MOCK_WORKSHOPS))
       .finally(() => setLoading(false));
+
+    api
+      .getList<InstructorBooking>("/api/v1/instructor-bookings")
+      .then(setBookings)
+      .catch(() => setBookings([]))
+      .finally(() => setBookingsLoading(false));
   }, [router]);
 
   const published = workshops.filter((w) => w.status === "published").length;
@@ -206,6 +226,93 @@ export default function DashboardPage() {
                 </Card>
               ))}
             </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Recent bookings */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Reservas recientes</h2>
+            {/* TODO: add /dashboard/reservas page */}
+            <button className="text-sm text-zinc-400 cursor-not-allowed" disabled>
+              Ver todas
+            </button>
+          </div>
+
+          {bookingsLoading ? (
+            <Card>
+              <CardContent className="p-5 space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex justify-between">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : bookings.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-zinc-400 text-sm">
+                <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p>Aún no tienes reservas en tus talleres.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-0 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-zinc-50 text-zinc-500">
+                      <th className="text-left px-4 py-3 font-medium">Estudiante</th>
+                      <th className="text-left px-4 py-3 font-medium">Taller</th>
+                      <th className="text-left px-4 py-3 font-medium">Fecha/Hora sesión</th>
+                      <th className="text-left px-4 py-3 font-medium">Estado</th>
+                      <th className="text-right px-4 py-3 font-medium">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookings.slice(0, 10).map((b) => (
+                      <tr key={b.booking_id} className="border-b last:border-0 hover:bg-zinc-50">
+                        <td className="px-4 py-3">{b.student_name}</td>
+                        <td className="px-4 py-3 text-zinc-600 max-w-[180px] truncate">{b.workshop_title}</td>
+                        <td className="px-4 py-3 text-zinc-500">
+                          {b.session_date
+                            ? new Date(b.session_date).toLocaleString("es-CL", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              b.status === "confirmed"
+                                ? "bg-green-100 text-green-700"
+                                : b.status === "pending"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-600"
+                            }`}
+                          >
+                            {b.status === "confirmed"
+                              ? "Confirmada"
+                              : b.status === "pending"
+                              ? "Pendiente"
+                              : "Cancelada"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          ${b.amount.toLocaleString("es-CL")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
