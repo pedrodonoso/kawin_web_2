@@ -17,15 +17,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, type Category, type Workshop, type ApiResponse } from "@/lib/api";
-import { ArrowLeft, Plus, X, AlertCircle } from "lucide-react";
+import { api, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
+import { ArrowLeft, Plus, X, AlertCircle, Pencil } from "lucide-react";
 import Link from "next/link";
+import AffectedBookingsModal, { type AffectedBooking } from "./AffectedBookingsModal";
 
 interface SessionDraft {
   id?: string;
   starts_at: string;
   ends_at: string;
   notes: string;
+}
+
+interface ScheduleDraft {
+  days_of_week: number[];
+  time_start: string;
+  duration_min: number;
+  valid_from: string;
+  valid_until: string;
+}
+
+const DAYS = [
+  { label: "Lun", value: 1 },
+  { label: "Mar", value: 2 },
+  { label: "Mié", value: 3 },
+  { label: "Jue", value: 4 },
+  { label: "Vie", value: 5 },
+  { label: "Sáb", value: 6 },
+  { label: "Dom", value: 0 },
+];
+
+function emptyScheduleDraft(): ScheduleDraft {
+  return { days_of_week: [], time_start: "", duration_min: 60, valid_from: "", valid_until: "" };
 }
 
 // Convierte ISO a valor compatible con datetime-local input
@@ -40,6 +63,29 @@ function toLocalInput(iso: string): string {
   }
 }
 
+function formatDays(days: number[]): string {
+  const sorted = [...days].sort((a, b) => {
+    // Sort Mon-Sun: treat 0 (Sun) as 7
+    const av = a === 0 ? 7 : a;
+    const bv = b === 0 ? 7 : b;
+    return av - bv;
+  });
+  return sorted
+    .map((d) => DAYS.find((x) => x.value === d)?.label ?? String(d))
+    .join(", ");
+}
+
+// Inline schedule change form state
+interface ChangeForm {
+  scheduleId: string;
+  days_of_week: number[];
+  time_start: string;
+  duration_min: number;
+  valid_from: string;
+  valid_until: string;
+  change_date: string;
+}
+
 export default function EditarTallerPage() {
   const router = useRouter();
   const params = useParams();
@@ -51,7 +97,23 @@ export default function EditarTallerPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
 
-  const [form, setForm] = useState({
+  // Existing schedules from API
+  const [existingSchedules, setExistingSchedules] = useState<Schedule[]>([]);
+  // Draft for adding a brand-new schedule
+  const [newScheduleDraft, setNewScheduleDraft] = useState<ScheduleDraft | null>(null);
+  // Which existing schedule is being edited (change flow)
+  const [changeForm, setChangeForm] = useState<ChangeForm | null>(null);
+
+  // Affected bookings modal state
+  const [showAffectedModal, setShowAffectedModal] = useState(false);
+  const [affectedBookings, setAffectedBookings] = useState<AffectedBooking[]>([]);
+  const [pendingScheduleChange, setPendingScheduleChange] = useState<{
+    oldScheduleId: string;
+    newScheduleId: string;
+    changeDate: string;
+  } | null>(null);
+
+  const [form, setFormState] = useState({
     title: "",
     description: "",
     type: "workshop",
@@ -80,7 +142,7 @@ export default function EditarTallerPage() {
       .then(([cats, res]) => {
         setCategories(cats);
         const w = res.data;
-        setForm({
+        setFormState({
           title: w.title,
           description: w.description ?? "",
           type: w.type,
@@ -101,15 +163,24 @@ export default function EditarTallerPage() {
             notes: s.notes ?? "",
           }))
         );
+
+        // Load schedules for class type
+        if (w.type === "class") {
+          return api
+            .getList<Schedule>(`/api/v1/workshops/${id}/schedules`)
+            .then((scheds) => setExistingSchedules(scheds))
+            .catch(() => {});
+        }
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id, router]);
 
   function setField(field: string, value: string) {
-    setForm((f) => ({ ...f, [field]: value }));
+    setFormState((f) => ({ ...f, [field]: value }));
   }
 
+  // ---- Session helpers ----
   function addSession() {
     setSessions((s) => [...s, { starts_at: "", ends_at: "", notes: "" }]);
   }
@@ -124,6 +195,119 @@ export default function EditarTallerPage() {
     );
   }
 
+  // ---- New schedule draft helpers ----
+  function toggleNewDay(day: number) {
+    if (!newScheduleDraft) return;
+    const has = newScheduleDraft.days_of_week.includes(day);
+    setNewScheduleDraft({
+      ...newScheduleDraft,
+      days_of_week: has
+        ? newScheduleDraft.days_of_week.filter((d) => d !== day)
+        : [...newScheduleDraft.days_of_week, day],
+    });
+  }
+
+  async function saveNewSchedule() {
+    if (!newScheduleDraft) return;
+    try {
+      const created = await api.post<ApiResponse<Schedule>>(
+        `/api/v1/workshops/${id}/schedules`,
+        {
+          days_of_week: newScheduleDraft.days_of_week,
+          time_start: newScheduleDraft.time_start,
+          duration_min: newScheduleDraft.duration_min,
+          valid_from: newScheduleDraft.valid_from || undefined,
+          valid_until: newScheduleDraft.valid_until || undefined,
+        }
+      );
+      setExistingSchedules((prev) => [...prev, created.data]);
+      setNewScheduleDraft(null);
+      toast.success("Horario agregado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar horario");
+    }
+  }
+
+  // ---- Change form helpers ----
+  function openChangeForm(sch: Schedule) {
+    setChangeForm({
+      scheduleId: sch.id,
+      days_of_week: [...sch.days_of_week],
+      time_start: sch.time_start,
+      duration_min: sch.duration_min,
+      valid_from: sch.valid_from,
+      valid_until: sch.valid_until ?? "",
+      change_date: "",
+    });
+  }
+
+  function toggleChangeDay(day: number) {
+    if (!changeForm) return;
+    const has = changeForm.days_of_week.includes(day);
+    setChangeForm({
+      ...changeForm,
+      days_of_week: has
+        ? changeForm.days_of_week.filter((d) => d !== day)
+        : [...changeForm.days_of_week, day],
+    });
+  }
+
+  async function submitScheduleChange() {
+    if (!changeForm || !changeForm.change_date) {
+      toast.error("Por favor ingresa la fecha de cambio");
+      return;
+    }
+    try {
+      // PUT the schedule change
+      const updated = await api.put<ApiResponse<Schedule>>(
+        `/api/v1/schedules/${changeForm.scheduleId}`,
+        {
+          days_of_week: changeForm.days_of_week,
+          time_start: changeForm.time_start,
+          duration_min: changeForm.duration_min,
+          valid_from: changeForm.valid_from || undefined,
+          valid_until: changeForm.valid_until || undefined,
+          change_date: changeForm.change_date,
+        }
+      );
+
+      const newScheduleId = updated?.data?.id ?? changeForm.scheduleId;
+
+      // Check affected bookings
+      const affected = await api.getList<AffectedBooking>(
+        `/api/v1/schedules/${changeForm.scheduleId}/affected-bookings?change_date=${changeForm.change_date}`
+      );
+
+      if (affected.length > 0) {
+        setAffectedBookings(affected);
+        setPendingScheduleChange({
+          oldScheduleId: changeForm.scheduleId,
+          newScheduleId,
+          changeDate: changeForm.change_date,
+        });
+        setShowAffectedModal(true);
+      } else {
+        // Refresh schedules
+        const updated2 = await api.getList<Schedule>(`/api/v1/workshops/${id}/schedules`);
+        setExistingSchedules(updated2);
+        setChangeForm(null);
+        toast.success("Horario actualizado");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al actualizar horario");
+    }
+  }
+
+  function handleAffectedComplete() {
+    // Refresh schedules after bulk action
+    api
+      .getList<Schedule>(`/api/v1/workshops/${id}/schedules`)
+      .then((scheds) => setExistingSchedules(scheds))
+      .catch(() => {});
+    setChangeForm(null);
+    setPendingScheduleChange(null);
+  }
+
   async function save(status: string) {
     setSaving(true);
     try {
@@ -132,7 +316,7 @@ export default function EditarTallerPage() {
         status,
         price: Number(form.price),
         capacity: form.capacity ? Number(form.capacity) : undefined,
-        sessions,
+        sessions: form.type !== "class" ? sessions : undefined,
       });
       toast.success(status === "published" ? "Taller publicado" : "Cambios guardados");
       router.push("/dashboard");
@@ -364,84 +548,353 @@ export default function EditarTallerPage() {
           {/* Horario recurrente (solo clases) */}
           {form.type === "class" && (
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Horario recurrente</CardTitle>
+                {!newScheduleDraft && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNewScheduleDraft(emptyScheduleDraft())}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar nuevo horario
+                  </Button>
+                )}
               </CardHeader>
-              <CardContent className="space-y-2">
-                <Label htmlFor="schedule">¿Cuándo se repite esta clase?</Label>
-                <Input
-                  id="schedule"
-                  placeholder="Ej: Todos los martes a las 19:00 hrs (90 min)"
-                  value={form.schedule}
-                  onChange={(e) => setField("schedule", e.target.value)}
-                />
-                <p className="text-xs text-zinc-400">
-                  Este texto aparece destacado en la página del taller.
-                </p>
+              <CardContent className="space-y-4">
+                {/* Existing schedules as read-only cards */}
+                {existingSchedules.map((sch) => (
+                  <div key={sch.id} className="space-y-3">
+                    {changeForm?.scheduleId === sch.id ? (
+                      /* Change form for this schedule */
+                      <div className="border rounded-lg p-4 space-y-4 bg-zinc-50">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-xs">Cambiando horario</Badge>
+                          <button
+                            type="button"
+                            onClick={() => setChangeForm(null)}
+                            className="text-zinc-400 hover:text-zinc-900"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        {/* Day picker */}
+                        <div className="space-y-2">
+                          <Label className="text-xs">Días de la semana</Label>
+                          <div className="flex gap-2 flex-wrap">
+                            {DAYS.map((d) => {
+                              const active = changeForm.days_of_week.includes(d.value);
+                              return (
+                                <button
+                                  key={d.value}
+                                  type="button"
+                                  onClick={() => toggleChangeDay(d.value)}
+                                  className={`w-10 h-10 rounded-full text-xs font-semibold border-2 transition-all ${
+                                    active
+                                      ? "bg-zinc-900 text-white border-zinc-900"
+                                      : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                                  }`}
+                                >
+                                  {d.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Time and duration */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Hora de inicio *</Label>
+                            <Input
+                              type="time"
+                              value={changeForm.time_start}
+                              onChange={(e) =>
+                                setChangeForm({ ...changeForm, time_start: e.target.value })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Duración (minutos)</Label>
+                            <Input
+                              type="number"
+                              min="15"
+                              step="15"
+                              value={changeForm.duration_min}
+                              onChange={(e) =>
+                                setChangeForm({
+                                  ...changeForm,
+                                  duration_min: Number(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* Valid range */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Válido desde (opcional)</Label>
+                            <Input
+                              type="date"
+                              value={changeForm.valid_from}
+                              onChange={(e) =>
+                                setChangeForm({ ...changeForm, valid_from: e.target.value })
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Válido hasta (opcional)</Label>
+                            <Input
+                              type="date"
+                              value={changeForm.valid_until}
+                              onChange={(e) =>
+                                setChangeForm({ ...changeForm, valid_until: e.target.value })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* Change date (required) */}
+                        <div className="space-y-1 border-t pt-3">
+                          <Label className="text-xs font-semibold">
+                            Fecha de inicio del cambio *
+                          </Label>
+                          <Input
+                            type="date"
+                            value={changeForm.change_date}
+                            onChange={(e) =>
+                              setChangeForm({ ...changeForm, change_date: e.target.value })
+                            }
+                          />
+                          <p className="text-xs text-zinc-400">
+                            Las reservas a partir de esta fecha serán afectadas.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setChangeForm(null)}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={submitScheduleChange}
+                          >
+                            Confirmar cambio
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Read-only card */
+                      <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">
+                            {formatDays(sch.days_of_week)} — {sch.time_start} ({sch.duration_min} min)
+                          </p>
+                          <p className="text-xs text-zinc-500">
+                            Desde {sch.valid_from}
+                            {sch.valid_until ? ` hasta ${sch.valid_until}` : " (sin fin)"}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openChangeForm(sch)}
+                        >
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Cambiar horario
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {existingSchedules.length === 0 && !newScheduleDraft && (
+                  <p className="text-sm text-zinc-400 text-center py-4">
+                    Sin horarios configurados. Agrega uno para empezar.
+                  </p>
+                )}
+
+                {/* New schedule draft form */}
+                {newScheduleDraft && (
+                  <div className="border rounded-lg p-4 space-y-4 border-dashed">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">Nuevo horario</Badge>
+                      <button
+                        type="button"
+                        onClick={() => setNewScheduleDraft(null)}
+                        className="text-zinc-400 hover:text-zinc-900"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Day picker */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">Días de la semana</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        {DAYS.map((d) => {
+                          const active = newScheduleDraft.days_of_week.includes(d.value);
+                          return (
+                            <button
+                              key={d.value}
+                              type="button"
+                              onClick={() => toggleNewDay(d.value)}
+                              className={`w-10 h-10 rounded-full text-xs font-semibold border-2 transition-all ${
+                                active
+                                  ? "bg-zinc-900 text-white border-zinc-900"
+                                  : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Hora de inicio *</Label>
+                        <Input
+                          type="time"
+                          value={newScheduleDraft.time_start}
+                          onChange={(e) =>
+                            setNewScheduleDraft({ ...newScheduleDraft, time_start: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Duración (minutos)</Label>
+                        <Input
+                          type="number"
+                          min="15"
+                          step="15"
+                          value={newScheduleDraft.duration_min}
+                          onChange={(e) =>
+                            setNewScheduleDraft({
+                              ...newScheduleDraft,
+                              duration_min: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Válido desde (opcional)</Label>
+                        <Input
+                          type="date"
+                          value={newScheduleDraft.valid_from}
+                          onChange={(e) =>
+                            setNewScheduleDraft({ ...newScheduleDraft, valid_from: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Válido hasta (opcional)</Label>
+                        <Input
+                          type="date"
+                          value={newScheduleDraft.valid_until}
+                          onChange={(e) =>
+                            setNewScheduleDraft({
+                              ...newScheduleDraft,
+                              valid_until: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setNewScheduleDraft(null)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button type="button" size="sm" onClick={saveNewSchedule}>
+                        Guardar horario
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Sesiones */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">
-                {form.type === "class" ? "Próximas clases" : "Sesiones"}
-              </CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addSession}>
-                <Plus className="h-4 w-4 mr-1" />
-                Agregar fecha
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {sessions.length === 0 ? (
-                <p className="text-sm text-zinc-400 text-center py-4">
-                  Sin fechas agendadas.
-                </p>
-              ) : (
-                sessions.map((s, i) => (
-                  <div key={i} className="border rounded-lg p-4 space-y-3 relative">
-                    <button
-                      type="button"
-                      onClick={() => removeSession(i)}
-                      className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                    <Badge variant="outline" className="text-xs">
-                      Sesión {i + 1}
-                    </Badge>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Inicio</Label>
-                        <Input
-                          type="datetime-local"
-                          value={s.starts_at}
-                          onChange={(e) => updateSession(i, "starts_at", e.target.value)}
-                        />
+          {/* Sesiones (non-class types) */}
+          {form.type !== "class" && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-base">Sesiones</CardTitle>
+                <Button type="button" variant="outline" size="sm" onClick={addSession}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Agregar fecha
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {sessions.length === 0 ? (
+                  <p className="text-sm text-zinc-400 text-center py-4">
+                    Sin fechas agendadas.
+                  </p>
+                ) : (
+                  sessions.map((s, i) => (
+                    <div key={i} className="border rounded-lg p-4 space-y-3 relative">
+                      <button
+                        type="button"
+                        onClick={() => removeSession(i)}
+                        className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                      <Badge variant="outline" className="text-xs">
+                        Sesión {i + 1}
+                      </Badge>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Inicio</Label>
+                          <Input
+                            type="datetime-local"
+                            value={s.starts_at}
+                            onChange={(e) => updateSession(i, "starts_at", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fin</Label>
+                          <Input
+                            type="datetime-local"
+                            value={s.ends_at}
+                            onChange={(e) => updateSession(i, "ends_at", e.target.value)}
+                          />
+                        </div>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Fin</Label>
+                        <Label className="text-xs">Notas (opcional)</Label>
                         <Input
-                          type="datetime-local"
-                          value={s.ends_at}
-                          onChange={(e) => updateSession(i, "ends_at", e.target.value)}
+                          placeholder="Ej: Materiales incluidos"
+                          value={s.notes}
+                          onChange={(e) => updateSession(i, "notes", e.target.value)}
                         />
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Notas (opcional)</Label>
-                      <Input
-                        placeholder="Ej: Materiales incluidos"
-                        value={s.notes}
-                        onChange={(e) => updateSession(i, "notes", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Separator />
 
@@ -479,6 +932,19 @@ export default function EditarTallerPage() {
           </div>
         </div>
       </div>
+
+      {/* Affected bookings modal */}
+      {pendingScheduleChange && (
+        <AffectedBookingsModal
+          open={showAffectedModal}
+          onClose={() => setShowAffectedModal(false)}
+          affectedBookings={affectedBookings}
+          oldScheduleId={pendingScheduleChange.oldScheduleId}
+          newScheduleId={pendingScheduleChange.newScheduleId}
+          changeDate={pendingScheduleChange.changeDate}
+          onComplete={handleAffectedComplete}
+        />
+      )}
     </main>
   );
 }
