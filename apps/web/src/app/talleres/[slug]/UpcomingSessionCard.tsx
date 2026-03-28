@@ -27,8 +27,8 @@ function addMinutes(time: string, minutes: number) {
 interface Props {
   session: UpcomingSession;
   workshopId: string;
-  // TODO: hide cancel button for non-instructors once instructor_id is exposed in the API response.
-  // For now the button is shown for all logged-in users; the server enforces ownership.
+  /** The workshop's instructor_id — compared to localStorage user.id to show the cancel button */
+  instructorId?: string;
   isInstructor?: boolean;
 }
 
@@ -46,10 +46,19 @@ function getCommissionZone(sessionDateStr: string): "instructor" | "platform" {
   return new Date() >= cutoffSunday ? "instructor" : "platform";
 }
 
-export function UpcomingSessionCard({ session, workshopId, isInstructor = false }: Props) {
+export function UpcomingSessionCard({ session, workshopId, instructorId, isInstructor: isInstructorProp = false }: Props) {
   const router = useRouter();
   const [booking, setBooking] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+
+  // Determine if the current user is the instructor
+  const isInstructor = isInstructorProp || (() => {
+    if (typeof window === "undefined" || !instructorId) return false;
+    try {
+      const user = JSON.parse(localStorage.getItem("user") ?? "{}");
+      return user?.id === instructorId;
+    } catch { return false; }
+  })();
 
   const isCancelled = session.status === "cancelled";
   const isFull = session.status === "full";

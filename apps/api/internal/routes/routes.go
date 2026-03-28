@@ -29,6 +29,7 @@ func Register(r *gin.Engine) {
 			auth.GET("/my-workshops/:id", handlers.GetMyWorkshop)
 			auth.POST("/workshops", handlers.CreateWorkshop)
 			auth.PUT("/workshops/:id", handlers.UpdateWorkshop)
+			auth.DELETE("/workshops/:id", handlers.DeleteWorkshop)
 
 			// Schedules (Sprint 1)
 			auth.POST("/workshops/:id/schedules", handlers.CreateSchedule)
