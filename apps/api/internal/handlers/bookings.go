@@ -285,7 +285,14 @@ func GetInstructorBookings(c *gin.Context) {
 	toFilter := c.Query("to")
 
 	query := `SELECT b.id, b.workshop_id, w.title, p.name,
-	                 COALESCE(s.starts_at::text, ''), b.status, b.payment_status, b.amount, b.created_at::text
+	                 COALESCE(
+	                   s.starts_at::text,
+	                   (SELECT ns.starts_at::text FROM sessions ns
+	                    WHERE ns.workshop_id = b.workshop_id AND ns.starts_at >= NOW()
+	                    ORDER BY ns.starts_at ASC LIMIT 1),
+	                   ''
+	                 ),
+	                 b.status, b.payment_status, b.amount, b.created_at::text
 	          FROM bookings b
 	          JOIN workshops w ON w.id = b.workshop_id
 	          JOIN profiles p ON p.user_id = b.student_id

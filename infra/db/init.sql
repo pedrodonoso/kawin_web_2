@@ -219,6 +219,23 @@ SELECT id, ARRAY[1, 3, 5], '08:00', 60, CURRENT_DATE
 FROM workshops WHERE slug = 'yoga-restaurativo'
 ON CONFLICT DO NOTHING;
 
+-- Seed sessions for non-class workshops
+INSERT INTO sessions (workshop_id, starts_at, ends_at, notes)
+SELECT id, '2026-04-05 10:00:00+00', '2026-04-05 13:00:00+00', 'Primera sesión - Introducción a la pasta'
+FROM workshops WHERE slug = 'cocina-italiana' ON CONFLICT DO NOTHING;
+
+INSERT INTO sessions (workshop_id, starts_at, ends_at, notes)
+SELECT id, '2026-04-12 10:00:00+00', '2026-04-12 14:00:00+00', 'Materiales incluidos'
+FROM workshops WHERE slug = 'acuarela-principiantes' ON CONFLICT DO NOTHING;
+
+INSERT INTO sessions (workshop_id, starts_at, ends_at, notes)
+SELECT id, '2026-04-19 09:00:00+00', '2026-04-19 13:00:00+00', 'Traer tu cámara'
+FROM workshops WHERE slug = 'fotografia-callejera' ON CONFLICT DO NOTHING;
+
+INSERT INTO sessions (workshop_id, starts_at, ends_at, notes)
+SELECT id, '2026-04-26 14:00:00+00', '2026-04-26 17:00:00+00', 'Delantal incluido'
+FROM workshops WHERE slug = 'ceramica-torno' ON CONFLICT DO NOTHING;
+
 -- Seed demo student user (password: test1234)
 INSERT INTO users (id, email, password_hash, role) VALUES
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'carlos@kawin.app',
