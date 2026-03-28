@@ -205,3 +205,27 @@ FROM (VALUES
 ) AS w(title, slug, description, type, modality, price, capacity, location, cat_slug)
 JOIN categories c ON c.slug = w.cat_slug
 ON CONFLICT DO NOTHING;
+
+-- Seed schedules for class-type workshops
+-- Guitarra flamenca: martes y jueves 19:00, 90 min
+INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, valid_from)
+SELECT id, ARRAY[2, 4], '19:00', 90, CURRENT_DATE
+FROM workshops WHERE slug = 'guitarra-flamenca'
+ON CONFLICT DO NOTHING;
+
+-- Yoga restaurativo: lunes, miércoles y viernes 08:00, 60 min
+INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, valid_from)
+SELECT id, ARRAY[1, 3, 5], '08:00', 60, CURRENT_DATE
+FROM workshops WHERE slug = 'yoga-restaurativo'
+ON CONFLICT DO NOTHING;
+
+-- Seed demo student user (password: test1234)
+INSERT INTO users (id, email, password_hash, role) VALUES
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'carlos@kawin.app',
+   '$2a$10$Nzrv5VvLqIYfRfI9HmjkHOpfRmYJg6vvFqNQ5g7Y6aM1j3Kcj0fyi', 'student')
+  ON CONFLICT DO NOTHING;
+
+INSERT INTO profiles (user_id, name, bio) VALUES
+  ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Carlos Moreno',
+   'Estudiante de música y yoga.')
+  ON CONFLICT DO NOTHING;

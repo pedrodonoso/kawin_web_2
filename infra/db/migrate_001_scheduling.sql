@@ -24,6 +24,11 @@ ALTER TABLE bookings
   ADD COLUMN IF NOT EXISTS cancelled_reason         VARCHAR(50),
   ADD COLUMN IF NOT EXISTS migrated_from_session_id UUID REFERENCES sessions(id);
 
+-- Unique constraint for safe session materialization
+ALTER TABLE sessions
+  ADD CONSTRAINT IF NOT EXISTS uq_sessions_workshop_schedule_starts
+  UNIQUE (workshop_id, schedule_id, starts_at);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_schedules_workshop ON schedules(workshop_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_schedule  ON sessions(schedule_id);
