@@ -335,9 +335,10 @@ func GetWorkshops(c *gin.Context) {
 }
 
 func GetWorkshop(c *gin.Context) {
-	slug := c.Param("id")
+	idOrSlug := c.Param("id")
 
 	var w Workshop
+	// Accept both UUID and slug — try UUID first (36-char with dashes), fall back to slug
 	err := db.Pool.QueryRow(context.Background(), `
 		SELECT w.id, w.title, w.slug, COALESCE(w.description,''),
 		       w.type, w.modality, w.price, w.currency,
@@ -348,7 +349,7 @@ func GetWorkshop(c *gin.Context) {
 		FROM workshops w
 		LEFT JOIN categories c ON c.id = w.category_id
 		LEFT JOIN profiles p ON p.user_id = w.instructor_id
-		WHERE w.slug = $1`, slug,
+		WHERE (w.id::text = $1 OR w.slug = $1)`, idOrSlug,
 	).Scan(
 		&w.ID, &w.Title, &w.Slug, &w.Description,
 		&w.Type, &w.Modality, &w.Price, &w.Currency,
