@@ -177,10 +177,7 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, isInstr
           </Badge>
         )}
         {isAvailable && checkingBooking && (
-          <div className="flex flex-col items-center gap-1">
-            <Skeleton className="h-8 w-32 rounded-md" />
-            <span className="text-xs text-zinc-400">Cargando...</span>
-          </div>
+          <Skeleton className="h-8 w-32 rounded-md" />
         )}
         {isAvailable && !checkingBooking && alreadyBooked && (
           <Badge className="bg-green-100 text-green-700 text-xs px-2 py-1">
