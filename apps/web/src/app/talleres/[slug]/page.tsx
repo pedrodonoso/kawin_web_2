@@ -26,40 +26,6 @@ async function getWorkshop(slug: string): Promise<Workshop | null> {
   }
 }
 
-const MOCK_WORKSHOP: Workshop = {
-  id: "1",
-  title: "Acuarela para principiantes",
-  slug: "acuarela-principiantes",
-  description:
-    "¿Siempre quisiste pintar con acuarela pero no sabías por dónde empezar? Este taller es para ti.\n\nAprenderás las técnicas fundamentales: húmedo sobre húmedo, húmedo sobre seco, degradados y mezcla de colores. Trabajaremos con papel de algodón de alta calidad y pinturas profesionales.\n\nEl taller incluye todos los materiales. Al final del día llevarás a casa tu primera obra terminada.",
-  type: "workshop",
-  modality: "in-person",
-  price: 25000,
-  currency: "CLP",
-  capacity: 12,
-  location: "Barrio Italia",
-  status: "published",
-  category: { id: "1", name: "Arte y Creatividad", slug: "arte-creatividad" },
-  instructor: {
-    name: "María González",
-    bio: "Artista visual con 10 años de experiencia. Estudié Bellas Artes en la Universidad de Chile y he dictado talleres en Santiago, Buenos Aires y Ciudad de México.",
-    avatar_url: "",
-  },
-  sessions: [
-    {
-      id: "s1",
-      starts_at: "2025-04-05T10:00:00Z",
-      ends_at: "2025-04-05T14:00:00Z",
-      notes: "Materiales incluidos",
-    },
-    {
-      id: "s2",
-      starts_at: "2025-04-12T10:00:00Z",
-      ends_at: "2025-04-12T14:00:00Z",
-    },
-  ],
-  created_at: new Date().toISOString(),
-};
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-CL", {
@@ -79,7 +45,7 @@ function formatTime(start: string, end: string) {
 
 export default async function TallerPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const workshop = (await getWorkshop(slug)) ?? (slug === "acuarela-principiantes" ? MOCK_WORKSHOP : null);
+  const workshop = await getWorkshop(slug);
 
   if (!workshop) {
     return (
