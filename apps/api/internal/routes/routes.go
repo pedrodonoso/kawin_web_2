@@ -25,30 +25,33 @@ func Register(r *gin.Engine) {
 		// Protected
 		auth := v1.Group("/", middleware.Auth())
 		{
+			auth.GET("/my-profile", handlers.GetMyProfile)
+			auth.PUT("/my-profile", handlers.UpdateMyProfile)
+
 			auth.GET("/my-workshops", handlers.GetMyWorkshops)
 			auth.GET("/my-workshops/:id", handlers.GetMyWorkshop)
 			auth.POST("/workshops", handlers.CreateWorkshop)
 			auth.PUT("/workshops/:id", handlers.UpdateWorkshop)
 			auth.DELETE("/workshops/:id", handlers.DeleteWorkshop)
 
-			// Schedules (Sprint 1)
+			// Schedules
 			auth.POST("/workshops/:id/schedules", handlers.CreateSchedule)
 			auth.GET("/workshops/:id/schedules", handlers.GetSchedules)
 			auth.DELETE("/schedules/:id", handlers.DeleteSchedule)
-
-			// Bookings (Sprint 3)
-			auth.POST("/bookings", handlers.CreateBooking)
-			auth.GET("/my-bookings", handlers.GetMyBookings)
-
-			// Sprint 4
 			auth.PUT("/schedules/:id", handlers.UpdateSchedule)
 			auth.GET("/schedules/:id/affected-bookings", handlers.GetAffectedBookings)
-			auth.POST("/bookings/:id/migrate", handlers.MigrateBooking)
-			auth.POST("/bookings/:id/refund", handlers.RefundBooking)
 			auth.POST("/schedules/:id/bulk-action", handlers.BulkAction)
 
-			// Sprint 5
+			// Sessions — calendario del tallerista
+			auth.POST("/sessions/materialize", handlers.MaterializeSession)
 			auth.POST("/sessions/cancel", handlers.CancelSession)
+			auth.GET("/workshops/:id/available-slots", handlers.GetAvailableSlots)
+
+			// Bookings
+			auth.POST("/bookings", handlers.CreateBooking)
+			auth.GET("/my-bookings", handlers.GetMyBookings)
+			auth.POST("/bookings/:id/migrate", handlers.MigrateBooking)
+			auth.POST("/bookings/:id/refund", handlers.RefundBooking)
 			auth.GET("/instructor-bookings", handlers.GetInstructorBookings)
 		}
 	}

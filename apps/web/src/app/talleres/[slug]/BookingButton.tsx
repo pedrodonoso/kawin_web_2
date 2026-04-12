@@ -11,28 +11,43 @@ interface Props {
   workshopType: string;
   capacity?: number | null;
   bookingsCount?: number;
+  instructorId?: string;
 }
 
 /**
  * Sidebar booking button for non-class workshops (workshop, course, event).
  * For type=class, the per-session buttons in UpcomingSessionCard handle booking.
  */
-export function BookingButton({ workshopId, workshopType, capacity, bookingsCount = 0 }: Props) {
+export function BookingButton({ workshopId, workshopType, capacity, bookingsCount = 0, instructorId }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [booked, setBooked] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [currentCount, setCurrentCount] = useState(bookingsCount);
+  const [isInstructor, setIsInstructor] = useState(false);
   const isFull = capacity != null && currentCount >= capacity;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+
+    // Check if current user is the instructor
+    if (instructorId) {
+      try {
+        const user = JSON.parse(localStorage.getItem("user") ?? "{}");
+        if (user?.id === instructorId) {
+          setIsInstructor(true);
+          setCheckingStatus(false);
+          return;
+        }
+      } catch { /* ignore */ }
+    }
+
     if (!token || workshopType === "class") {
       setCheckingStatus(false);
       return;
     }
     api
-      .getList<{ workshop_id: string; status: string }>("/api/v1/my-bookings")
+      .getList<{ workshop_id: string; status: string }>(`/api/v1/my-bookings?workshop_id=${workshopId}`)
       .then((bookings) => {
         const existing = bookings.find(
           (b) => b.workshop_id === workshopId && b.status === "confirmed"
@@ -41,7 +56,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
       })
       .catch(() => {})
       .finally(() => setCheckingStatus(false));
-  }, [workshopId, workshopType]);
+  }, [workshopId, workshopType, instructorId]);
 
   if (workshopType === "class") {
     return (
@@ -72,6 +87,14 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
 
   if (checkingStatus) {
     return <Button className="w-full" size="lg" disabled>Cargando...</Button>;
+  }
+
+  if (isInstructor) {
+    return (
+      <Button className="w-full" size="lg" disabled variant="outline">
+        Eres el organizador
+      </Button>
+    );
   }
 
   if (booked) {

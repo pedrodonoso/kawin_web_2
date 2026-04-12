@@ -18,9 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
-import { ArrowLeft, Plus, X, AlertCircle, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays } from "lucide-react";
 import Link from "next/link";
-import AffectedBookingsModal, { type AffectedBooking } from "./AffectedBookingsModal";
 
 interface SessionDraft {
   id?: string;
@@ -104,14 +103,6 @@ export default function EditarTallerPage() {
   const [newScheduleDraft, setNewScheduleDraft] = useState<ScheduleDraft | null>(null);
   // Which existing schedule is being edited (change flow)
   const [changeForm, setChangeForm] = useState<ChangeForm | null>(null);
-
-  // Affected bookings modal state
-  const [showAffectedModal, setShowAffectedModal] = useState(false);
-  const [affectedBookings, setAffectedBookings] = useState<AffectedBooking[]>([]);
-  const [pendingScheduleChange, setPendingScheduleChange] = useState<{
-    oldScheduleId: string;
-    changeDate: string;
-  } | null>(null);
 
   const [form, setFormState] = useState({
     title: "",
@@ -208,7 +199,7 @@ export default function EditarTallerPage() {
   async function saveNewSchedule() {
     if (!newScheduleDraft) return;
     try {
-      const created = await api.post<ApiResponse<Schedule>>(
+      await api.post<ApiResponse<Schedule>>(
         `/api/v1/workshops/${id}/schedules`,
         {
           days_of_week: newScheduleDraft.days_of_week,
@@ -218,11 +209,25 @@ export default function EditarTallerPage() {
           valid_until: newScheduleDraft.valid_until || undefined,
         }
       );
-      setExistingSchedules((prev) => [...prev, created.data]);
+      // Refresh full schedule list so all fields are populated
+      const scheds = await api.getList<Schedule>(`/api/v1/workshops/${id}/schedules`);
+      setExistingSchedules(scheds);
       setNewScheduleDraft(null);
       toast.success("Horario agregado");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al guardar horario");
+    }
+  }
+
+  // ---- Delete schedule ----
+  async function deleteSchedule(scheduleId: string) {
+    if (!window.confirm("¿Eliminar este horario? Las reservas existentes no se verán afectadas, pero no se generarán nuevas clases con este horario.")) return;
+    try {
+      await api.delete(`/api/v1/schedules/${scheduleId}`);
+      setExistingSchedules((prev) => prev.filter((s) => s.id !== scheduleId));
+      toast.success("Horario eliminado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al eliminar horario");
     }
   }
 
@@ -251,67 +256,38 @@ export default function EditarTallerPage() {
   }
 
   async function submitScheduleChange() {
-    if (!changeForm || !changeForm.change_date) {
-      toast.error("Por favor ingresa la fecha de cambio");
+    if (!changeForm) return;
+    // change_date es requerido por el backend para saber desde cuándo aplica la nueva regla
+    if (!changeForm.change_date) {
+      toast.error("Por favor ingresa la fecha de inicio del cambio");
       return;
     }
     try {
-      // First check affected bookings BEFORE making the change
-      const affected = await api.getList<AffectedBooking>(
-        `/api/v1/schedules/${changeForm.scheduleId}/affected-bookings?change_date=${changeForm.change_date}`
+      await api.put<ApiResponse<Schedule>>(
+        `/api/v1/schedules/${changeForm.scheduleId}`,
+        {
+          days_of_week: changeForm.days_of_week,
+          time_start: changeForm.time_start,
+          duration_min: changeForm.duration_min,
+          valid_from: changeForm.valid_from || undefined,
+          valid_until: changeForm.valid_until || undefined,
+          change_date: changeForm.change_date,
+        }
       );
-
-      if (affected.length > 0) {
-        // Show modal — the actual PUT happens after the user confirms
-        setAffectedBookings(affected);
-        setPendingScheduleChange({
-          oldScheduleId: changeForm.scheduleId,
-          changeDate: changeForm.change_date,
-        });
-        setShowAffectedModal(true);
-      } else {
-        // No affected bookings — apply change immediately
-        await applyScheduleChange();
-      }
+      const scheds = await api.getList<Schedule>(`/api/v1/workshops/${id}/schedules`);
+      setExistingSchedules(scheds);
+      setChangeForm(null);
+      toast.success("Horario actualizado");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al actualizar horario");
     }
   }
 
-  async function handleModalConfirm(action: "migrate_all" | "refund_all") {
-    if (!changeForm || !pendingScheduleChange) return;
-
-    // 1. Apply schedule change (PUT) → creates new schedule, closes old one
-    const updated = await api.put<ApiResponse<Schedule>>(
-      `/api/v1/schedules/${changeForm.scheduleId}`,
-      {
-        days_of_week: changeForm.days_of_week,
-        time_start: changeForm.time_start,
-        duration_min: changeForm.duration_min,
-        valid_from: changeForm.valid_from || undefined,
-        valid_until: changeForm.valid_until || undefined,
-        change_date: changeForm.change_date,
-      }
-    );
-    const newScheduleId = updated?.data?.id ?? changeForm.scheduleId;
-
-    // 2. Run bulk action now that new schedule exists
-    const res = await api.post<{ migrated?: number; refunded?: number }>(
-      `/api/v1/schedules/${pendingScheduleChange.oldScheduleId}/bulk-action`,
-      { action, new_schedule_id: newScheduleId, change_date: changeForm.change_date }
-    );
-    const migrated = res?.migrated ?? (action === "migrate_all" ? affectedBookings.length : 0);
-    const refunded = res?.refunded ?? (action === "refund_all" ? affectedBookings.length : 0);
-    toast.success(`Horario actualizado: ${migrated} migradas, ${refunded} devueltas`);
-
-    // 3. Refresh schedule list
-    const scheds = await api.getList<Schedule>(`/api/v1/workshops/${id}/schedules`);
-    setExistingSchedules(scheds);
-    setChangeForm(null);
-    setPendingScheduleChange(null);
-  }
-
   async function save(status: string) {
+    if (Number(form.price) > 9_999_999) {
+      toast.error("El precio no puede superar 9.999.999");
+      return;
+    }
     setSaving(true);
     try {
       await api.put(`/api/v1/workshops/${id}`, {
@@ -411,27 +387,22 @@ export default function EditarTallerPage() {
                 <textarea
                   id="description"
                   rows={5}
+                  maxLength={2000}
                   placeholder="Describe tu taller: qué aprenderán, qué incluye, quién puede asistir..."
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   value={form.description}
                   onChange={(e) => setField("description", e.target.value)}
                 />
+                <p className="text-xs text-zinc-400 text-right">{form.description.length}/2000</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tipo</Label>
-                  <Select value={form.type} onValueChange={(v) => setField("type", v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="workshop">Taller</SelectItem>
-                      <SelectItem value="course">Curso</SelectItem>
-                      <SelectItem value="class">Clase</SelectItem>
-                      <SelectItem value="event">Evento</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex h-10 w-full items-center rounded-md border border-input bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
+                    {{ workshop: "Taller", course: "Curso", class: "Clase", event: "Evento" }[form.type] ?? form.type}
+                  </div>
+                  <p className="text-xs text-zinc-400">El tipo no puede modificarse después de creado.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -525,6 +496,7 @@ export default function EditarTallerPage() {
                       id="price"
                       type="number"
                       min="0"
+                      max="9999999"
                       placeholder="0"
                       value={form.price}
                       onChange={(e) => setField("price", e.target.value)}
@@ -552,18 +524,39 @@ export default function EditarTallerPage() {
           {form.type === "class" && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Horario recurrente</CardTitle>
-                {!newScheduleDraft && (
+                <div>
+                  <CardTitle className="text-base">Reglas de horario</CardTitle>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Define cuándo se ofrecen clases. Las sesiones se materializan desde el{" "}
+                    <Link href={`/dashboard/talleres/${id}/calendario`} className="underline text-zinc-600 hover:text-zinc-900">
+                      calendario
+                    </Link>.
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setNewScheduleDraft(emptyScheduleDraft())}
+                    asChild
                   >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Agregar nuevo horario
+                    <Link href={`/dashboard/talleres/${id}/calendario`}>
+                      <CalendarDays className="h-4 w-4 mr-1" />
+                      Gestionar sesiones
+                    </Link>
                   </Button>
-                )}
+                  {!newScheduleDraft && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setNewScheduleDraft(emptyScheduleDraft())}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Agregar regla
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Existing schedules as read-only cards */}
@@ -707,15 +700,26 @@ export default function EditarTallerPage() {
                             {sch.valid_until ? ` hasta ${sch.valid_until}` : " (sin fin)"}
                           </p>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openChangeForm(sch)}
-                        >
-                          <Pencil className="h-3 w-3 mr-1" />
-                          Cambiar horario
-                        </Button>
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openChangeForm(sch)}
+                          >
+                            <Pencil className="h-3 w-3 mr-1" />
+                            Cambiar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => deleteSchedule(sch.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -936,16 +940,6 @@ export default function EditarTallerPage() {
         </div>
       </div>
 
-      {/* Affected bookings modal */}
-      {pendingScheduleChange && (
-        <AffectedBookingsModal
-          open={showAffectedModal}
-          onClose={() => setShowAffectedModal(false)}
-          affectedBookings={affectedBookings}
-          changeDate={pendingScheduleChange.changeDate}
-          onConfirm={handleModalConfirm}
-        />
-      )}
     </main>
   );
 }

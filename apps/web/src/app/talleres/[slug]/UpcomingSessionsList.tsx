@@ -1,28 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api, type UpcomingSession } from "@/lib/api";
+import { api, type Session } from "@/lib/api";
 import { UpcomingSessionCard } from "./UpcomingSessionCard";
 
 interface MyBooking {
-  workshop_id: string;
-  schedule_id: string;
-  session_day: string;
+  session_id?: string;
   status: string;
 }
 
 interface Props {
-  sessions: UpcomingSession[];
+  sessions: Session[];
   workshopId: string;
   workshopSlug: string;
   instructorId?: string;
 }
 
 /**
- * Fetches my-bookings once for this workshop and passes the result
- * to each UpcomingSessionCard — avoids N individual API calls.
+ * Carga las reservas del usuario para este taller una sola vez
+ * y distribuye el resultado a cada UpcomingSessionCard.
  */
-export function UpcomingSessionsList({ sessions, workshopId, workshopSlug, instructorId }: Props) {
+export function UpcomingSessionsList({ sessions, workshopId, instructorId }: Props) {
   const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -42,16 +40,13 @@ export function UpcomingSessionsList({ sessions, workshopId, workshopSlug, instr
       {sessions.map((s) => {
         const alreadyBooked = loaded
           ? myBookings.some(
-              (b) =>
-                b.schedule_id === s.schedule_id &&
-                b.session_day === s.date &&
-                b.status === "confirmed"
+              (b) => b.session_id === s.id && b.status === "confirmed"
             )
-          : undefined; // undefined = still loading
+          : undefined; // undefined = cargando
 
         return (
           <UpcomingSessionCard
-            key={`${s.schedule_id}-${s.date}`}
+            key={s.id}
             session={s}
             workshopId={workshopId}
             instructorId={instructorId}

@@ -43,7 +43,11 @@ Kawin no se limita a un tipo específico de taller. Ayudame a encontrar la mejor
 - Talleres en línea (a través de videoconferencia).
 - Talleres híbridos (combinación de presencial y en línea).
 
-## Requerimientos de Scheduling (analizados y aprobados)
+## Requerimientos de Scheduling (revisados 2026-04-08)
+
+### Tipos de talleres y su inmutabilidad
+
+El tipo de un taller (`workshop`, `course`, `class`, `event`) se define al momento de la creación y **no puede modificarse**. Una clase no puede convertirse en evento, un evento no puede convertirse en curso.
 
 ### Reserva de sesión individual en clases recurrentes
 
@@ -53,31 +57,42 @@ El modelo de reserva distingue:
 - `session_id = NULL` → reserva del taller completo (cursos, workshops, eventos)
 - `session_id = <uuid>` → reserva de una sesión específica (clases)
 
-Cada sesión muestra cupos disponibles en tiempo real. Las reservas sueltas son el modelo de Fase 2. Las suscripciones o packs de clases son Fase 3.
+**Los estudiantes solo pueden reservar sesiones que el tallerista haya materializado explícitamente.** No existen reservas sobre slots calculados. Cada sesión muestra cupos disponibles en tiempo real. Las reservas sueltas son el modelo de Fase 2. Las suscripciones o packs de clases son Fase 3.
 
 ### Calendarización de clases recurrentes (Schedules)
 
-Las clases recurrentes se definen mediante **reglas de recurrencia** (schedules), no fechas individuales. Un schedule especifica: días de la semana, hora de inicio, duración y rango de fechas válido.
+Las clases recurrentes se definen mediante **reglas de recurrencia** (schedules), no fechas individuales. Un schedule especifica: días de la semana, hora de inicio, duración y rango de fechas válido. Un tallerista puede tener múltiples schedules activos para un mismo taller (ej: lunes 10:00 y jueves 19:00).
 
-**Principio de sesiones virtuales:** las sesiones no se pre-generan. Se calculan en tiempo real desde la regla y solo se materializan en la base de datos cuando hay una reserva o cuando el instructor cancela/modifica esa fecha específica. Esto evita datos huérfanos y cron jobs de mantenimiento.
+**Las schedules son solo reglas de cálculo.** No generan sesiones automáticamente. Su único rol es:
+1. Mostrar al estudiante en la publicación del taller cuándo se dictan las clases ("clases los lunes y jueves a las 19:00").
+2. Ofrecer al tallerista los slots disponibles para materializar en su calendario de administración.
+
+**No existe el principio de sesiones virtuales.** Las sesiones existen en la base de datos solo cuando el tallerista las materializa explícitamente.
 
 **Modelo de publicación:** un taller = una disciplina en una ubicación. Para organizaciones con múltiples disciplinas (ej: un gimnasio con Boxeo, Kickboxing, Striking), se crea un taller por disciplina. La página de detalle muestra otras publicaciones del mismo tallerista/organización.
 
-### Cambios de horario
+### Calendario de administración del tallerista
 
-Los schedules son inmutables. Un cambio de horario cierra el schedule viejo (se le asigna `valid_until`) y crea uno nuevo (`valid_from`). Las reservas existentes bajo el horario antiguo conservan su hora original, honrando el contrato con el estudiante. Las nuevas sesiones se computan desde el schedule nuevo.
+El tallerista gestiona sus sesiones desde un **calendario de administración** accesible en el panel de su taller. Desde este calendario puede:
 
-### Migración y devolución de reservas por cambio de horario
+- **Ver slots disponibles para materializar**: calculados en tiempo real desde los schedules activos, sin persistencia hasta que el tallerista decida crearlos.
+- **Materializar sesiones**: convertir un slot calculado en una sesión real en la base de datos, dejándola disponible para reserva por estudiantes.
+- **Cancelar sesiones**: marcar una sesión materializada como cancelada, lo que dispara la política de comisiones y devolución a los estudiantes con reservas activas.
+- **Gestionar schedules (reglas)**: crear, modificar y eliminar schedules sin restricciones. Los cambios a schedules no afectan sesiones ya materializadas ni reservas existentes. Solo impactan los slots disponibles para futuras materializaciones.
 
-Cuando un tallerista cambia un schedule con reservas activas, el sistema detecta las reservas afectadas y presenta al tallerista dos opciones por reserva:
+### Cambios de horario y schedules
 
-1. **Migrar al nuevo horario:** mueve la reserva a la sesión equivalente en el nuevo schedule (misma fecha, nueva hora). Si los días también cambiaron y no hay equivalente directo, solo está disponible la devolución.
+Los schedules pueden modificarse o eliminarse libremente. Un cambio de schedule **no tiene efecto sobre sesiones ya materializadas ni sobre las reservas existentes**. Las sesiones materializadas conservan su horario original independientemente de los cambios en la regla.
 
-2. **Devolver la reserva:** cancela la reserva y marca el reembolso. En Fase 2 (sin pago real): cambio de estado y resolución fuera de la plataforma. En Fase 3 (con MercadoPago): reembolso automático vía API.
+Si el tallerista quiere cambiar el horario de una sesión ya materializada con reservas, debe cancelar esa sesión (disparando el flujo de devolución) y materializar la nueva sesión en el horario deseado.
 
-**Política de comisión en cancelaciones (definida):** El corte es el domingo fijo. Cada domingo se establece el compromiso de sesiones para la semana entrante. Si el tallerista cancela o cambia horario de una sesión de la semana en curso (domingo ya pasó), absorbe la comisión del 15% — Kawin lo descuenta de su próximo pago. Si cancela una sesión de la semana siguiente o posterior (domingo aún no llegó), Kawin absorbe la comisión y devuelve el 100% al estudiante sin penalización al tallerista. El domingo cuenta como semana en curso. En todos los casos, recalendarizar tiene prioridad sobre devolver. Campo DB: `bookings.commission_absorbed_by` (`'instructor'` | `'platform'`).
+### Migración y devolución de reservas por cancelación de sesión
 
-Todas las acciones de migración/devolución quedan registradas con razón (`schedule_change`) para trazabilidad y futura notificación a los estudiantes.
+Cuando el tallerista cancela una sesión materializada con reservas activas, el sistema aplica la política de comisión y registra las devoluciones. No existe flujo automático de migración al cambiar schedules — la migración es siempre una acción explícita del tallerista sesión por sesión.
+
+**Política de comisión en cancelaciones (definida):** El corte es el domingo fijo de cada semana. Si el tallerista cancela una sesión de la semana en curso (el domingo ya pasó), absorbe la comisión del 15%. Si cancela una sesión de la semana siguiente o posterior, Kawin absorbe la comisión. En todos los casos el estudiante recibe devolución del 100%. Campo DB: `bookings.commission_absorbed_by` (`'instructor'` | `'platform'`).
+
+Todas las acciones de cancelación quedan registradas con razón para trazabilidad y futura notificación a los estudiantes.
 
 ## Estrategia de Crecimiento
 1. **Alianzas Estratégicas**: Colaborar con instituciones educativas, centros culturales, y organizaciones comunitarias para atraer talleristas y estudiantes a la plataforma.

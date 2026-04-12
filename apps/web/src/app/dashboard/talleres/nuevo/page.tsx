@@ -123,6 +123,11 @@ export default function NuevoTallerPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      if (Number(form.price) > 9_999_999) {
+        toast.error("El precio no puede superar 9.999.999");
+        setLoading(false);
+        return;
+      }
       if (form.type === "class") {
         // Create workshop first, then post schedules
         const res = await api.post<{ data: { id: string } }>("/api/v1/workshops", {
@@ -197,11 +202,13 @@ export default function NuevoTallerPage() {
                 <textarea
                   id="description"
                   rows={5}
+                  maxLength={2000}
                   placeholder="Describe tu taller: qué aprenderán, qué incluye, quién puede asistir..."
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   value={form.description}
                   onChange={(e) => set("description", e.target.value)}
                 />
+                <p className="text-xs text-zinc-400 text-right">{form.description.length}/2000</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -305,6 +312,7 @@ export default function NuevoTallerPage() {
                       id="price"
                       type="number"
                       min="0"
+                      max="9999999"
                       placeholder="0"
                       required
                       value={form.price}

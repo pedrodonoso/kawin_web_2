@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, LayoutDashboard, User, CalendarCheck } from "lucide-react";
+import { LogOut, LayoutDashboard, User, CalendarCheck, ScanLine } from "lucide-react";
 
 interface AuthUser {
   email: string;
@@ -43,6 +43,10 @@ export function Navbar() {
         <nav className="hidden md:flex items-center gap-6 text-sm">
           <Link href="/buscar" className="text-zinc-600 hover:text-zinc-900 transition-colors">
             Explorar
+          </Link>
+          <Link href="/escanear" className="text-zinc-600 hover:text-zinc-900 transition-colors flex items-center gap-1">
+            <ScanLine className="h-4 w-4" />
+            Escanear QR
           </Link>
           {user?.role === "instructor" || user?.role === "both" ? (
             <Link href="/dashboard" className="text-zinc-600 hover:text-zinc-900 transition-colors">

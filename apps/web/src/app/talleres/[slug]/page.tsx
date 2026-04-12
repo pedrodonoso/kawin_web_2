@@ -3,11 +3,34 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Users, Calendar, Clock, Globe, CheckCircle } from "lucide-react";
-import { api, type Workshop } from "@/lib/api";
+import { MapPin, Users, Calendar, Clock, Globe, CheckCircle, Instagram, Facebook, Phone, MessageCircle } from "lucide-react";
+import { api, type Workshop, type Schedule } from "@/lib/api";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { BookingButton } from "./BookingButton";
+import { DescriptionSection } from "./DescriptionSection";
+import { ShareButtons } from "./ShareButtons";
 import Link from "next/link";
+
+const DAYS_ES: Record<number, string> = {
+  0: "domingos", 1: "lunes", 2: "martes", 3: "miércoles",
+  4: "jueves", 5: "viernes", 6: "sábados",
+};
+
+/** Convierte una regla de schedule en texto legible. Ej: "Lunes y jueves a las 19:00" */
+function formatScheduleRule(sch: Schedule): string {
+  const sorted = [...sch.days_of_week].sort((a, b) => {
+    const av = a === 0 ? 7 : a;
+    const bv = b === 0 ? 7 : b;
+    return av - bv;
+  });
+  const dayNames = sorted.map((d) => DAYS_ES[d] ?? String(d));
+  const daysStr =
+    dayNames.length === 1
+      ? dayNames[0]
+      : dayNames.slice(0, -1).join(", ") + " y " + dayNames[dayNames.length - 1];
+  const time = sch.time_start.slice(0, 5); // "HH:MM"
+  return `Clases los ${daysStr} a las ${time} (${sch.duration_min} min)`;
+}
 
 async function getWorkshop(slug: string): Promise<Workshop | null> {
   try {
@@ -33,12 +56,13 @@ function formatDate(iso: string) {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
 function formatTime(start: string, end: string) {
   const fmt = (s: string) =>
-    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
@@ -71,7 +95,6 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
     event: "Evento",
   };
 
-  const paragraphs = workshop.description?.split("\n\n") ?? [];
 
   return (
     <main className="min-h-screen bg-zinc-50">
@@ -93,10 +116,13 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
           <div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              <Badge>{typeLabel[workshop.type]}</Badge>
-              <Badge variant="outline">{modalityLabel[workshop.modality]}</Badge>
-              {workshop.category && <Badge variant="secondary">{workshop.category.name}</Badge>}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div className="flex flex-wrap gap-2">
+                <Badge>{typeLabel[workshop.type]}</Badge>
+                <Badge variant="outline">{modalityLabel[workshop.modality]}</Badge>
+                {workshop.category && <Badge variant="secondary">{workshop.category.name}</Badge>}
+              </div>
+              <ShareButtons title={workshop.title} />
             </div>
             <h1 className="text-3xl font-bold">{workshop.title}</h1>
             {workshop.instructor && (
@@ -107,14 +133,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           <Separator />
 
           {/* Description */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Descripción</h2>
-            {paragraphs.map((p, i) => (
-              <p key={i} className="text-zinc-600 leading-relaxed">
-                {p}
-              </p>
-            ))}
-          </div>
+          <DescriptionSection description={workshop.description ?? ""} />
 
           {/* Schedule (recurring classes) */}
           {workshop.schedule && (
@@ -127,12 +146,27 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             </div>
           )}
 
-          {/* Upcoming sessions — type:class with schedules */}
-          {workshop.type === "class" && workshop.upcoming_sessions && workshop.upcoming_sessions.length > 0 && (
+          {/* Schedules como reglas de recurrencia — solo informativo */}
+          {workshop.type === "class" && workshop.schedules && workshop.schedules.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">Horario</h2>
+              <div className="space-y-2">
+                {workshop.schedules.map((sch) => (
+                  <div key={sch.id} className="flex items-center gap-3 p-3 border rounded-lg bg-amber-50 border-amber-200">
+                    <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+                    <p className="text-amber-900 text-sm font-medium">{formatScheduleRule(sch)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sesiones materializadas — type:class */}
+          {workshop.type === "class" && workshop.sessions && workshop.sessions.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Próximas clases</h2>
               <UpcomingSessionsList
-                sessions={workshop.upcoming_sessions}
+                sessions={workshop.sessions}
                 workshopId={workshop.id}
                 workshopSlug={workshop.slug}
                 instructorId={workshop.instructor_id}
@@ -140,12 +174,12 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             </div>
           )}
 
-          {/* Empty state for class type with no sessions computed yet */}
-          {workshop.type === "class" && (!workshop.upcoming_sessions || workshop.upcoming_sessions.length === 0) && (
+          {/* Estado vacío para clases sin sesiones disponibles */}
+          {workshop.type === "class" && (!workshop.sessions || workshop.sessions.length === 0) && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Próximas clases</h2>
               <div className="p-6 border rounded-lg bg-zinc-50 text-center text-zinc-500 text-sm">
-                Aún no hay clases programadas para las próximas semanas.
+                Aún no hay clases programadas. Vuelve pronto.
               </div>
             </div>
           )}
@@ -155,26 +189,38 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Fechas disponibles</h2>
               <div className="space-y-3">
-                {workshop.sessions.map((s) => (
-                  <div key={s.id} className={`flex items-start gap-3 p-4 border rounded-lg bg-white ${s.cancelled ? "opacity-60" : ""}`}>
-                    <Calendar className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className={`font-medium capitalize ${s.cancelled ? "line-through text-zinc-400" : ""}`}>
-                        {formatDate(s.starts_at)}
-                      </p>
-                      <p className="text-sm text-zinc-500 flex items-center gap-1 mt-0.5">
-                        <Clock className="h-3 w-3" />
-                        {formatTime(s.starts_at, s.ends_at)}
-                      </p>
-                      {s.notes && (
-                        <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                          {s.notes}
+                {(() => {
+                  const spotsLeft = workshop.capacity != null
+                    ? workshop.capacity - (workshop.bookings_count ?? 0)
+                    : null;
+                  return workshop.sessions!.map((s) => (
+                    <div key={s.id} className={`flex items-start gap-3 p-4 border rounded-lg bg-white ${s.cancelled ? "opacity-60" : ""}`}>
+                      <Calendar className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className={`font-medium capitalize ${s.cancelled ? "line-through text-zinc-400" : ""}`}>
+                          {formatDate(s.starts_at)}
                         </p>
-                      )}
+                        <p className="text-sm text-zinc-500 flex items-center gap-1 mt-0.5">
+                          <Clock className="h-3 w-3" />
+                          {formatTime(s.starts_at, s.ends_at)}
+                        </p>
+                        {!s.cancelled && spotsLeft !== null && (
+                          <p className="text-xs mt-1 text-zinc-400">
+                            {spotsLeft <= 0
+                              ? "Sin cupos disponibles"
+                              : `${spotsLeft} cupo${spotsLeft !== 1 ? "s" : ""} disponible${spotsLeft !== 1 ? "s" : ""}`}
+                          </p>
+                        )}
+                        {s.notes && (
+                          <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3 text-green-500" />
+                            {s.notes}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
           )}
@@ -195,6 +241,52 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                     <p className="text-sm text-zinc-600 mt-1 leading-relaxed">
                       {workshop.instructor.bio}
                     </p>
+                  )}
+                  {(workshop.instructor_instagram || workshop.instructor_facebook || workshop.instructor_whatsapp || workshop.instructor_phone) && (
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      {workshop.instructor_whatsapp && (
+                        <a
+                          href={`https://wa.me/${workshop.instructor_whatsapp.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-green-600"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          WhatsApp
+                        </a>
+                      )}
+                      {workshop.instructor_phone && (
+                        <a
+                          href={`tel:${workshop.instructor_phone}`}
+                          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
+                        >
+                          <Phone className="h-4 w-4" />
+                          {workshop.instructor_phone}
+                        </a>
+                      )}
+                      {workshop.instructor_instagram && (
+                        <a
+                          href={workshop.instructor_instagram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
+                        >
+                          <Instagram className="h-4 w-4" />
+                          Instagram
+                        </a>
+                      )}
+                      {workshop.instructor_facebook && (
+                        <a
+                          href={workshop.instructor_facebook}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
+                        >
+                          <Facebook className="h-4 w-4" />
+                          Facebook
+                        </a>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -249,6 +341,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                 workshopType={workshop.type}
                 capacity={workshop.capacity ?? null}
                 bookingsCount={workshop.bookings_count ?? 0}
+                instructorId={workshop.instructor_id}
               />
             </CardContent>
           </Card>

@@ -1,7 +1,10 @@
+// Server-side: llama directo al API interno (Docker network).
+// Client-side: usa ruta relativa "/" → Next.js rewrite lo proxea a api:8080.
+// Esto permite acceder desde cualquier dispositivo en la red sin hardcodear IPs.
 const API_BASE =
   typeof window === "undefined"
     ? (process.env.API_INTERNAL_URL ?? "http://api:8080")
-    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080");
+    : "";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -59,6 +62,10 @@ export interface Workshop {
   instructor_id?: string;
   instructor_name?: string;
   instructor_bio?: string;
+  instructor_instagram?: string;
+  instructor_facebook?: string;
+  instructor_whatsapp?: string;
+  instructor_phone?: string;
   schedule?: string;
   category_id?: string;
   category_name?: string;
@@ -66,7 +73,6 @@ export interface Workshop {
   sessions?: Session[];
   schedules?: Schedule[];
   bookings_count?: number;
-  upcoming_sessions?: UpcomingSession[];
   created_at: string;
 }
 
@@ -76,6 +82,8 @@ export interface Session {
   ends_at: string;
   cancelled?: boolean;
   notes?: string;
+  spots_remaining?: number; // nil = sin límite de cupos
+  booking_count?: number;
 }
 
 /**
@@ -94,17 +102,18 @@ export interface Schedule {
 }
 
 /**
- * A computed (virtual or materialized) class session.
- * Returned only for workshops of type "class".
+ * Slot calculado para el calendario de administración del tallerista.
+ * Retornado por GET /workshops/:id/available-slots.
  */
-export interface UpcomingSession {
+export interface AvailableSlot {
   date: string;              // "YYYY-MM-DD"
   time: string;              // "HH:MM"
   duration_min: number;
   schedule_id: string;
-  session_id?: string;       // undefined = not yet materialized (no bookings)
-  spots_remaining?: number;  // undefined = no capacity limit
-  status: "available" | "cancelled" | "full";
+  session_id?: string;       // undefined = no materializado aún
+  spots_remaining?: number;  // undefined = sin límite
+  booking_count: number;     // reservas activas de esta sesión
+  status: "not_materialized" | "available" | "full" | "cancelled";
 }
 
 export interface Category {
@@ -117,4 +126,13 @@ export interface Category {
 export interface AuthResponse {
   token: string;
   user: { id: string; email: string; role: string };
+}
+
+export interface Profile {
+  name: string;
+  bio: string;
+  phone: string;
+  whatsapp: string;
+  instagram_url: string;
+  facebook_url: string;
 }

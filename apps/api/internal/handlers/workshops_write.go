@@ -183,6 +183,57 @@ func UpdateWorkshop(c *gin.Context) {
 		input.Status = "draft"
 	}
 
+	// Cargar estado actual del taller para validaciones.
+	var currentType, currentStatus string
+	var currentPrice float64
+	var currentCapacity *int
+	err := db.Pool.QueryRow(context.Background(),
+		`SELECT type, status, price, capacity FROM workshops WHERE id = $1 AND instructor_id = $2`, id, userID,
+	).Scan(&currentType, &currentStatus, &currentPrice, &currentCapacity)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o sin permisos"})
+		return
+	}
+
+	// Contar reservas confirmadas del taller (para validar cambios de precio/capacidad/sesiones).
+	var confirmedBookings int
+	db.Pool.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM bookings WHERE workshop_id = $1 AND status = 'confirmed'`, id,
+	).Scan(&confirmedBookings) //nolint:errcheck
+
+	// Defecto 4: No permitir cambiar precio si hay reservas confirmadas.
+	if confirmedBookings > 0 && input.Price != currentPrice {
+		c.JSON(http.StatusConflict, gin.H{
+			"message": fmt.Sprintf("No se puede cambiar el precio: el taller tiene %d reserva(s) confirmada(s). Cancélalas primero.", confirmedBookings),
+		})
+		return
+	}
+
+	// Defecto 3: No permitir reducir cupos por debajo de reservas confirmadas.
+	if input.Capacity != nil && confirmedBookings > 0 && *input.Capacity < confirmedBookings {
+		c.JSON(http.StatusConflict, gin.H{
+			"message": fmt.Sprintf("Los cupos máximos no pueden reducirse a %d: hay %d reserva(s) confirmada(s).", *input.Capacity, confirmedBookings),
+		})
+		return
+	}
+
+	// Si se intenta pasar a borrador desde publicado, validar reservas activas.
+	if input.Status == "draft" && currentStatus == "published" {
+		if count := activeBookingsCount(id); count > 0 {
+			c.JSON(http.StatusConflict, gin.H{
+				"message":         fmt.Sprintf("El taller tiene %d reserva(s) activa(s). No se puede cambiar a borrador hasta que pasen todas las sesiones reservadas.", count),
+				"active_bookings": count,
+			})
+			return
+		}
+	}
+	if input.Type != "" && input.Type != currentType {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "El tipo de taller no puede modificarse después de creado"})
+		return
+	}
+
+	_ = currentCapacity // usada implícitamente vía confirmedBookings
+
 	var catID *string
 	if input.CategoryID != "" {
 		catID = &input.CategoryID
@@ -194,7 +245,7 @@ func UpdateWorkshop(c *gin.Context) {
 		     price=$5, currency=$6, capacity=$7, location=$8,
 		     category_id=$9, status=$10, updated_at=NOW()
 		 WHERE id=$11 AND instructor_id=$12`,
-		input.Title, input.Description, input.Type, input.Modality,
+		input.Title, input.Description, currentType, input.Modality,
 		input.Price, input.Currency, input.Capacity, input.Location,
 		catID, input.Status, id, userID,
 	)
@@ -205,6 +256,25 @@ func UpdateWorkshop(c *gin.Context) {
 	if result.RowsAffected() == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o sin permisos"})
 		return
+	}
+
+	// Defecto 5: No permitir modificar sesiones si alguna tiene reservas confirmadas.
+	if len(input.Sessions) > 0 {
+		var sessionsWithBookings int
+		db.Pool.QueryRow(context.Background(),
+			`SELECT COUNT(DISTINCT s.id)
+			 FROM sessions s
+			 JOIN bookings b ON b.session_id = s.id
+			 WHERE s.workshop_id = $1
+			   AND s.schedule_id IS NULL
+			   AND b.status = 'confirmed'`, id,
+		).Scan(&sessionsWithBookings) //nolint:errcheck
+		if sessionsWithBookings > 0 {
+			c.JSON(http.StatusConflict, gin.H{
+				"message": fmt.Sprintf("%d sesión(es) tienen reservas confirmadas y no pueden modificarse.", sessionsWithBookings),
+			})
+			return
+		}
 	}
 
 	// Replace sessions: only delete manual sessions (no schedule_id) to avoid removing materialized ones
@@ -222,11 +292,48 @@ func UpdateWorkshop(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{"id": id}})
 }
 
+// activeBookingsCount devuelve la cantidad de reservas confirmadas con sesiones futuras
+// o reservas directas (sin sesión) para el workshop dado.
+func activeBookingsCount(workshopID string) int {
+	ctx := context.Background()
+	var sessionBookings, directBookings int
+	db.Pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM bookings b
+		 JOIN sessions s ON s.id = b.session_id
+		 WHERE b.workshop_id = $1
+		   AND b.status = 'confirmed'
+		   AND s.starts_at > NOW()`, workshopID,
+	).Scan(&sessionBookings) //nolint:errcheck
+	db.Pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM bookings
+		 WHERE workshop_id = $1 AND status = 'confirmed' AND session_id IS NULL`, workshopID,
+	).Scan(&directBookings) //nolint:errcheck
+	return sessionBookings + directBookings
+}
+
 // DeleteWorkshop handles DELETE /api/v1/workshops/:id.
 // Soft-archives the workshop (status = 'archived'). Only the owner can do this.
 func DeleteWorkshop(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	id := c.Param("id")
+
+	// Verify ownership before checking bookings
+	var exists bool
+	db.Pool.QueryRow(context.Background(),
+		`SELECT true FROM workshops WHERE id = $1 AND instructor_id = $2 AND status != 'archived'`, id, userID,
+	).Scan(&exists) //nolint:errcheck
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o ya archivado"})
+		return
+	}
+
+	if count := activeBookingsCount(id); count > 0 {
+		c.JSON(http.StatusConflict, gin.H{
+			"message":         fmt.Sprintf("El taller tiene %d reserva(s) activa(s). No se puede archivar hasta que pasen todas las sesiones reservadas.", count),
+			"active_bookings": count,
+		})
+		return
+	}
 
 	result, err := db.Pool.Exec(context.Background(),
 		`UPDATE workshops SET status = 'archived', updated_at = NOW()

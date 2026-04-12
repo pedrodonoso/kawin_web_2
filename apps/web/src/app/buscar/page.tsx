@@ -236,13 +236,7 @@ export default function BuscarPage() {
       const data = await api.getList<Workshop>(`/api/v1/workshops?${params}`);
       setWorkshops(data);
     } catch {
-      // API not ready yet — use mock data filtered locally
-      let filtered = MOCK_WORKSHOPS;
-      if (query) filtered = filtered.filter((w) => w.title.toLowerCase().includes(query.toLowerCase()));
-      if (modality !== "all") filtered = filtered.filter((w) => w.modality === modality);
-      if (type !== "all") filtered = filtered.filter((w) => w.type === type);
-      if (category !== "all") filtered = filtered.filter((w) => w.category?.slug === category);
-      setWorkshops(filtered);
+      setWorkshops([]);
     } finally {
       setLoading(false);
     }

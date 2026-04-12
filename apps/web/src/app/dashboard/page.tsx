@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, type Workshop } from "@/lib/api";
 
@@ -85,7 +85,7 @@ export default function DashboardPage() {
     api
       .getList<Workshop>("/api/v1/my-workshops")
       .then(setWorkshops)
-      .catch(() => setWorkshops(MOCK_WORKSHOPS))
+      .catch(() => setWorkshops([]))
       .finally(() => setLoading(false));
 
     api
@@ -107,6 +107,11 @@ export default function DashboardPage() {
   }
 
   const published = workshops.filter((w) => w.status === "published").length;
+  const now = new Date();
+  const bookingsThisMonth = bookings.filter((b) => {
+    const d = new Date(b.created_at);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length;
   const totalRevenue = bookings
     .filter((b) => b.status === "confirmed")
     .reduce((acc, b) => acc + b.amount, 0);
@@ -120,12 +125,20 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold">Hola, {userName} 👋</h1>
             <p className="text-zinc-500 mt-1">Gestiona tus talleres y reservas</p>
           </div>
-          <Button asChild>
-            <Link href="/dashboard/talleres/nuevo">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo taller
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/perfil">
+                <UserCircle className="h-4 w-4 mr-2" />
+                Mi perfil
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/dashboard/talleres/nuevo">
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo taller
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -147,7 +160,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">0</p>
+              <p className="text-3xl font-bold">{bookingsLoading ? "—" : bookingsThisMonth}</p>
             </CardContent>
           </Card>
           <Card>
