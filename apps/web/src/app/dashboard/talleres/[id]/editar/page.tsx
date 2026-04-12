@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
-import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays } from "lucide-react";
+import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock } from "lucide-react";
 import Link from "next/link";
 
 interface SessionDraft {
@@ -94,6 +94,7 @@ export default function EditarTallerPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [bookingsCount, setBookingsCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
 
@@ -132,6 +133,7 @@ export default function EditarTallerPage() {
       .then(([cats, res]) => {
         setCategories(cats);
         const w = res.data;
+        setBookingsCount(w.bookings_count ?? 0);
         setFormState({
           title: w.title,
           description: w.description ?? "",
@@ -365,6 +367,16 @@ export default function EditarTallerPage() {
           </div>
         </div>
 
+        {/* Aviso de campos bloqueados */}
+        {bookingsCount > 0 && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <Lock className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+            <p>
+              Este taller tiene <strong>{bookingsCount} reserva(s) confirmada(s)</strong>. Solo podés modificar el título, descripción, categoría, modalidad y lugar.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-6">
           {/* Información básica */}
           <Card>
@@ -469,9 +481,12 @@ export default function EditarTallerPage() {
           </Card>
 
           {/* Precio y cupos */}
-          <Card>
+          <Card className={bookingsCount > 0 ? "opacity-60" : ""}>
             <CardHeader>
-              <CardTitle className="text-base">Precio y cupos</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                Precio y cupos
+                {bookingsCount > 0 && <Lock className="h-3.5 w-3.5 text-amber-500" />}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -481,6 +496,7 @@ export default function EditarTallerPage() {
                     <Select
                       value={form.currency}
                       onValueChange={(v) => setField("currency", v)}
+                      disabled={bookingsCount > 0}
                     >
                       <SelectTrigger className="w-24 shrink-0">
                         <SelectValue />
@@ -500,9 +516,12 @@ export default function EditarTallerPage() {
                       placeholder="0"
                       value={form.price}
                       onChange={(e) => setField("price", e.target.value)}
+                      disabled={bookingsCount > 0}
                     />
                   </div>
-                  <p className="text-xs text-zinc-400">Ingresa 0 para talleres gratuitos</p>
+                  <p className="text-xs text-zinc-400">
+                    {bookingsCount > 0 ? "No modificable con reservas activas" : "Ingresa 0 para talleres gratuitos"}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -514,7 +533,11 @@ export default function EditarTallerPage() {
                     placeholder="Sin límite"
                     value={form.capacity}
                     onChange={(e) => setField("capacity", e.target.value)}
+                    disabled={bookingsCount > 0}
                   />
+                  {bookingsCount > 0 && (
+                    <p className="text-xs text-zinc-400">No modificable con reservas activas</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -844,13 +867,18 @@ export default function EditarTallerPage() {
 
           {/* Sesiones (non-class types) */}
           {form.type !== "class" && (
-            <Card>
+            <Card className={bookingsCount > 0 ? "opacity-60" : ""}>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Sesiones</CardTitle>
-                <Button type="button" variant="outline" size="sm" onClick={addSession}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Agregar fecha
-                </Button>
+                <CardTitle className="text-base flex items-center gap-2">
+                  Sesiones
+                  {bookingsCount > 0 && <Lock className="h-3.5 w-3.5 text-amber-500" />}
+                </CardTitle>
+                {bookingsCount === 0 && (
+                  <Button type="button" variant="outline" size="sm" onClick={addSession}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar fecha
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {sessions.length === 0 ? (
@@ -860,13 +888,15 @@ export default function EditarTallerPage() {
                 ) : (
                   sessions.map((s, i) => (
                     <div key={i} className="border rounded-lg p-4 space-y-3 relative">
-                      <button
-                        type="button"
-                        onClick={() => removeSession(i)}
-                        className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      {bookingsCount === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => removeSession(i)}
+                          className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                       <Badge variant="outline" className="text-xs">
                         Sesión {i + 1}
                       </Badge>
@@ -877,6 +907,7 @@ export default function EditarTallerPage() {
                             type="datetime-local"
                             value={s.starts_at}
                             onChange={(e) => updateSession(i, "starts_at", e.target.value)}
+                            disabled={bookingsCount > 0}
                           />
                         </div>
                         <div className="space-y-1">
@@ -885,6 +916,7 @@ export default function EditarTallerPage() {
                             type="datetime-local"
                             value={s.ends_at}
                             onChange={(e) => updateSession(i, "ends_at", e.target.value)}
+                            disabled={bookingsCount > 0}
                           />
                         </div>
                       </div>
@@ -894,6 +926,7 @@ export default function EditarTallerPage() {
                           placeholder="Ej: Materiales incluidos"
                           value={s.notes}
                           onChange={(e) => updateSession(i, "notes", e.target.value)}
+                          disabled={bookingsCount > 0}
                         />
                       </div>
                     </div>

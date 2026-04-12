@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(netsh interface:*)",
+      "Bash(wsl hostname:*)",
+      "Bash(netsh advfirewall:*)",
+      "Bash(docker compose:*)"
+    ]
+  }
+}

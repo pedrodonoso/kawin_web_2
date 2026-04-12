@@ -149,6 +149,11 @@ func GetMyWorkshop(c *gin.Context) {
 		}
 	}
 
+	// Agregar conteo de reservas confirmadas para que el frontend sepa qué campos deshabilitar.
+	db.Pool.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM bookings WHERE workshop_id = $1 AND status = 'confirmed'`, w.ID,
+	).Scan(&w.BookingsCount) //nolint:errcheck
+
 	c.JSON(http.StatusOK, gin.H{"data": w})
 }
 
@@ -195,26 +200,17 @@ func UpdateWorkshop(c *gin.Context) {
 		return
 	}
 
-	// Contar reservas confirmadas del taller (para validar cambios de precio/capacidad/sesiones).
+	// Contar reservas confirmadas del taller.
 	var confirmedBookings int
 	db.Pool.QueryRow(context.Background(),
 		`SELECT COUNT(*) FROM bookings WHERE workshop_id = $1 AND status = 'confirmed'`, id,
 	).Scan(&confirmedBookings) //nolint:errcheck
 
-	// Defecto 4: No permitir cambiar precio si hay reservas confirmadas.
-	if confirmedBookings > 0 && input.Price != currentPrice {
-		c.JSON(http.StatusConflict, gin.H{
-			"message": fmt.Sprintf("No se puede cambiar el precio: el taller tiene %d reserva(s) confirmada(s). Cancélalas primero.", confirmedBookings),
-		})
-		return
-	}
-
-	// Defecto 3: No permitir reducir cupos por debajo de reservas confirmadas.
-	if input.Capacity != nil && confirmedBookings > 0 && *input.Capacity < confirmedBookings {
-		c.JSON(http.StatusConflict, gin.H{
-			"message": fmt.Sprintf("Los cupos máximos no pueden reducirse a %d: hay %d reserva(s) confirmada(s).", *input.Capacity, confirmedBookings),
-		})
-		return
+	// Si hay reservas confirmadas, los campos precio y cupos se mantienen sin cambio.
+	// Solo se permiten modificar: título, descripción, modalidad, ubicación y categoría.
+	if confirmedBookings > 0 {
+		input.Price = currentPrice
+		input.Capacity = currentCapacity
 	}
 
 	// Si se intenta pasar a borrador desde publicado, validar reservas activas.
@@ -227,12 +223,11 @@ func UpdateWorkshop(c *gin.Context) {
 			return
 		}
 	}
+
 	if input.Type != "" && input.Type != currentType {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "El tipo de taller no puede modificarse después de creado"})
 		return
 	}
-
-	_ = currentCapacity // usada implícitamente vía confirmedBookings
 
 	var catID *string
 	if input.CategoryID != "" {
@@ -258,35 +253,18 @@ func UpdateWorkshop(c *gin.Context) {
 		return
 	}
 
-	// Defecto 5: No permitir modificar sesiones si alguna tiene reservas confirmadas.
-	if len(input.Sessions) > 0 {
-		var sessionsWithBookings int
-		db.Pool.QueryRow(context.Background(),
-			`SELECT COUNT(DISTINCT s.id)
-			 FROM sessions s
-			 JOIN bookings b ON b.session_id = s.id
-			 WHERE s.workshop_id = $1
-			   AND s.schedule_id IS NULL
-			   AND b.status = 'confirmed'`, id,
-		).Scan(&sessionsWithBookings) //nolint:errcheck
-		if sessionsWithBookings > 0 {
-			c.JSON(http.StatusConflict, gin.H{
-				"message": fmt.Sprintf("%d sesión(es) tienen reservas confirmadas y no pueden modificarse.", sessionsWithBookings),
-			})
-			return
+	// Reemplazar sesiones solo si no hay reservas confirmadas.
+	if confirmedBookings == 0 {
+		db.Pool.Exec(context.Background(), `DELETE FROM sessions WHERE workshop_id = $1 AND schedule_id IS NULL`, id)
+		for _, s := range input.Sessions {
+			if s.StartsAt == "" || s.EndsAt == "" {
+				continue
+			}
+			db.Pool.Exec(context.Background(),
+				`INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES ($1,$2,$3,$4)`,
+				id, s.StartsAt, s.EndsAt, s.Notes,
+			)
 		}
-	}
-
-	// Replace sessions: only delete manual sessions (no schedule_id) to avoid removing materialized ones
-	db.Pool.Exec(context.Background(), `DELETE FROM sessions WHERE workshop_id = $1 AND schedule_id IS NULL`, id)
-	for _, s := range input.Sessions {
-		if s.StartsAt == "" || s.EndsAt == "" {
-			continue
-		}
-		db.Pool.Exec(context.Background(),
-			`INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES ($1,$2,$3,$4)`,
-			id, s.StartsAt, s.EndsAt, s.Notes,
-		)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{"id": id}})

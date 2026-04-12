@@ -1,0 +1,5 @@
+- [x] Al reservar un taller como estudiante, el detalle del taller aparece el mensaje "reserva confirmada" pero al buscar esa reserva en la sección "Mis reservas" no se muestra la nueva reserva.
+- [ ] Al reservar una clase como estudiante, el detalle de la clase aparece el mensaje "reservado" y en la sección de "mis reservas" se agrega una nueva reserva pero la hora es incorrecta, existen 4 horas de diferencia.(la fecha es correcta, sólo hay diferncia horaria)
+- [ ] En editar clase, al eliminar algún horario recurrente muestra un alert, cambialo por un modal.(NEGOCIO.md - Requerimientos de Scheduling - Cambios de horario)
+- [ ] En editar clase, al eliminar algún horario recurrente no entra en el flujo de edición de horario recurrente.(NEGOCIO.md - Requerimientos de Scheduling - Cambios de horario)
+- [ ] Eliminaste el modal que mostraba los horarios con conflicto o a modificar cuando se cambiaba un horario recurrente, era muy util, quiero que vuelvas a integrarlo.
