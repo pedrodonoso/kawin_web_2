@@ -108,13 +108,11 @@ export default function DashboardPage() {
 
   const published = workshops.filter((w) => w.status === "published").length;
   const now = new Date();
-  const bookingsThisMonth = bookings.filter((b) => {
+  const bookingsThisMonth = bookings?.filter((b) => {
     const d = new Date(b.created_at);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  }).length;
-  const totalRevenue = bookings
-    .filter((b) => b.status === "confirmed")
-    .reduce((acc, b) => acc + b.amount, 0);
+    return b.status === "confirmed" && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length ?? 0;
+  const totalRevenue = bookings?.filter((b) => b.status === "confirmed").reduce((acc, b) => acc + b.amount, 0) ?? 0;
 
   return (
     <main className="min-h-screen bg-zinc-50">
@@ -171,7 +169,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">
-                {loading ? "—" : `$${totalRevenue.toLocaleString("es-CL")}`}
+                {loading ? "—" : `$${totalRevenue?.toLocaleString("es-CL")}`}
               </p>
             </CardContent>
           </Card>
@@ -284,11 +282,11 @@ export default function DashboardPage() {
                 ))}
               </CardContent>
             </Card>
-          ) : bookings.length === 0 ? (
+          ) : !bookings?.length ? (
             <Card>
               <CardContent className="py-10 text-center text-zinc-400 text-sm">
                 <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>Aún no tienes reservas en tus talleres.</p>
+                <p>No existen reservas recientes.</p>
               </CardContent>
             </Card>
           ) : (
@@ -305,7 +303,7 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {bookings.slice(0, 10).map((b) => (
+                    {bookings?.slice(0, 10).map((b) => (
                       <tr key={b.booking_id} className="border-b last:border-0 hover:bg-zinc-50">
                         <td className="px-4 py-3">{b.student_name}</td>
                         <td className="px-4 py-3 text-zinc-600 max-w-[180px] truncate">{b.workshop_title}</td>
