@@ -53,7 +53,9 @@ services:
       POSTGRES_DB: kawin
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./infra/db/seed_workshops.sql:/docker-entrypoint-initdb.d/02_seed_workshops.sql
+      - ./infra/db/seed_sessions.sql:/docker-entrypoint-initdb.d/03_seed_sessions.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kawin"]
       interval: 5s

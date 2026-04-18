@@ -60,10 +60,10 @@ export default function AffectedBookingsModal({
           <DialogTitle>Reservas afectadas por el cambio de horario</DialogTitle>
         </DialogHeader>
 
-        <p className="text-sm text-zinc-500">
-          <span className="font-semibold text-zinc-800">{affectedBookings.length} reservas</span>{" "}
+        <p className="text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">{affectedBookings.length} reservas</span>{" "}
           serán afectadas a partir del{" "}
-          <span className="font-semibold text-zinc-800">{changeDate}</span>
+          <span className="font-semibold text-foreground">{changeDate}</span>
         </p>
 
         {affectedBookings.some((b) => b.commission_zone === "instructor") && (
@@ -88,7 +88,7 @@ export default function AffectedBookingsModal({
         <div className="overflow-y-auto flex-1 mt-2">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-zinc-500">
+              <tr className="border-b text-left text-muted-foreground">
                 <th className="pb-2 font-medium">Alumno</th>
                 <th className="pb-2 font-medium">Fecha</th>
                 <th className="pb-2 font-medium">Hora</th>
@@ -100,9 +100,9 @@ export default function AffectedBookingsModal({
               {affectedBookings.map((b) => (
                 <tr key={b.booking_id} className="py-2">
                   <td className="py-2 pr-3 font-medium">{b.student_name}</td>
-                  <td className="py-2 pr-3 text-zinc-600">{b.session_date}</td>
-                  <td className="py-2 pr-3 text-zinc-600">{b.session_time}</td>
-                  <td className="py-2 pr-3 text-right text-zinc-700">
+                  <td className="py-2 pr-3 text-foreground/60">{b.session_date}</td>
+                  <td className="py-2 pr-3 text-foreground/60">{b.session_time}</td>
+                  <td className="py-2 pr-3 text-right text-foreground/70">
                     {b.amount.toLocaleString()}
                   </td>
                   <td className="py-2 text-right">

@@ -63,14 +63,14 @@ export default function PerfilPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-zinc-400">
+      <main className="min-h-screen flex items-center justify-center text-muted-foreground">
         Cargando...
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
@@ -109,7 +109,7 @@ export default function PerfilPage() {
                   value={form.bio}
                   onChange={(e) => set("bio", e.target.value)}
                 />
-                <p className="text-xs text-zinc-400 text-right">{form.bio.length}/500</p>
+                <p className="text-xs text-muted-foreground/70 text-right">{form.bio.length}/500</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

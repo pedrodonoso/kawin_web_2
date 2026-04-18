@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -10,17 +9,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pedrodonoso/kawin/api/internal/db"
+	"github.com/pedrodonoso/kawin/api/internal/models"
 )
 
 type createWorkshopInput struct {
-	Title       string          `json:"title" binding:"required"`
-	Description string          `json:"description"`
-	Type        string          `json:"type" binding:"required"`
-	Modality    string          `json:"modality" binding:"required"`
-	Price       float64         `json:"price"`
-	Currency    string          `json:"currency"`
-	Capacity    *int            `json:"capacity"`
-	Location    string          `json:"location"`
+	Title       string         `json:"title" binding:"required"`
+	Description string         `json:"description"`
+	Type        string         `json:"type" binding:"required"`
+	Modality    string         `json:"modality" binding:"required"`
+	Price       float64        `json:"price"`
+	Currency    string         `json:"currency"`
+	Capacity    *int           `json:"capacity"`
+	Location    string         `json:"location"`
+	OnlineURL   string         `json:"online_url"`
 	CategoryID  string         `json:"category_id"`
 	Status      string         `json:"status"`
 	Sessions    []sessionInput `json:"sessions"`
@@ -55,18 +56,22 @@ func CreateWorkshop(c *gin.Context) {
 		catID = &input.CategoryID
 	}
 
-	var workshopID string
-	err := db.Pool.QueryRow(context.Background(),
-		`INSERT INTO workshops
-		 (instructor_id, category_id, title, slug, description, type, modality,
-		  price, currency, capacity, location, status)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-		 RETURNING id`,
-		userID, catID, input.Title, slug, input.Description,
-		input.Type, input.Modality, input.Price, input.Currency,
-		input.Capacity, input.Location, input.Status,
-	).Scan(&workshopID)
-	if err != nil {
+	w := models.Workshop{
+		InstructorID:  userID.(string),
+		CategoryID:    catID,
+		Title:         input.Title,
+		Slug:          slug,
+		Description:   input.Description,
+		Type:          input.Type,
+		Modality:      input.Modality,
+		Price:         input.Price,
+		Currency:      input.Currency,
+		Capacity:      input.Capacity,
+		Location:      input.Location,
+		OnlineURL:     input.OnlineURL,
+		Status:        input.Status,
+	}
+	if err := db.DB.Create(&w).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al crear taller: " + err.Error()})
 		return
 	}
@@ -75,13 +80,13 @@ func CreateWorkshop(c *gin.Context) {
 		if s.StartsAt == "" || s.EndsAt == "" {
 			continue
 		}
-		db.Pool.Exec(context.Background(),
-			`INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES ($1,$2,$3,$4)`,
-			workshopID, s.StartsAt, s.EndsAt, s.Notes,
+		db.DB.Exec(
+			`INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES (?,?,?,?)`,
+			w.ID, s.StartsAt, s.EndsAt, s.Notes,
 		)
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": gin.H{"id": workshopID, "slug": slug}})
+	c.JSON(http.StatusCreated, gin.H{"data": gin.H{"id": w.ID, "slug": slug}})
 }
 
 func GetMyWorkshop(c *gin.Context) {
@@ -89,69 +94,54 @@ func GetMyWorkshop(c *gin.Context) {
 	id := c.Param("id")
 
 	var w Workshop
-	err := db.Pool.QueryRow(context.Background(), `
-		SELECT w.id, w.title, w.slug, COALESCE(w.description,''),
+	result := db.DB.Raw(`
+		SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
 		       w.type, w.modality, w.price, w.currency,
-		       w.capacity, COALESCE(w.location,''), COALESCE(w.cover_image_url,''),
-		       w.status, COALESCE(w.created_at::text,''),
-		       COALESCE(c.id::text,''), COALESCE(c.name,''), COALESCE(c.slug,''),
-		       COALESCE(p.name,''), COALESCE(p.bio,'')
+		       w.capacity, COALESCE(w.location,'') as location,
+		       COALESCE(w.online_url,'') as online_url,
+		       COALESCE(w.cover_image_url,'') as cover_image_url,
+		       w.status, COALESCE(w.created_at::text,'') as created_at,
+		       COALESCE(c.id::text,'') as category_id,
+		       COALESCE(c.name,'') as category_name,
+		       COALESCE(c.slug,'') as category_slug,
+		       COALESCE(p.name,'') as instructor_name,
+		       COALESCE(p.bio,'') as instructor_bio
 		FROM workshops w
 		LEFT JOIN categories c ON c.id = w.category_id
 		LEFT JOIN profiles p ON p.user_id = w.instructor_id
-		WHERE w.id = $1 AND w.instructor_id = $2`, id, userID,
-	).Scan(
-		&w.ID, &w.Title, &w.Slug, &w.Description,
-		&w.Type, &w.Modality, &w.Price, &w.Currency,
-		&w.Capacity, &w.Location, &w.CoverImageURL,
-		&w.Status, &w.CreatedAt,
-		&w.CategoryID, &w.CategoryName, &w.CategorySlug,
-		&w.InstructorName, &w.InstructorBio,
-	)
-	if err != nil {
+		WHERE w.id = ? AND w.instructor_id = ?`, id, userID,
+	).Scan(&w)
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})
 		return
 	}
 
 	if w.Type == "class" {
-		// Return schedules for class-type workshops
-		schedRows, err := db.Pool.Query(context.Background(), `
-			SELECT id, workshop_id, days_of_week, time_start::text, duration_min,
-			       valid_from::text, valid_until::text, created_at::text
+		var schedRows []schedRowRaw
+		db.DB.Raw(`
+			SELECT id, workshop_id,
+			       array_to_string(days_of_week, ',') as days_str,
+			       time_start::text as time_start, duration_min,
+			       valid_from::text as valid_from, valid_until::text as valid_until,
+			       created_at::text as created_at
 			FROM schedules
-			WHERE workshop_id = $1
+			WHERE workshop_id = ?
 			  AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
-			ORDER BY valid_from, time_start`, w.ID)
-		if err == nil {
-			defer schedRows.Close()
-			for schedRows.Next() {
-				var s Schedule
-				var validUntil *string
-				if schedRows.Scan(&s.ID, &s.WorkshopID, &s.DaysOfWeek, &s.TimeStart, &s.DurationMin,
-					&s.ValidFrom, &validUntil, &s.CreatedAt) == nil {
-					s.ValidUntil = validUntil
-					w.Schedules = append(w.Schedules, s)
-				}
-			}
-		}
+			ORDER BY valid_from, time_start`, w.ID,
+		).Scan(&schedRows)
+		w.Schedules = rowsToSchedules(schedRows)
 	} else {
-		srows, err := db.Pool.Query(context.Background(),
-			`SELECT id, starts_at::text, ends_at::text, COALESCE(notes,'')
-			 FROM sessions WHERE workshop_id = $1 AND schedule_id IS NULL ORDER BY starts_at`, w.ID)
-		if err == nil {
-			defer srows.Close()
-			for srows.Next() {
-				var s Session
-				if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Notes) == nil {
-					w.Sessions = append(w.Sessions, s)
-				}
-			}
-		}
+		var sessions []Session
+		db.DB.Raw(`
+			SELECT id, starts_at::text as starts_at, ends_at::text as ends_at,
+			       COALESCE(notes,'') as notes
+			FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL ORDER BY starts_at`, w.ID,
+		).Scan(&sessions)
+		w.Sessions = sessions
 	}
 
-	// Agregar conteo de reservas confirmadas para que el frontend sepa qué campos deshabilitar.
-	db.Pool.QueryRow(context.Background(),
-		`SELECT COUNT(*) FROM bookings WHERE workshop_id = $1 AND status = 'confirmed'`, w.ID,
+	db.DB.Raw(
+		`SELECT COUNT(*) FROM bookings WHERE workshop_id = ? AND status = 'confirmed'`, w.ID,
 	).Scan(&w.BookingsCount) //nolint:errcheck
 
 	c.JSON(http.StatusOK, gin.H{"data": w})
@@ -166,6 +156,7 @@ type updateWorkshopInput struct {
 	Currency    string         `json:"currency"`
 	Capacity    *int           `json:"capacity"`
 	Location    string         `json:"location"`
+	OnlineURL   string         `json:"online_url"`
 	CategoryID  string         `json:"category_id"`
 	Status      string         `json:"status"`
 	Sessions    []sessionInput `json:"sessions"`
@@ -188,33 +179,31 @@ func UpdateWorkshop(c *gin.Context) {
 		input.Status = "draft"
 	}
 
-	// Cargar estado actual del taller para validaciones.
-	var currentType, currentStatus string
-	var currentPrice float64
-	var currentCapacity *int
-	err := db.Pool.QueryRow(context.Background(),
-		`SELECT type, status, price, capacity FROM workshops WHERE id = $1 AND instructor_id = $2`, id, userID,
-	).Scan(&currentType, &currentStatus, &currentPrice, &currentCapacity)
-	if err != nil {
+	var current struct {
+		Type     string  `gorm:"column:type"`
+		Status   string  `gorm:"column:status"`
+		Price    float64 `gorm:"column:price"`
+		Capacity *int    `gorm:"column:capacity"`
+	}
+	res := db.DB.Raw(
+		`SELECT type, status, price, capacity FROM workshops WHERE id = ? AND instructor_id = ?`, id, userID,
+	).Scan(&current)
+	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o sin permisos"})
 		return
 	}
 
-	// Contar reservas confirmadas del taller.
-	var confirmedBookings int
-	db.Pool.QueryRow(context.Background(),
-		`SELECT COUNT(*) FROM bookings WHERE workshop_id = $1 AND status = 'confirmed'`, id,
+	var confirmedBookings int64
+	db.DB.Raw(
+		`SELECT COUNT(*) FROM bookings WHERE workshop_id = ? AND status = 'confirmed'`, id,
 	).Scan(&confirmedBookings) //nolint:errcheck
 
-	// Si hay reservas confirmadas, los campos precio y cupos se mantienen sin cambio.
-	// Solo se permiten modificar: título, descripción, modalidad, ubicación y categoría.
 	if confirmedBookings > 0 {
-		input.Price = currentPrice
-		input.Capacity = currentCapacity
+		input.Price = current.Price
+		input.Capacity = current.Capacity
 	}
 
-	// Si se intenta pasar a borrador desde publicado, validar reservas activas.
-	if input.Status == "draft" && currentStatus == "published" {
+	if input.Status == "draft" && current.Status == "published" {
 		if count := activeBookingsCount(id); count > 0 {
 			c.JSON(http.StatusConflict, gin.H{
 				"message":         fmt.Sprintf("El taller tiene %d reserva(s) activa(s). No se puede cambiar a borrador hasta que pasen todas las sesiones reservadas.", count),
@@ -224,7 +213,7 @@ func UpdateWorkshop(c *gin.Context) {
 		}
 	}
 
-	if input.Type != "" && input.Type != currentType {
+	if input.Type != "" && input.Type != current.Type {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "El tipo de taller no puede modificarse después de creado"})
 		return
 	}
@@ -234,34 +223,33 @@ func UpdateWorkshop(c *gin.Context) {
 		catID = &input.CategoryID
 	}
 
-	result, err := db.Pool.Exec(context.Background(),
-		`UPDATE workshops
-		 SET title=$1, description=$2, type=$3, modality=$4,
-		     price=$5, currency=$6, capacity=$7, location=$8,
-		     category_id=$9, status=$10, updated_at=NOW()
-		 WHERE id=$11 AND instructor_id=$12`,
-		input.Title, input.Description, currentType, input.Modality,
+	result := db.DB.Exec(`
+		UPDATE workshops
+		SET title=?, description=?, type=?, modality=?,
+		    price=?, currency=?, capacity=?, location=?,
+		    online_url=?, category_id=?, status=?, updated_at=NOW()
+		WHERE id=? AND instructor_id=?`,
+		input.Title, input.Description, current.Type, input.Modality,
 		input.Price, input.Currency, input.Capacity, input.Location,
-		catID, input.Status, id, userID,
+		input.OnlineURL, catID, input.Status, id, userID,
 	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al actualizar taller: " + err.Error()})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al actualizar taller: " + result.Error.Error()})
 		return
 	}
-	if result.RowsAffected() == 0 {
+	if result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o sin permisos"})
 		return
 	}
 
-	// Reemplazar sesiones solo si no hay reservas confirmadas.
 	if confirmedBookings == 0 {
-		db.Pool.Exec(context.Background(), `DELETE FROM sessions WHERE workshop_id = $1 AND schedule_id IS NULL`, id)
+		db.DB.Exec(`DELETE FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL`, id)
 		for _, s := range input.Sessions {
 			if s.StartsAt == "" || s.EndsAt == "" {
 				continue
 			}
-			db.Pool.Exec(context.Background(),
-				`INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES ($1,$2,$3,$4)`,
+			db.DB.Exec(
+				`INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES (?,?,?,?)`,
 				id, s.StartsAt, s.EndsAt, s.Notes,
 			)
 		}
@@ -273,32 +261,29 @@ func UpdateWorkshop(c *gin.Context) {
 // activeBookingsCount devuelve la cantidad de reservas confirmadas con sesiones futuras
 // o reservas directas (sin sesión) para el workshop dado.
 func activeBookingsCount(workshopID string) int {
-	ctx := context.Background()
-	var sessionBookings, directBookings int
-	db.Pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM bookings b
-		 JOIN sessions s ON s.id = b.session_id
-		 WHERE b.workshop_id = $1
-		   AND b.status = 'confirmed'
-		   AND s.starts_at > NOW()`, workshopID,
+	var sessionBookings, directBookings int64
+	db.DB.Raw(`
+		SELECT COUNT(*) FROM bookings b
+		JOIN sessions s ON s.id = b.session_id
+		WHERE b.workshop_id = ?
+		  AND b.status = 'confirmed'
+		  AND s.starts_at > NOW()`, workshopID,
 	).Scan(&sessionBookings) //nolint:errcheck
-	db.Pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM bookings
-		 WHERE workshop_id = $1 AND status = 'confirmed' AND session_id IS NULL`, workshopID,
+	db.DB.Raw(`
+		SELECT COUNT(*) FROM bookings
+		WHERE workshop_id = ? AND status = 'confirmed' AND session_id IS NULL`, workshopID,
 	).Scan(&directBookings) //nolint:errcheck
-	return sessionBookings + directBookings
+	return int(sessionBookings + directBookings)
 }
 
 // DeleteWorkshop handles DELETE /api/v1/workshops/:id.
-// Soft-archives the workshop (status = 'archived'). Only the owner can do this.
 func DeleteWorkshop(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	id := c.Param("id")
 
-	// Verify ownership before checking bookings
 	var exists bool
-	db.Pool.QueryRow(context.Background(),
-		`SELECT true FROM workshops WHERE id = $1 AND instructor_id = $2 AND status != 'archived'`, id, userID,
+	db.DB.Raw(
+		`SELECT true FROM workshops WHERE id = ? AND instructor_id = ? AND status != 'archived'`, id, userID,
 	).Scan(&exists) //nolint:errcheck
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o ya archivado"})
@@ -313,16 +298,16 @@ func DeleteWorkshop(c *gin.Context) {
 		return
 	}
 
-	result, err := db.Pool.Exec(context.Background(),
-		`UPDATE workshops SET status = 'archived', updated_at = NOW()
-		 WHERE id = $1 AND instructor_id = $2 AND status != 'archived'`,
+	result := db.DB.Exec(`
+		UPDATE workshops SET status = 'archived', updated_at = NOW()
+		WHERE id = ? AND instructor_id = ? AND status != 'archived'`,
 		id, userID,
 	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al archivar taller: " + err.Error()})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al archivar taller: " + result.Error.Error()})
 		return
 	}
-	if result.RowsAffected() == 0 {
+	if result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o ya archivado"})
 		return
 	}
@@ -333,40 +318,26 @@ func DeleteWorkshop(c *gin.Context) {
 func GetMyWorkshops(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	rows, err := db.Pool.Query(context.Background(),
-		`SELECT w.id, w.title, w.slug, COALESCE(w.description,''),
-		        w.type, w.modality, w.price, w.currency,
-		        w.capacity, COALESCE(w.location,''), COALESCE(w.cover_image_url,''),
-		        w.status, COALESCE(w.created_at::text,''),
-		        COALESCE(c.id::text,''), COALESCE(c.name,''), COALESCE(c.slug,''),
-		        COALESCE(p.name,'')
-		 FROM workshops w
-		 LEFT JOIN categories c ON c.id = w.category_id
-		 LEFT JOIN profiles p ON p.user_id = w.instructor_id
-		 WHERE w.instructor_id = $1
-		 ORDER BY w.created_at DESC`,
-		userID,
-	)
-	if err != nil {
+	var workshops []Workshop
+	if err := db.DB.Raw(`
+		SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
+		       w.type, w.modality, w.price, w.currency,
+		       w.capacity, COALESCE(w.location,'') as location,
+		       COALESCE(w.online_url,'') as online_url,
+		       COALESCE(w.cover_image_url,'') as cover_image_url,
+		       w.status, COALESCE(w.created_at::text,'') as created_at,
+		       COALESCE(c.id::text,'') as category_id,
+		       COALESCE(c.name,'') as category_name,
+		       COALESCE(c.slug,'') as category_slug,
+		       COALESCE(p.name,'') as instructor_name
+		FROM workshops w
+		LEFT JOIN categories c ON c.id = w.category_id
+		LEFT JOIN profiles p ON p.user_id = w.instructor_id
+		WHERE w.instructor_id = ?
+		ORDER BY w.created_at DESC`, userID,
+	).Scan(&workshops).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener talleres"})
 		return
-	}
-	defer rows.Close()
-
-	workshops := []Workshop{}
-	for rows.Next() {
-		var w Workshop
-		if err := rows.Scan(
-			&w.ID, &w.Title, &w.Slug, &w.Description,
-			&w.Type, &w.Modality, &w.Price, &w.Currency,
-			&w.Capacity, &w.Location, &w.CoverImageURL,
-			&w.Status, &w.CreatedAt,
-			&w.CategoryID, &w.CategoryName, &w.CategorySlug,
-			&w.InstructorName,
-		); err != nil {
-			continue
-		}
-		workshops = append(workshops, w)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": workshops})
@@ -384,3 +355,4 @@ func slugify(s string) string {
 	s = strings.Trim(s, "-")
 	return fmt.Sprintf("%s-%d", s, time.Now().UnixMilli()%100000)
 }
+

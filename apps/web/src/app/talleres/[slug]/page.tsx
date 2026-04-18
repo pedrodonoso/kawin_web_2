@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Users, Calendar, Clock, Globe, CheckCircle, Instagram, Facebook, Phone, MessageCircle } from "lucide-react";
+import { MapPin, Users, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { BookingButton } from "./BookingButton";
+import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
 import { DescriptionSection } from "./DescriptionSection";
 import { ShareButtons } from "./ShareButtons";
 import Link from "next/link";
@@ -73,7 +74,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
 
   if (!workshop) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center gap-4 text-zinc-500">
+      <main className="min-h-screen flex flex-col items-center justify-center gap-4 text-muted-foreground">
         <p className="text-xl font-semibold">Taller no encontrado</p>
         <Button asChild variant="outline">
           <Link href="/buscar">Ver todos los talleres</Link>
@@ -97,9 +98,9 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
 
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       {/* Cover */}
-      <div className="bg-zinc-900 h-56 flex items-center justify-center text-zinc-600">
+      <div className="bg-primary h-56 flex items-center justify-center text-primary-foreground/30">
         {workshop.cover_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -126,7 +127,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             </div>
             <h1 className="text-3xl font-bold">{workshop.title}</h1>
             {workshop.instructor && (
-              <p className="text-zinc-500 mt-2">por {workshop.instructor.name}</p>
+              <p className="text-muted-foreground mt-2">por {workshop.instructor.name}</p>
             )}
           </div>
 
@@ -139,9 +140,9 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           {workshop.schedule && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold">Horario</h2>
-              <div className="flex items-center gap-3 p-4 border rounded-lg bg-amber-50 border-amber-200">
-                <Clock className="h-5 w-5 text-amber-600 shrink-0" />
-                <p className="text-amber-900 font-medium">{workshop.schedule}</p>
+              <div className="flex items-center gap-3 p-4 border rounded-lg bg-accent/10 border-accent/30">
+                <Clock className="h-5 w-5 text-accent shrink-0" />
+                <p className="text-foreground font-medium">{workshop.schedule}</p>
               </div>
             </div>
           )}
@@ -152,9 +153,9 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
               <h2 className="text-xl font-semibold">Horario</h2>
               <div className="space-y-2">
                 {workshop.schedules.map((sch) => (
-                  <div key={sch.id} className="flex items-center gap-3 p-3 border rounded-lg bg-amber-50 border-amber-200">
-                    <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-                    <p className="text-amber-900 text-sm font-medium">{formatScheduleRule(sch)}</p>
+                  <div key={sch.id} className="flex items-center gap-3 p-3 border rounded-lg bg-accent/10 border-accent/30">
+                    <Clock className="h-4 w-4 text-accent shrink-0" />
+                    <p className="text-foreground text-sm font-medium">{formatScheduleRule(sch)}</p>
                   </div>
                 ))}
               </div>
@@ -178,7 +179,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           {workshop.type === "class" && (!workshop.sessions || workshop.sessions.length === 0) && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Próximas clases</h2>
-              <div className="p-6 border rounded-lg bg-zinc-50 text-center text-zinc-500 text-sm">
+              <div className="p-6 border rounded-lg bg-secondary/50 text-center text-muted-foreground text-sm">
                 Aún no hay clases programadas. Vuelve pronto.
               </div>
             </div>
@@ -194,25 +195,25 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                     ? workshop.capacity - (workshop.bookings_count ?? 0)
                     : null;
                   return workshop.sessions!.map((s) => (
-                    <div key={s.id} className={`flex items-start gap-3 p-4 border rounded-lg bg-white ${s.cancelled ? "opacity-60" : ""}`}>
-                      <Calendar className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
+                    <div key={s.id} className={`flex items-start gap-3 p-4 border rounded-lg bg-card ${s.cancelled ? "opacity-60" : ""}`}>
+                      <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                       <div>
-                        <p className={`font-medium capitalize ${s.cancelled ? "line-through text-zinc-400" : ""}`}>
+                        <p className={`font-medium capitalize ${s.cancelled ? "line-through text-muted-foreground/70" : ""}`}>
                           {formatDate(s.starts_at)}
                         </p>
-                        <p className="text-sm text-zinc-500 flex items-center gap-1 mt-0.5">
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
                           <Clock className="h-3 w-3" />
                           {formatTime(s.starts_at, s.ends_at)}
                         </p>
                         {!s.cancelled && spotsLeft !== null && (
-                          <p className="text-xs mt-1 text-zinc-400">
+                          <p className="text-xs mt-1 text-muted-foreground">
                             {spotsLeft <= 0
                               ? "Sin cupos disponibles"
                               : `${spotsLeft} cupo${spotsLeft !== 1 ? "s" : ""} disponible${spotsLeft !== 1 ? "s" : ""}`}
                           </p>
                         )}
                         {s.notes && (
-                          <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
+                          <p className="text-xs text-muted-foreground/70 mt-1 flex items-center gap-1">
                             <CheckCircle className="h-3 w-3 text-green-500" />
                             {s.notes}
                           </p>
@@ -229,7 +230,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           {workshop.instructor && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">El tallerista</h2>
-              <div className="flex items-start gap-4 p-4 border rounded-lg bg-white">
+              <div className="flex items-start gap-4 p-4 border rounded-lg bg-card">
                 <Avatar className="h-14 w-14 shrink-0">
                   <AvatarFallback className="text-lg">
                     {workshop.instructor.name[0]}
@@ -238,7 +239,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                 <div>
                   <p className="font-semibold">{workshop.instructor.name}</p>
                   {workshop.instructor.bio && (
-                    <p className="text-sm text-zinc-600 mt-1 leading-relaxed">
+                    <p className="text-sm text-foreground/60 mt-1 leading-relaxed">
                       {workshop.instructor.bio}
                     </p>
                   )}
@@ -249,7 +250,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                           href={`https://wa.me/${workshop.instructor_whatsapp.replace(/\D/g, "")}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-green-600"
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-green-600"
                         >
                           <MessageCircle className="h-4 w-4" />
                           WhatsApp
@@ -258,7 +259,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                       {workshop.instructor_phone && (
                         <a
                           href={`tel:${workshop.instructor_phone}`}
-                          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                         >
                           <Phone className="h-4 w-4" />
                           {workshop.instructor_phone}
@@ -269,7 +270,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                           href={workshop.instructor_instagram}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                         >
                           <Instagram className="h-4 w-4" />
                           Instagram
@@ -280,7 +281,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                           href={workshop.instructor_facebook}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                         >
                           <Facebook className="h-4 w-4" />
                           Facebook
@@ -303,7 +304,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                   ? "Gratis"
                   : `$${workshop.price.toLocaleString("es-CL")}`}
                 {workshop.price > 0 && (
-                  <span className="text-base font-normal text-zinc-500 ml-1">
+                  <span className="text-base font-normal text-muted-foreground ml-1">
                     {workshop.currency}
                   </span>
                 )}
@@ -313,19 +314,19 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
               {/* Details */}
               <div className="space-y-2 text-sm">
                 {workshop.location && (
-                  <div className="flex items-center gap-2 text-zinc-600">
+                  <div className="flex items-center gap-2 text-foreground/60">
                     <MapPin className="h-4 w-4 shrink-0" />
                     {workshop.location}
                   </div>
                 )}
-                {workshop.modality === "online" && (
-                  <div className="flex items-center gap-2 text-zinc-600">
-                    <Globe className="h-4 w-4 shrink-0" />
-                    Sesión online (link al confirmar)
-                  </div>
+                {(workshop.modality === "online" || workshop.modality === "hybrid") && (
+                  <OnlineUrlDisplay
+                    workshopId={workshop.id}
+                    workshopOnlineUrl={workshop.online_url}
+                  />
                 )}
                 {workshop.capacity && (
-                  <div className="flex items-center gap-2 text-zinc-600">
+                  <div className="flex items-center gap-2 text-foreground/60">
                     <Users className="h-4 w-4 shrink-0" />
                     {workshop.capacity - (workshop.bookings_count ?? 0) > 0
                       ? `${workshop.capacity - (workshop.bookings_count ?? 0)} de ${workshop.capacity} cupos disponibles`

@@ -66,7 +66,7 @@ export default function RegistroPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-65px)] flex items-center justify-center px-4 bg-zinc-50 py-12">
+    <main className="min-h-[calc(100vh-65px)] flex items-center justify-center px-4 bg-background py-12">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Crear cuenta</CardTitle>
@@ -83,16 +83,16 @@ export default function RegistroPage() {
                   onClick={() => setRole(r.id)}
                   className={`flex flex-col items-start gap-2 p-4 border-2 rounded-xl text-left transition-all ${
                     role === r.id
-                      ? "border-zinc-900 bg-zinc-50"
-                      : "border-zinc-200 hover:border-zinc-400"
+                      ? "border-primary bg-secondary"
+                      : "border-border hover:border-primary/50"
                   }`}
                 >
-                  <div className={role === r.id ? "text-zinc-900" : "text-zinc-400"}>
+                  <div className={role === r.id ? "text-primary" : "text-muted-foreground"}>
                     {r.icon}
                   </div>
                   <div>
                     <p className="font-semibold text-sm">{r.label}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">{r.description}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{r.description}</p>
                   </div>
                   {role === r.id && (
                     <Badge variant="secondary" className="text-xs mt-1">
@@ -141,9 +141,9 @@ export default function RegistroPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creando cuenta..." : "Crear cuenta"}
             </Button>
-            <p className="text-sm text-zinc-500 text-center">
+            <p className="text-sm text-muted-foreground text-center">
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="text-zinc-900 font-medium hover:underline">
+              <Link href="/login" className="text-foreground font-medium hover:underline">
                 Inicia sesión
               </Link>
             </p>

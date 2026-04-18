@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, X, AlertCircle, Globe, Check, Pencil } from "lucide-react";
 import Link from "next/link";
 import { api, type AvailableSlot, type ApiResponse } from "@/lib/api";
 
@@ -60,7 +60,7 @@ function statusLabel(status: SlotStatus, bookingCount?: number): string {
 
 function statusColor(status: SlotStatus): string {
   switch (status) {
-    case "not_materialized": return "border-dashed border-zinc-300 bg-zinc-50 text-zinc-400";
+    case "not_materialized": return "border-dashed border-border bg-background text-muted-foreground/70";
     case "available": return "border-green-200 bg-green-50 text-green-800";
     case "full": return "border-amber-200 bg-amber-50 text-amber-800";
     case "cancelled": return "border-red-100 bg-red-50 text-red-400 opacity-60";
@@ -79,6 +79,8 @@ export default function CalendarioTallerPage() {
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [workshopTitle, setWorkshopTitle] = useState("");
   const [operating, setOperating] = useState<string | null>(null); // slot key being operated on
+  const [editingURL, setEditingURL] = useState<string | null>(null);   // session_id editando url
+  const [urlDraft, setUrlDraft] = useState("");
 
   const weekEnd = addDays(weekStart, 6);
   const fromStr = toYMD(weekStart);
@@ -156,6 +158,18 @@ export default function CalendarioTallerPage() {
     }
   }
 
+  async function handleUpdateURL(slot: AvailableSlot) {
+    if (!slot.session_id) return;
+    try {
+      await api.patch(`/api/v1/sessions/${slot.session_id}/url`, { online_url: urlDraft });
+      toast.success("Link actualizado");
+      setEditingURL(null);
+      await loadSlots();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar link");
+    }
+  }
+
   // ——— Render ——————————————————————————————————————————————————
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -168,7 +182,7 @@ export default function CalendarioTallerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -181,13 +195,13 @@ export default function CalendarioTallerPage() {
           <div>
             <h1 className="text-2xl font-bold">Calendario de sesiones</h1>
             {workshopTitle && (
-              <p className="text-sm text-zinc-400 truncate max-w-xs">{workshopTitle}</p>
+              <p className="text-sm text-muted-foreground/70 truncate max-w-xs">{workshopTitle}</p>
             )}
           </div>
         </div>
 
         {/* Leyenda */}
-        <div className="flex flex-wrap gap-3 text-xs text-zinc-600">
+        <div className="flex flex-wrap gap-3 text-xs text-foreground/60">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded border border-dashed border-zinc-400 inline-block" />
             Disponible para crear
@@ -211,7 +225,7 @@ export default function CalendarioTallerPage() {
           <Button variant="outline" size="sm" onClick={() => setWeekStart((w) => addDays(w, -7))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm font-medium text-zinc-700 min-w-48 text-center">
+          <span className="text-sm font-medium text-foreground/70 min-w-48 text-center">
             {weekStart.toLocaleDateString("es-CL", { day: "numeric", month: "long" })}
             {" – "}
             {weekEnd.toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })}
@@ -219,7 +233,7 @@ export default function CalendarioTallerPage() {
           <Button variant="outline" size="sm" onClick={() => setWeekStart((w) => addDays(w, 7))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="ml-2 text-zinc-500" onClick={() => setWeekStart(startOfWeek(new Date()))}>
+          <Button variant="ghost" size="sm" className="ml-2 text-muted-foreground" onClick={() => setWeekStart(startOfWeek(new Date()))}>
             Hoy
           </Button>
         </div>
@@ -244,13 +258,13 @@ export default function CalendarioTallerPage() {
               return (
                 <div key={ymd} className="space-y-2">
                   {/* Cabecera del día */}
-                  <div className={`text-center py-1 rounded text-xs font-semibold ${isToday ? "bg-zinc-900 text-white" : "text-zinc-500"}`}>
+                  <div className={`text-center py-1 rounded text-xs font-semibold ${isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
                     {formatHeader(day)}
                   </div>
 
                   {/* Slots del día */}
                   {daySlots.length === 0 ? (
-                    <div className="min-h-16 border border-dashed border-zinc-200 rounded-lg" />
+                    <div className="min-h-16 border border-dashed border-border rounded-lg" />
                   ) : (
                     daySlots.map((slot) => {
                       const key = slotKey(slot);
@@ -266,7 +280,7 @@ export default function CalendarioTallerPage() {
                         >
                           <div className="font-semibold">
                             {formatTime(slot.time)}
-                            <span className="font-normal text-zinc-400 ml-1">({slot.duration_min}m)</span>
+                            <span className="font-normal text-muted-foreground/70 ml-1">({slot.duration_min}m)</span>
                           </div>
 
                           <div className="text-xs leading-tight">
@@ -274,7 +288,7 @@ export default function CalendarioTallerPage() {
                           </div>
 
                           {slot.spots_remaining !== undefined && slot.status !== "not_materialized" && (
-                            <div className="text-xs text-zinc-500">
+                            <div className="text-xs text-muted-foreground">
                               {slot.spots_remaining} cupo{slot.spots_remaining !== 1 ? "s" : ""} libre{slot.spots_remaining !== 1 ? "s" : ""}
                             </div>
                           )}
@@ -284,7 +298,7 @@ export default function CalendarioTallerPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="w-full h-6 text-xs border-zinc-300"
+                              className="w-full h-6 text-xs border-border"
                               disabled={busy}
                               onClick={() => handleMaterialize(slot)}
                             >
@@ -296,7 +310,7 @@ export default function CalendarioTallerPage() {
                           {(slot.status === "available" || slot.status === "full") && (
                             slot.booking_count > 0 ? (
                               <div
-                                className="w-full h-6 text-xs text-zinc-400 text-center flex items-center justify-center gap-1"
+                                className="w-full h-6 text-xs text-muted-foreground/70 text-center flex items-center justify-center gap-1"
                                 title={`${slot.booking_count} reserva(s) activa(s) — no se puede cancelar`}
                               >
                                 <X className="h-3 w-3" />
@@ -315,6 +329,56 @@ export default function CalendarioTallerPage() {
                               </Button>
                             )
                           )}
+
+                          {/* Link online — editable por sesión */}
+                          {slot.session_id && (
+                            editingURL === slot.session_id ? (
+                              <div className="flex gap-1 mt-1">
+                                <input
+                                  className="flex-1 text-xs border rounded px-1 py-0.5 min-w-0"
+                                  placeholder="https://meet.google.com/..."
+                                  value={urlDraft}
+                                  onChange={(e) => setUrlDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleUpdateURL(slot);
+                                    if (e.key === "Escape") setEditingURL(null);
+                                  }}
+                                  autoFocus
+                                />
+                                <button
+                                  className="text-green-600 hover:text-green-700 shrink-0"
+                                  onClick={() => handleUpdateURL(slot)}
+                                  title="Guardar"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Globe className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                                {slot.online_url ? (
+                                  <a
+                                    href={slot.online_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:underline truncate flex-1"
+                                    title={slot.online_url}
+                                  >
+                                    {slot.online_url.replace(/^https?:\/\//, "").slice(0, 22)}…
+                                  </a>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/70 italic flex-1">Sin link</span>
+                                )}
+                                <button
+                                  className="text-muted-foreground/70 hover:text-foreground/60 shrink-0"
+                                  onClick={() => { setEditingURL(slot.session_id!); setUrlDraft(slot.online_url ?? ""); }}
+                                  title="Editar link"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )
+                          )}
                         </div>
                       );
                     })
@@ -327,7 +391,7 @@ export default function CalendarioTallerPage() {
 
         {/* Estado vacío */}
         {!loading && slots.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-16 text-zinc-400">
+          <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground/70">
             <AlertCircle className="h-8 w-8" />
             <p className="text-sm">No hay reglas de horario activas para este período.</p>
             <Button variant="outline" size="sm" asChild>

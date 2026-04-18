@@ -45,11 +45,13 @@ func Register(r *gin.Engine) {
 			// Sessions — calendario del tallerista
 			auth.POST("/sessions/materialize", handlers.MaterializeSession)
 			auth.POST("/sessions/cancel", handlers.CancelSession)
+			auth.PATCH("/sessions/:id/url", handlers.UpdateSessionURL)
 			auth.GET("/workshops/:id/available-slots", handlers.GetAvailableSlots)
 
 			// Bookings
 			auth.POST("/bookings", handlers.CreateBooking)
 			auth.GET("/my-bookings", handlers.GetMyBookings)
+			auth.POST("/bookings/:id/cancel", handlers.CancelBooking)
 			auth.POST("/bookings/:id/migrate", handlers.MigrateBooking)
 			auth.POST("/bookings/:id/refund", handlers.RefundBooking)
 			auth.GET("/instructor-bookings", handlers.GetInstructorBookings)
