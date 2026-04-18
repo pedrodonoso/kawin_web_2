@@ -54,9 +54,9 @@ const MOCK_WORKSHOPS: Workshop[] = [
 ];
 
 const statusStyle: Record<string, string> = {
-  published: "bg-green-100 text-green-700",
+  published: "bg-positive/15 text-positive",
   draft: "bg-yellow-100 text-yellow-700",
-  archived: "bg-zinc-100 text-zinc-500",
+  archived: "bg-muted text-muted-foreground",
 };
 
 const statusLabel: Record<string, string> = {
@@ -106,7 +106,7 @@ export default function DashboardPage() {
     }
   }
 
-  const published = workshops.filter((w) => w.status === "published").length;
+  const published = workshops?.filter((w) => w.status === "published").length;
   const now = new Date();
   const bookingsThisMonth = bookings?.filter((b) => {
     const d = new Date(b.created_at);
@@ -115,13 +115,13 @@ export default function DashboardPage() {
   const totalRevenue = bookings?.filter((b) => b.status === "confirmed").reduce((acc, b) => acc + b.amount, 0) ?? 0;
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Hola, {userName} 👋</h1>
-            <p className="text-zinc-500 mt-1">Gestiona tus talleres y reservas</p>
+            <p className="text-muted-foreground mt-1">Gestiona tus talleres y reservas</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>
@@ -195,11 +195,11 @@ export default function DashboardPage() {
                 </Card>
               ))}
             </div>
-          ) : workshops.length === 0 ? (
+          ) : !workshops?.length ? (
             <Card>
-              <CardContent className="py-16 text-center text-zinc-400">
+              <CardContent className="py-16 text-center text-muted-foreground">
                 <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-40" />
-                <p className="font-medium">Aún no tienes talleres</p>
+                <p className="font-medium">No existen talleres</p>
                 <p className="text-sm mt-1">Crea tu primer taller y comienza a recibir reservas.</p>
                 <Button className="mt-4" asChild>
                   <Link href="/dashboard/talleres/nuevo">
@@ -211,7 +211,7 @@ export default function DashboardPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {workshops.map((w) => (
+              {workshops?.map((w) => (
                 <Card key={w.id}>
                   <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
@@ -223,7 +223,7 @@ export default function DashboardPage() {
                           {statusLabel[w.status]}
                         </span>
                       </div>
-                      <p className="text-sm text-zinc-500">
+                      <p className="text-sm text-muted-foreground">
                         {w.type === "workshop" ? "Taller" : w.type === "course" ? "Curso" : "Clase"} ·{" "}
                         {w.modality === "in-person" ? "Presencial" : w.modality === "online" ? "Online" : "Híbrido"} ·{" "}
                         <span className="font-medium">
@@ -266,7 +266,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Reservas recientes</h2>
-            <Link href="/dashboard/reservas" className="text-sm text-zinc-500 hover:text-zinc-800 underline underline-offset-2">
+            <Link href="/dashboard/reservas" className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2">
               Ver todas
             </Link>
           </div>
@@ -284,7 +284,7 @@ export default function DashboardPage() {
             </Card>
           ) : !bookings?.length ? (
             <Card>
-              <CardContent className="py-10 text-center text-zinc-400 text-sm">
+              <CardContent className="py-10 text-center text-muted-foreground text-sm">
                 <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p>No existen reservas recientes.</p>
               </CardContent>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
               <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-zinc-50 text-zinc-500">
+                    <tr className="border-b bg-secondary/50 text-muted-foreground">
                       <th className="text-left px-4 py-3 font-medium">Estudiante</th>
                       <th className="text-left px-4 py-3 font-medium">Taller</th>
                       <th className="text-left px-4 py-3 font-medium">Fecha/Hora sesión</th>
@@ -304,10 +304,10 @@ export default function DashboardPage() {
                   </thead>
                   <tbody>
                     {bookings?.slice(0, 10).map((b) => (
-                      <tr key={b.booking_id} className="border-b last:border-0 hover:bg-zinc-50">
+                      <tr key={b.booking_id} className="border-b last:border-0 hover:bg-secondary/30">
                         <td className="px-4 py-3">{b.student_name}</td>
-                        <td className="px-4 py-3 text-zinc-600 max-w-[180px] truncate">{b.workshop_title}</td>
-                        <td className="px-4 py-3 text-zinc-500">
+                        <td className="px-4 py-3 text-foreground/60 max-w-[180px] truncate">{b.workshop_title}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
                           {b.session_date
                             ? new Date(b.session_date).toLocaleString("es-CL", {
                                 day: "numeric",

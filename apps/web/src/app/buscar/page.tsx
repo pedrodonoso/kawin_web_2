@@ -146,16 +146,16 @@ function WorkshopCard({ w }: { w: Workshop }) {
   };
 
   const typeColor: Record<string, string> = {
-    workshop: "bg-violet-100 text-violet-700",
-    course: "bg-blue-100 text-blue-700",
-    class: "bg-emerald-100 text-emerald-700",
-    event: "bg-orange-100 text-orange-700",
+    workshop: "bg-primary/10 text-primary",
+    course: "bg-accent/20 text-accent",
+    class: "bg-accent/30 text-accent",
+    event: "bg-primary/15 text-primary",
   };
 
   return (
     <Link href={`/talleres/${w.slug}`}>
       <Card className="hover:shadow-md transition-shadow h-full">
-        <div className="bg-zinc-100 h-40 rounded-t-lg flex items-center justify-center text-zinc-400 text-sm">
+        <div className="bg-secondary h-40 rounded-t-lg flex items-center justify-center text-muted-foreground text-sm">
           {w.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={w.cover_image_url} alt={w.title} className="h-full w-full object-cover rounded-t-lg" />
@@ -171,7 +171,7 @@ function WorkshopCard({ w }: { w: Workshop }) {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeColor[w.type] ?? "bg-zinc-100 text-zinc-600"}`}>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeColor[w.type] ?? "bg-muted text-muted-foreground"}`}>
               {typeLabel[w.type] ?? w.type}
             </span>
           </div>
@@ -180,10 +180,10 @@ function WorkshopCard({ w }: { w: Workshop }) {
               {w.category.name}
             </Badge>
           )}
-          <p className="text-sm text-zinc-500 line-clamp-2">{w.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{w.description}</p>
           <Separator />
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-3 text-zinc-500">
+            <div className="flex items-center gap-3 text-muted-foreground">
               {w.modality === "online" ? (
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
@@ -200,14 +200,14 @@ function WorkshopCard({ w }: { w: Workshop }) {
                 {w.capacity ? `${w.capacity} cupos` : "Sin límite"}
               </span>
             </div>
-            <span className="font-bold text-zinc-900">
+            <span className="font-bold text-foreground">
               {w.price === 0
                 ? "Gratis"
                 : `$${w.price.toLocaleString("es-CL")} ${w.currency}`}
             </span>
           </div>
           {w.instructor && (
-            <p className="text-xs text-zinc-400">por {w.instructor.name}</p>
+            <p className="text-xs text-muted-foreground/70">por {w.instructor.name}</p>
           )}
         </CardContent>
       </Card>
@@ -278,13 +278,13 @@ export default function BuscarPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       {/* Search header */}
-      <div className="bg-white border-b px-4 py-6">
+      <div className="bg-card border-b px-4 py-6">
         <div className="max-w-6xl mx-auto space-y-4">
           <form onSubmit={handleSearch} className="flex gap-2 max-w-xl">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="¿Qué quieres aprender?"
                 value={query}
@@ -342,8 +342,8 @@ export default function BuscarPage() {
 
       {/* Results */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <p className="text-sm text-zinc-500 mb-6">
-          {loading ? "Buscando..." : `${workshops.length} resultado${workshops.length !== 1 ? "s" : ""}`}
+        <p className="text-sm text-muted-foreground mb-6">
+          {loading ? "Buscando..." : `${workshops?.length ?? 0} resultado${(workshops?.length ?? 0) !== 1 ? "s" : ""}`}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -352,11 +352,17 @@ export default function BuscarPage() {
             : workshops.map((w) => <WorkshopCard key={w.id} w={w} />)}
         </div>
 
-        {!loading && workshops.length === 0 && (
-          <div className="text-center py-20 text-zinc-400">
+        {!loading && !workshops?.length && (
+          <div className="text-center py-20 text-muted-foreground">
             <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="font-medium">No encontramos talleres con esos filtros.</p>
-            <p className="text-sm mt-1">Prueba con otras palabras o categorías.</p>
+            <p className="font-medium">
+              {query || modality !== "all" || type !== "all" || category !== "all"
+                ? "No encontramos talleres con esos filtros."
+                : "No existen talleres."}
+            </p>
+            {(query || modality !== "all" || type !== "all" || category !== "all") && (
+              <p className="text-sm mt-1">Prueba con otras palabras o categorías.</p>
+            )}
           </div>
         )}
       </div>
