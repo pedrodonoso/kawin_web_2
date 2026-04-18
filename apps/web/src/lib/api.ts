@@ -40,6 +40,8 @@ export const api = {
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+  patch: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
@@ -55,6 +57,7 @@ export interface Workshop {
   currency: string;
   capacity?: number;
   location?: string;
+  online_url?: string;
   cover_image_url?: string;
   status: "draft" | "published" | "archived";
   category?: { id: string; name: string; slug: string };
@@ -82,6 +85,7 @@ export interface Session {
   ends_at: string;
   cancelled?: boolean;
   notes?: string;
+  online_url?: string;
   spots_remaining?: number; // nil = sin límite de cupos
   booking_count?: number;
 }
@@ -111,6 +115,7 @@ export interface AvailableSlot {
   duration_min: number;
   schedule_id: string;
   session_id?: string;       // undefined = no materializado aún
+  online_url?: string;       // link personalizado de la sesión
   spots_remaining?: number;  // undefined = sin límite
   booking_count: number;     // reservas activas de esta sesión
   status: "not_materialized" | "available" | "full" | "cancelled";

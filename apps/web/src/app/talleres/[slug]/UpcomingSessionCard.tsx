@@ -166,9 +166,21 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
           <Skeleton className="h-8 w-32 rounded-md" />
         )}
         {!isCancelled && !checkingBooking && alreadyBooked && (
-          <Badge className="bg-green-100 text-green-700 text-xs px-2 py-1">
-            ✓ Reservado
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge className="bg-green-100 text-green-700 text-xs px-2 py-1">
+              ✓ Reservado
+            </Badge>
+            {session.online_url && (
+              <a
+                href={session.online_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Acceder →
+              </a>
+            )}
+          </div>
         )}
         {!isCancelled && !checkingBooking && !alreadyBooked && isFull && (
           <Badge variant="secondary" className="text-xs text-zinc-500">
