@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -17,22 +16,13 @@ type Category struct {
 }
 
 func GetCategories(c *gin.Context) {
-	rows, err := db.Pool.Query(context.Background(),
-		`SELECT id, name, slug, COALESCE(icon,''), COALESCE(description,'') FROM categories ORDER BY name`,
-	)
-	if err != nil {
+	var categories []Category
+	if err := db.DB.Raw(
+		`SELECT id, name, slug, COALESCE(icon,'') as icon, COALESCE(description,'') as description
+		 FROM categories ORDER BY name`,
+	).Scan(&categories).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener categorías"})
 		return
-	}
-	defer rows.Close()
-
-	categories := []Category{}
-	for rows.Next() {
-		var cat Category
-		if err := rows.Scan(&cat.ID, &cat.Name, &cat.Slug, &cat.Icon, &cat.Description); err != nil {
-			continue
-		}
-		categories = append(categories, cat)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": categories})

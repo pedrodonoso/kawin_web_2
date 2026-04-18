@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,15 +28,14 @@ type updateProfileInput struct {
 // GetMyProfile handles GET /api/v1/my-profile.
 func GetMyProfile(c *gin.Context) {
 	userID, _ := c.Get("userID")
-	ctx := context.Background()
 
 	var p profileResponse
-	err := db.Pool.QueryRow(ctx,
-		`SELECT COALESCE(name,''), COALESCE(bio,''), COALESCE(phone,''), COALESCE(whatsapp,''),
-		        COALESCE(instagram_url,''), COALESCE(facebook_url,'')
-		 FROM profiles WHERE user_id = $1`, userID,
-	).Scan(&p.Name, &p.Bio, &p.Phone, &p.Whatsapp, &p.InstagramURL, &p.FacebookURL)
-	if err != nil {
+	result := db.DB.Raw(`
+		SELECT COALESCE(name,'') as name, COALESCE(bio,'') as bio,
+		       COALESCE(phone,'') as phone, COALESCE(whatsapp,'') as whatsapp,
+		       COALESCE(instagram_url,'') as instagram_url, COALESCE(facebook_url,'') as facebook_url
+		FROM profiles WHERE user_id = ?`, userID).Scan(&p)
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Perfil no encontrado"})
 		return
 	}
@@ -55,14 +53,14 @@ func UpdateMyProfile(c *gin.Context) {
 		return
 	}
 
-	_, err := db.Pool.Exec(context.Background(),
-		`UPDATE profiles
-		 SET name=$1, bio=$2, phone=$3, whatsapp=$4,
-		     instagram_url=$5, facebook_url=$6, updated_at=NOW()
-		 WHERE user_id=$7`,
+	err := db.DB.Exec(`
+		UPDATE profiles
+		SET name=?, bio=?, phone=?, whatsapp=?,
+		    instagram_url=?, facebook_url=?, updated_at=NOW()
+		WHERE user_id=?`,
 		input.Name, input.Bio, input.Phone, input.Whatsapp,
 		input.InstagramURL, input.FacebookURL, userID,
-	)
+	).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al actualizar perfil: " + err.Error()})
 		return

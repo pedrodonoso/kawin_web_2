@@ -1,20 +1,42 @@
 package handlers
 
 import (
-	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pedrodonoso/kawin/api/internal/db"
+	"github.com/pedrodonoso/kawin/api/internal/models"
 )
 
-// createBookingInput is the request body for POST /api/v1/bookings.
-// Para type=class: se requiere session_id (sesión ya materializada por el tallerista).
-// Para otros tipos: solo workshop_id es requerido.
+// errNoCapacity is a sentinel used inside the CreateBooking transaction.
+var errNoCapacity = errors.New("no_capacity")
+
+// validBookingTransitions define la máquina de estados de booking_status.
+var validBookingTransitions = map[string][]string{
+	"pending":   {"confirmed", "cancelled"},
+	"confirmed": {"cancelled"},
+	"cancelled": {},
+}
+
+func validateBookingTransition(from, to string) error {
+	allowed, ok := validBookingTransitions[from]
+	if !ok {
+		return fmt.Errorf("estado de reserva desconocido: %s", from)
+	}
+	for _, s := range allowed {
+		if s == to {
+			return nil
+		}
+	}
+	return fmt.Errorf("transición de estado inválida: %s → %s", from, to)
+}
+
 type createBookingInput struct {
 	WorkshopID string `json:"workshop_id" binding:"required"`
-	SessionID  string `json:"session_id"` // requerido para talleres tipo class
+	SessionID  string `json:"session_id"`
 }
 
 type bookingResponse struct {
@@ -28,8 +50,6 @@ type bookingResponse struct {
 }
 
 // CreateBooking handles POST /api/v1/bookings.
-// For class workshops: materializes the session if needed, checks capacity, then books.
-// For other types: books directly against the workshop.
 func CreateBooking(c *gin.Context) {
 	studentID, _ := c.Get("userID")
 
@@ -39,46 +59,45 @@ func CreateBooking(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-
-	// Load workshop (price, capacity, type)
-	var workshopType string
-	var price float64
-	var capacity *int
-	err := db.Pool.QueryRow(ctx,
-		`SELECT type, price, capacity FROM workshops WHERE id = $1 AND status = 'published'`,
-		input.WorkshopID,
-	).Scan(&workshopType, &price, &capacity)
-	if err != nil {
+	var workshopInfo struct {
+		Type     string  `gorm:"column:type"`
+		Price    float64 `gorm:"column:price"`
+		Capacity *int    `gorm:"column:capacity"`
+	}
+	res := db.DB.Raw(
+		`SELECT type, price, capacity FROM workshops WHERE id = ? AND status = 'published'`, input.WorkshopID,
+	).Scan(&workshopInfo)
+	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})
 		return
 	}
 
+	price := workshopInfo.Price
 	commission := price * 0.15
 	var sessionID *string
 
-	if workshopType == "class" {
+	if workshopInfo.Type == "class" {
 		if input.SessionID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "session_id es requerido para talleres tipo class"})
 			return
 		}
 
-		// Cargar la sesión materializada y verificar que pertenece al taller
-		var sessionWorkshopID string
-		var cancelled bool
-		err = db.Pool.QueryRow(ctx,
-			`SELECT workshop_id, cancelled FROM sessions WHERE id = $1`,
-			input.SessionID,
-		).Scan(&sessionWorkshopID, &cancelled)
-		if err != nil {
+		var sessionInfo struct {
+			WorkshopID string `gorm:"column:workshop_id"`
+			Cancelled  bool   `gorm:"column:cancelled"`
+		}
+		res2 := db.DB.Raw(
+			`SELECT workshop_id::text as workshop_id, cancelled FROM sessions WHERE id = ?`, input.SessionID,
+		).Scan(&sessionInfo)
+		if res2.Error != nil || res2.RowsAffected == 0 {
 			c.JSON(http.StatusNotFound, gin.H{"message": "Sesión no encontrada"})
 			return
 		}
-		if sessionWorkshopID != input.WorkshopID {
+		if sessionInfo.WorkshopID != input.WorkshopID {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "La sesión no pertenece a este taller"})
 			return
 		}
-		if cancelled {
+		if sessionInfo.Cancelled {
 			c.JSON(http.StatusConflict, gin.H{"message": "Esta clase fue cancelada"})
 			return
 		}
@@ -86,39 +105,49 @@ func CreateBooking(c *gin.Context) {
 		sid := input.SessionID
 		sessionID = &sid
 
-		tx, err := db.Pool.Begin(ctx)
-		if err != nil {
+		var bookingID string
+		capacity := workshopInfo.Capacity
+
+		tx := db.DB.Begin()
+		if tx.Error != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al iniciar transacción"})
 			return
 		}
-		defer tx.Rollback(ctx) //nolint:errcheck
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
 
-		// Verificar cupos
 		if capacity != nil {
-			var count int
-			tx.QueryRow(ctx,
-				`SELECT COUNT(*) FROM bookings WHERE session_id = $1 AND status != 'cancelled'`,
-				sid,
+			var count int64
+			tx.Raw(
+				`SELECT COUNT(*) FROM bookings WHERE session_id = ? AND status != 'cancelled'`, sid,
 			).Scan(&count) //nolint:errcheck
-			if count >= *capacity {
+			if int(count) >= *capacity {
+				tx.Rollback()
 				c.JSON(http.StatusConflict, gin.H{"message": "No hay cupos disponibles para esta clase"})
 				return
 			}
 		}
 
-		var bookingID string
-		err = tx.QueryRow(ctx,
-			`INSERT INTO bookings (student_id, workshop_id, session_id, status, payment_status, amount, commission)
-			 VALUES ($1, $2, $3, 'confirmed', 'pending', $4, $5)
-			 RETURNING id`,
-			studentID.(string), input.WorkshopID, sid, price, commission,
-		).Scan(&bookingID)
-		if err != nil {
+		booking := models.Booking{
+			StudentID:     studentID.(string),
+			WorkshopID:    input.WorkshopID,
+			SessionID:     &sid,
+			Status:        "confirmed",
+			PaymentStatus: "pending",
+			Amount:        price,
+			Commission:    commission,
+		}
+		if err := tx.Create(&booking).Error; err != nil {
+			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al crear reserva: " + err.Error()})
 			return
 		}
+		bookingID = booking.ID
 
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit().Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al confirmar reserva"})
 			return
 		}
@@ -135,21 +164,22 @@ func CreateBooking(c *gin.Context) {
 		return
 	}
 
-	// Non-class booking (workshop, course, event): book without session
-	var bookingID string
-	err = db.Pool.QueryRow(ctx,
-		`INSERT INTO bookings (student_id, workshop_id, status, payment_status, amount, commission)
-		 VALUES ($1, $2, 'confirmed', 'pending', $3, $4)
-		 RETURNING id`,
-		studentID.(string), input.WorkshopID, price, commission,
-	).Scan(&bookingID)
-	if err != nil {
+	// Non-class booking (workshop, course, event)
+	booking := models.Booking{
+		StudentID:     studentID.(string),
+		WorkshopID:    input.WorkshopID,
+		Status:        "confirmed",
+		PaymentStatus: "pending",
+		Amount:        price,
+		Commission:    commission,
+	}
+	if err := db.DB.Create(&booking).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al crear reserva: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"data": bookingResponse{
-		ID:            bookingID,
+		ID:            booking.ID,
 		WorkshopID:    input.WorkshopID,
 		Status:        "confirmed",
 		PaymentStatus: "pending",
@@ -159,19 +189,19 @@ func CreateBooking(c *gin.Context) {
 }
 
 // GetMyBookings handles GET /api/v1/my-bookings.
-// Returns bookings for the authenticated user (as student).
 func GetMyBookings(c *gin.Context) {
 	studentID, _ := c.Get("userID")
 
 	workshopFilter := c.Query("workshop_id")
 	workshopSlugFilter := c.Query("workshop_slug")
 
-	query := `SELECT b.id, b.workshop_id, w.title, w.slug,
-		        b.session_id::text, b.status, b.payment_status, b.amount,
-		        COALESCE(s.starts_at::text, ''),
-		        COALESCE(s.schedule_id::text, ''),
-		        COALESCE((s.starts_at AT TIME ZONE 'UTC')::date::text, ''),
-		        b.created_at::text
+	query := `SELECT b.id, b.workshop_id, w.title as workshop_title, w.slug as workshop_slug,
+		        b.session_id::text as session_id, b.status, b.payment_status, b.amount,
+		        COALESCE(s.starts_at::text, '') as session_date,
+		        COALESCE(s.schedule_id::text, '') as schedule_id,
+		        COALESCE((s.starts_at AT TIME ZONE 'UTC')::date::text, '') as session_day,
+		        b.created_at::text as created_at,
+		        COALESCE(s.online_url, w.online_url, '') as online_url
 		 FROM bookings b
 		 JOIN workshops w ON w.id = b.workshop_id
 		 LEFT JOIN sessions s ON s.id = b.session_id
@@ -187,61 +217,42 @@ func GetMyBookings(c *gin.Context) {
 	}
 	query += ` ORDER BY b.created_at DESC LIMIT 50`
 
-	rows, err := db.Pool.Query(context.Background(), query, args...)
-	if err != nil {
+	type myBooking struct {
+		ID            string  `json:"id"                        gorm:"column:id"`
+		WorkshopID    string  `json:"workshop_id"               gorm:"column:workshop_id"`
+		WorkshopTitle string  `json:"workshop_title"            gorm:"column:workshop_title"`
+		WorkshopSlug  string  `json:"workshop_slug"             gorm:"column:workshop_slug"`
+		SessionID     *string `json:"session_id,omitempty"      gorm:"column:session_id"`
+		Status        string  `json:"status"                    gorm:"column:status"`
+		PaymentStatus string  `json:"payment_status"            gorm:"column:payment_status"`
+		Amount        float64 `json:"amount"                    gorm:"column:amount"`
+		SessionDate   string  `json:"session_date,omitempty"    gorm:"column:session_date"`
+		ScheduleID    string  `json:"schedule_id,omitempty"     gorm:"column:schedule_id"`
+		SessionDay    string  `json:"session_day,omitempty"     gorm:"column:session_day"`
+		CreatedAt     string  `json:"created_at"                gorm:"column:created_at"`
+		OnlineURL     string  `json:"online_url,omitempty"      gorm:"column:online_url"`
+	}
+
+	var bookings []myBooking
+	if err := db.DB.Raw(query, args...).Scan(&bookings).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener reservas"})
 		return
-	}
-	defer rows.Close()
-
-	type myBooking struct {
-		ID            string  `json:"id"`
-		WorkshopID    string  `json:"workshop_id"`
-		WorkshopTitle string  `json:"workshop_title"`
-		WorkshopSlug  string  `json:"workshop_slug"`
-		SessionID     *string `json:"session_id,omitempty"`
-		Status        string  `json:"status"`
-		PaymentStatus string  `json:"payment_status"`
-		Amount        float64 `json:"amount"`
-		SessionDate   string  `json:"session_date,omitempty"`
-		ScheduleID    string  `json:"schedule_id,omitempty"`
-		SessionDay    string  `json:"session_day,omitempty"` // "YYYY-MM-DD"
-		CreatedAt     string  `json:"created_at"`
-	}
-
-	bookings := []myBooking{}
-	for rows.Next() {
-		var b myBooking
-		var sessionIDStr *string
-		if err := rows.Scan(
-			&b.ID, &b.WorkshopID, &b.WorkshopTitle, &b.WorkshopSlug,
-			&sessionIDStr, &b.Status, &b.PaymentStatus, &b.Amount,
-			&b.SessionDate, &b.ScheduleID, &b.SessionDay, &b.CreatedAt,
-		); err != nil {
-			continue
-		}
-		if sessionIDStr != nil && *sessionIDStr != "" {
-			b.SessionID = sessionIDStr
-		}
-		bookings = append(bookings, b)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": bookings})
 }
 
 // GetInstructorBookings handles GET /api/v1/instructor-bookings.
-// Returns all bookings for workshops owned by the authenticated instructor.
-// Optional query params: ?workshop_id=, ?status=, ?from= (date), ?to= (date)
 func GetInstructorBookings(c *gin.Context) {
 	instructorID, _ := c.Get("userID")
-	ctx := context.Background()
 
 	workshopIDFilter := c.Query("workshop_id")
 	statusFilter := c.Query("status")
 	fromFilter := c.Query("from")
 	toFilter := c.Query("to")
 
-	query := `SELECT b.id, b.workshop_id, w.title, COALESCE(p.name, u.email),
+	query := `SELECT b.id as booking_id, b.workshop_id, w.title as workshop_title,
+	                 COALESCE(p.name, u.email) as student_name,
 	                 COALESCE(
 	                   s.starts_at::text,
 	                   (SELECT ns.starts_at::text FROM sessions ns
@@ -249,8 +260,8 @@ func GetInstructorBookings(c *gin.Context) {
 	                      AND ns.schedule_id IS NULL
 	                    ORDER BY ns.starts_at ASC LIMIT 1),
 	                   ''
-	                 ),
-	                 b.status, b.payment_status, b.amount, b.created_at::text
+	                 ) as session_date,
+	                 b.status, b.payment_status, b.amount, b.created_at::text as created_at
 	          FROM bookings b
 	          JOIN workshops w ON w.id = b.workshop_id
 	          JOIN users u ON u.id = b.student_id
@@ -285,52 +296,35 @@ func GetInstructorBookings(c *gin.Context) {
 
 	query += " ORDER BY b.created_at DESC LIMIT 100"
 
-	rows, err := db.Pool.Query(ctx, query, args...)
-	if err != nil {
+	type instructorBooking struct {
+		ID            string  `json:"booking_id"     gorm:"column:booking_id"`
+		WorkshopID    string  `json:"workshop_id"    gorm:"column:workshop_id"`
+		WorkshopTitle string  `json:"workshop_title" gorm:"column:workshop_title"`
+		StudentName   string  `json:"student_name"   gorm:"column:student_name"`
+		SessionDate   string  `json:"session_date,omitempty" gorm:"column:session_date"`
+		Status        string  `json:"status"         gorm:"column:status"`
+		PaymentStatus string  `json:"payment_status" gorm:"column:payment_status"`
+		Amount        float64 `json:"amount"         gorm:"column:amount"`
+		CreatedAt     string  `json:"created_at"     gorm:"column:created_at"`
+	}
+
+	var bookings []instructorBooking
+	if err := db.DB.Raw(query, args...).Scan(&bookings).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener reservas: " + err.Error()})
 		return
-	}
-	defer rows.Close()
-
-	type instructorBooking struct {
-		ID            string  `json:"booking_id"`
-		WorkshopID    string  `json:"workshop_id"`
-		WorkshopTitle string  `json:"workshop_title"`
-		StudentName   string  `json:"student_name"`
-		SessionDate   string  `json:"session_date,omitempty"`
-		Status        string  `json:"status"`
-		PaymentStatus string  `json:"payment_status"`
-		Amount        float64 `json:"amount"`
-		CreatedAt     string  `json:"created_at"`
-	}
-
-	bookings := []instructorBooking{}
-	for rows.Next() {
-		var b instructorBooking
-		if err := rows.Scan(
-			&b.ID, &b.WorkshopID, &b.WorkshopTitle, &b.StudentName,
-			&b.SessionDate, &b.Status, &b.PaymentStatus, &b.Amount, &b.CreatedAt,
-		); err != nil {
-			continue
-		}
-		bookings = append(bookings, b)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": bookings})
 }
 
-// migrateBookingInput is the request body for POST /api/v1/bookings/:id/migrate.
-// target_session_id debe ser una sesión ya materializada del mismo taller.
 type migrateBookingInput struct {
 	TargetSessionID string `json:"target_session_id" binding:"required"`
 }
 
 // MigrateBooking handles POST /api/v1/bookings/:id/migrate.
-// Mueve una reserva a una sesión distinta ya materializada. Solo el dueño del taller puede hacerlo.
 func MigrateBooking(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	bookingID := c.Param("id")
-	ctx := context.Background()
 
 	var input migrateBookingInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -338,71 +332,71 @@ func MigrateBooking(c *gin.Context) {
 		return
 	}
 
-	// Cargar reserva y verificar propiedad del taller
-	var workshopID, bookingStatus, ownerID string
-	var oldSessionID *string
-	err := db.Pool.QueryRow(ctx,
-		`SELECT b.workshop_id, b.session_id::text, b.status, w.instructor_id::text
-		 FROM bookings b
-		 JOIN workshops w ON w.id = b.workshop_id
-		 WHERE b.id = $1`, bookingID,
-	).Scan(&workshopID, &oldSessionID, &bookingStatus, &ownerID)
-	if err != nil {
+	var bookingInfo struct {
+		WorkshopID   string  `gorm:"column:workshop_id"`
+		OldSessionID *string `gorm:"column:old_session_id"`
+		Status       string  `gorm:"column:status"`
+		OwnerID      string  `gorm:"column:owner_id"`
+	}
+	res := db.DB.Raw(`
+		SELECT b.workshop_id::text as workshop_id, b.session_id::text as old_session_id,
+		       b.status, w.instructor_id::text as owner_id
+		FROM bookings b
+		JOIN workshops w ON w.id = b.workshop_id
+		WHERE b.id = ?`, bookingID,
+	).Scan(&bookingInfo)
+	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Reserva no encontrada"})
 		return
 	}
-	if ownerID != userID.(string) {
+	if bookingInfo.OwnerID != userID.(string) {
 		c.JSON(http.StatusForbidden, gin.H{"message": "No tienes permiso para modificar esta reserva"})
 		return
 	}
-	if bookingStatus == "cancelled" {
-		c.JSON(http.StatusConflict, gin.H{"message": "No se puede migrar una reserva cancelada"})
+	if err := validateBookingTransition(bookingInfo.Status, "confirmed"); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"message": "No se puede migrar esta reserva: " + err.Error()})
 		return
 	}
 
-	// Cargar sesión destino y verificar que pertenece al mismo taller
-	var targetWorkshopID string
-	var targetCancelled bool
-	err = db.Pool.QueryRow(ctx,
-		`SELECT workshop_id, cancelled FROM sessions WHERE id = $1`,
-		input.TargetSessionID,
-	).Scan(&targetWorkshopID, &targetCancelled)
-	if err != nil {
+	var targetInfo struct {
+		WorkshopID string `gorm:"column:workshop_id"`
+		Cancelled  bool   `gorm:"column:cancelled"`
+	}
+	res2 := db.DB.Raw(
+		`SELECT workshop_id::text as workshop_id, cancelled FROM sessions WHERE id = ?`, input.TargetSessionID,
+	).Scan(&targetInfo)
+	if res2.Error != nil || res2.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Sesión destino no encontrada"})
 		return
 	}
-	if targetWorkshopID != workshopID {
+	if targetInfo.WorkshopID != bookingInfo.WorkshopID {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "La sesión destino no pertenece al mismo taller"})
 		return
 	}
-	if targetCancelled {
+	if targetInfo.Cancelled {
 		c.JSON(http.StatusConflict, gin.H{"message": "La sesión destino está cancelada"})
 		return
 	}
 
-	// Verificar cupos en la sesión destino
 	var capacity *int
-	db.Pool.QueryRow(ctx, `SELECT capacity FROM workshops WHERE id = $1`, workshopID).Scan(&capacity) //nolint:errcheck
+	db.DB.Raw(`SELECT capacity FROM workshops WHERE id = ?`, bookingInfo.WorkshopID).Scan(&capacity) //nolint:errcheck
 	if capacity != nil {
-		var count int
-		db.Pool.QueryRow(ctx,
-			`SELECT COUNT(*) FROM bookings WHERE session_id = $1 AND status != 'cancelled'`,
-			input.TargetSessionID,
+		var count int64
+		db.DB.Raw(
+			`SELECT COUNT(*) FROM bookings WHERE session_id = ? AND status != 'cancelled'`, input.TargetSessionID,
 		).Scan(&count) //nolint:errcheck
-		if count >= *capacity {
+		if int(count) >= *capacity {
 			c.JSON(http.StatusConflict, gin.H{"message": "No hay cupos disponibles en la sesión destino"})
 			return
 		}
 	}
 
-	// Actualizar reserva
-	_, err = db.Pool.Exec(ctx,
-		`UPDATE bookings
-		 SET session_id = $1, migrated_from_session_id = $2, status = 'confirmed'
-		 WHERE id = $3`,
-		input.TargetSessionID, oldSessionID, bookingID,
-	)
-	if err != nil {
+	if err := db.DB.Exec(`
+		UPDATE bookings
+		SET session_id = ?, migrated_from_session_id = ?, status = 'confirmed'
+		WHERE id = ?`,
+		input.TargetSessionID, bookingInfo.OldSessionID, bookingID,
+	).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al migrar reserva: " + err.Error()})
 		return
 	}
@@ -410,74 +404,131 @@ func MigrateBooking(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{
 		"id":                       bookingID,
 		"session_id":               input.TargetSessionID,
-		"migrated_from_session_id": oldSessionID,
+		"migrated_from_session_id": bookingInfo.OldSessionID,
 		"status":                   "confirmed",
 	}})
 }
 
 // RefundBooking handles POST /api/v1/bookings/:id/refund.
-// Cancels and refunds a booking due to schedule change. Only the workshop owner can do this.
 func RefundBooking(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	bookingID := c.Param("id")
-	ctx := context.Background()
 
-	// Load booking + session starts_at + verify ownership
-	var workshopID, bookingStatus, paymentStatus, ownerID string
-	var startsAtStrPtr *string
-	err := db.Pool.QueryRow(ctx,
-		`SELECT b.workshop_id, b.status, b.payment_status, w.instructor_id::text,
-		        COALESCE(s.starts_at::date::text, '')
-		 FROM bookings b
-		 JOIN workshops w ON w.id = b.workshop_id
-		 LEFT JOIN sessions s ON s.id = b.session_id
-		 WHERE b.id = $1`, bookingID,
-	).Scan(&workshopID, &bookingStatus, &paymentStatus, &ownerID, &startsAtStrPtr)
-	if err != nil {
+	var bookingInfo struct {
+		WorkshopID    string `gorm:"column:workshop_id"`
+		Status        string `gorm:"column:status"`
+		PaymentStatus string `gorm:"column:payment_status"`
+		OwnerID       string `gorm:"column:owner_id"`
+		StartsAtStr   string `gorm:"column:starts_at_str"`
+	}
+	res := db.DB.Raw(`
+		SELECT b.workshop_id::text as workshop_id, b.status, b.payment_status,
+		       w.instructor_id::text as owner_id,
+		       COALESCE(s.starts_at::date::text, '') as starts_at_str
+		FROM bookings b
+		JOIN workshops w ON w.id = b.workshop_id
+		LEFT JOIN sessions s ON s.id = b.session_id
+		WHERE b.id = ?`, bookingID,
+	).Scan(&bookingInfo)
+	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Reserva no encontrada"})
 		return
 	}
-	startsAtStr := ""
-	if startsAtStrPtr != nil {
-		startsAtStr = *startsAtStrPtr
-	}
-	if ownerID != userID.(string) {
+	if bookingInfo.OwnerID != userID.(string) {
 		c.JSON(http.StatusForbidden, gin.H{"message": "No tienes permiso para modificar esta reserva"})
 		return
 	}
-	if bookingStatus == "cancelled" {
-		c.JSON(http.StatusConflict, gin.H{"message": "La reserva ya está cancelada"})
+	if err := validateBookingTransition(bookingInfo.Status, "cancelled"); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"message": "No se puede reembolsar esta reserva: " + err.Error()})
 		return
 	}
 
-	// Default to today when no session date (non-class booking)
 	sessionDate := time.Now().UTC()
-	if startsAtStr != "" {
-		if t, err2 := time.Parse("2006-01-02", startsAtStr); err2 == nil {
+	if bookingInfo.StartsAtStr != "" {
+		if t, err2 := time.Parse("2006-01-02", bookingInfo.StartsAtStr); err2 == nil {
 			sessionDate = t
 		}
 	}
-
 	zone := commissionZone(sessionDate)
 
-	_, err = db.Pool.Exec(ctx,
-		`UPDATE bookings
-		 SET status = 'cancelled', payment_status = 'refunded',
-		     cancelled_reason = 'schedule_change', commission_absorbed_by = $1
-		 WHERE id = $2`,
-		zone, bookingID,
-	)
-	if err != nil {
+	if err := db.DB.Exec(`
+		UPDATE bookings
+		SET status = 'cancelled', payment_status = 'refunded',
+		    cancelled_reason = 'schedule_change', commission_absorbed_by = ?
+		WHERE id = ?`, zone, bookingID,
+	).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al reembolsar reserva: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{
-		"id":                   bookingID,
-		"workshop_id":          workshopID,
-		"status":               "cancelled",
-		"payment_status":       "refunded",
-		"cancelled_reason":     "schedule_change",
+		"id":                     bookingID,
+		"workshop_id":            bookingInfo.WorkshopID,
+		"status":                 "cancelled",
+		"payment_status":         "refunded",
+		"cancelled_reason":       "schedule_change",
+		"commission_absorbed_by": zone,
+	}})
+}
+
+// CancelBooking handles POST /api/v1/bookings/:id/cancel.
+func CancelBooking(c *gin.Context) {
+	studentID, _ := c.Get("userID")
+	bookingID := c.Param("id")
+
+	var bookingInfo struct {
+		WorkshopID    string `gorm:"column:workshop_id"`
+		Status        string `gorm:"column:status"`
+		PaymentStatus string `gorm:"column:payment_status"`
+		StartsAtStr   string `gorm:"column:starts_at_str"`
+	}
+	res := db.DB.Raw(`
+		SELECT b.workshop_id::text as workshop_id, b.status, b.payment_status,
+		       COALESCE((s.starts_at AT TIME ZONE 'UTC')::date::text, '') as starts_at_str
+		FROM bookings b
+		LEFT JOIN sessions s ON s.id = b.session_id
+		WHERE b.id = ? AND b.student_id = ?`,
+		bookingID, studentID.(string),
+	).Scan(&bookingInfo)
+	if res.Error != nil || res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Reserva no encontrada"})
+		return
+	}
+
+	if err := validateBookingTransition(bookingInfo.Status, "cancelled"); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"message": "No se puede cancelar esta reserva: " + err.Error()})
+		return
+	}
+
+	sessionDate := time.Now().UTC()
+	if bookingInfo.StartsAtStr != "" {
+		if t, err2 := time.Parse("2006-01-02", bookingInfo.StartsAtStr); err2 == nil {
+			sessionDate = t
+		}
+	}
+	zone := commissionZone(sessionDate)
+
+	newPaymentStatus := bookingInfo.PaymentStatus
+	if bookingInfo.PaymentStatus == "paid" {
+		newPaymentStatus = "refunded"
+	}
+
+	if err := db.DB.Exec(`
+		UPDATE bookings
+		SET status = 'cancelled', payment_status = ?,
+		    cancelled_reason = 'student_request', commission_absorbed_by = ?
+		WHERE id = ?`, newPaymentStatus, zone, bookingID,
+	).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al cancelar reserva: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{
+		"id":                     bookingID,
+		"workshop_id":            bookingInfo.WorkshopID,
+		"status":                 "cancelled",
+		"payment_status":         newPaymentStatus,
+		"cancelled_reason":       "student_request",
 		"commission_absorbed_by": zone,
 	}})
 }

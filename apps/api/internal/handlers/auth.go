@@ -1,16 +1,17 @@
 package handlers
 
 import (
-	"context"
+	"errors"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5"
 	"github.com/pedrodonoso/kawin/api/internal/db"
+	"github.com/pedrodonoso/kawin/api/internal/models"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type registerInput struct {
@@ -61,23 +62,15 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	var userID string
-	err = db.Pool.QueryRow(context.Background(),
-		`INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id`,
-		input.Email, string(hash), role,
-	).Scan(&userID)
-	if err != nil {
+	user := models.User{Email: input.Email, PasswordHash: string(hash), Role: role}
+	if err := db.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusConflict, gin.H{"message": "El email ya está registrado"})
 		return
 	}
 
-	// Create profile
-	db.Pool.Exec(context.Background(),
-		`INSERT INTO profiles (user_id, name) VALUES ($1, $2)`,
-		userID, input.Name,
-	)
+	db.DB.Create(&models.Profile{UserID: user.ID, Name: input.Name})
 
-	token, err := makeToken(userID, input.Email, role)
+	token, err := makeToken(user.ID, input.Email, role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al generar token"})
 		return
@@ -85,7 +78,7 @@ func Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"token": token,
-		"user":  gin.H{"id": userID, "email": input.Email, "role": role},
+		"user":  gin.H{"id": user.ID, "email": input.Email, "role": role},
 	})
 }
 
@@ -96,26 +89,23 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	var userID, passwordHash, role string
-	err := db.Pool.QueryRow(context.Background(),
-		`SELECT id, password_hash, role FROM users WHERE email = $1`,
-		input.Email,
-	).Scan(&userID, &passwordHash, &role)
-	if err == pgx.ErrNoRows {
+	var user models.User
+	result := db.DB.Select("id, password_hash, role").Where("email = ?", input.Email).First(&user)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Credenciales incorrectas"})
 		return
 	}
-	if err != nil {
+	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error de servidor"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(input.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Credenciales incorrectas"})
 		return
 	}
 
-	token, err := makeToken(userID, input.Email, role)
+	token, err := makeToken(user.ID, input.Email, user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al generar token"})
 		return
@@ -123,6 +113,6 @@ func Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
-		"user":  gin.H{"id": userID, "email": input.Email, "role": role},
+		"user":  gin.H{"id": user.ID, "email": input.Email, "role": user.Role},
 	})
 }

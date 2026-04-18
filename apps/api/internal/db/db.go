@@ -1,28 +1,33 @@
 package db
 
 import (
-	"context"
 	"log"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-var Pool *pgxpool.Pool
+var DB *gorm.DB
 
 func Connect(databaseURL string) {
-	pool, err := pgxpool.New(context.Background(), databaseURL)
+	var err error
+	DB, err = gorm.Open(postgres.Open(databaseURL), &gorm.Config{
+		Logger:      logger.Default.LogMode(logger.Warn),
+		PrepareStmt: true,
+	})
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
-	if err := pool.Ping(context.Background()); err != nil {
-		log.Fatalf("Database ping failed: %v", err)
-	}
-	Pool = pool
-	log.Println("Database connected")
+	log.Println("Database connected (GORM)")
 }
 
 func Close() {
-	if Pool != nil {
-		Pool.Close()
+	if DB == nil {
+		return
+	}
+	sqlDB, err := DB.DB()
+	if err == nil {
+		_ = sqlDB.Close()
 	}
 }

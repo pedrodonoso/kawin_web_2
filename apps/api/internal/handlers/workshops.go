@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -20,50 +19,53 @@ type Session struct {
 	EndsAt         string `json:"ends_at"`
 	Cancelled      bool   `json:"cancelled,omitempty"`
 	Notes          string `json:"notes,omitempty"`
-	SpotsRemaining *int   `json:"spots_remaining,omitempty"` // nil = sin límite de cupos
+	OnlineURL      string `json:"online_url,omitempty"`
+	SpotsRemaining *int   `json:"spots_remaining,omitempty" gorm:"-"` // calculado en Go
 	BookingCount   int    `json:"booking_count,omitempty"`
 }
 
 // AvailableSlot representa un slot calculado desde schedules para el calendario del tallerista.
 // Retornado por GET /workshops/:id/available-slots (solo para instructores).
 type AvailableSlot struct {
-	Date           string  `json:"date"`         // "YYYY-MM-DD"
-	Time           string  `json:"time"`         // "HH:MM"
+	Date           string  `json:"date"`             // "YYYY-MM-DD"
+	Time           string  `json:"time"`             // "HH:MM"
 	DurationMin    int     `json:"duration_min"`
 	ScheduleID     string  `json:"schedule_id"`
-	SessionID      *string `json:"session_id"`      // nil = no materializado aún
+	SessionID      *string `json:"session_id"`       // nil = no materializado aún
+	OnlineURL      string  `json:"online_url,omitempty"`
 	SpotsRemaining *int    `json:"spots_remaining"` // nil = sin límite
 	BookingCount   int     `json:"booking_count"`   // reservas activas de esta sesión
 	Status         string  `json:"status"`          // "not_materialized" | "available" | "full" | "cancelled"
 }
 
 type Workshop struct {
-	ID             string     `json:"id"`
-	Title          string     `json:"title"`
-	Slug           string     `json:"slug"`
-	Description    string     `json:"description"`
-	Type           string     `json:"type"`
-	Modality       string     `json:"modality"`
-	Price          float64    `json:"price"`
-	Currency       string     `json:"currency"`
-	Capacity       *int       `json:"capacity,omitempty"`
-	Location       string     `json:"location,omitempty"`
-	CoverImageURL  string     `json:"cover_image_url,omitempty"`
-	Status         string     `json:"status"`
-	CategoryID     string     `json:"category_id,omitempty"`
-	CategoryName   string     `json:"category_name,omitempty"`
-	CategorySlug   string     `json:"category_slug,omitempty"`
-	InstructorID       string     `json:"instructor_id,omitempty"`
-	InstructorName     string     `json:"instructor_name,omitempty"`
-	InstructorBio      string     `json:"instructor_bio,omitempty"`
-	InstructorInstagram string    `json:"instructor_instagram,omitempty"`
-	InstructorFacebook  string    `json:"instructor_facebook,omitempty"`
-	InstructorWhatsapp  string    `json:"instructor_whatsapp,omitempty"`
-	InstructorPhone     string    `json:"instructor_phone,omitempty"`
-	Sessions       []Session  `json:"sessions,omitempty"`
-	Schedules      []Schedule `json:"schedules,omitempty"`
-	BookingsCount  int        `json:"bookings_count"`
-	CreatedAt      string     `json:"created_at"`
+	ID                  string     `json:"id"`
+	Title               string     `json:"title"`
+	Slug                string     `json:"slug"`
+	Description         string     `json:"description"`
+	Type                string     `json:"type"`
+	Modality            string     `json:"modality"`
+	Price               float64    `json:"price"`
+	Currency            string     `json:"currency"`
+	Capacity            *int       `json:"capacity,omitempty"`
+	Location            string     `json:"location,omitempty"`
+	OnlineURL           string     `json:"online_url,omitempty"`
+	CoverImageURL       string     `json:"cover_image_url,omitempty"`
+	Status              string     `json:"status"`
+	CategoryID          string     `json:"category_id,omitempty"`
+	CategoryName        string     `json:"category_name,omitempty"`
+	CategorySlug        string     `json:"category_slug,omitempty"`
+	InstructorID        string     `json:"instructor_id,omitempty"`
+	InstructorName      string     `json:"instructor_name,omitempty"`
+	InstructorBio       string     `json:"instructor_bio,omitempty"`
+	InstructorInstagram string     `json:"instructor_instagram,omitempty"`
+	InstructorFacebook  string     `json:"instructor_facebook,omitempty"`
+	InstructorWhatsapp  string     `json:"instructor_whatsapp,omitempty"`
+	InstructorPhone     string     `json:"instructor_phone,omitempty"`
+	Sessions            []Session  `json:"sessions,omitempty"  gorm:"-"`
+	Schedules           []Schedule `json:"schedules,omitempty" gorm:"-"`
+	BookingsCount       int        `json:"bookings_count"      gorm:"-"`
+	CreatedAt           string     `json:"created_at"`
 }
 
 // =============================================================================
@@ -73,6 +75,7 @@ type Workshop struct {
 type materializedSession struct {
 	ID        string
 	Cancelled bool
+	OnlineURL string
 }
 
 // computeAvailableSlots calcula los slots para el calendario del tallerista en [from, to],
@@ -134,9 +137,11 @@ func computeAvailableSlots(
 			var sessionID *string
 			var spotsRemaining *int
 
+			var slotOnlineURL string
 			if mat, ok := materialized[key]; ok {
 				id := mat.ID
 				sessionID = &id
+				slotOnlineURL = mat.OnlineURL
 				if mat.Cancelled {
 					status = "cancelled"
 				} else {
@@ -170,6 +175,7 @@ func computeAvailableSlots(
 				DurationMin:    sched.DurationMin,
 				ScheduleID:     sched.ID,
 				SessionID:      sessionID,
+				OnlineURL:      slotOnlineURL,
 				SpotsRemaining: spotsRemaining,
 				BookingCount:   bookingCount,
 				Status:         status,
@@ -189,62 +195,58 @@ func computeAvailableSlots(
 
 // loadActiveSchedules devuelve los schedules cuyo rango de validez se superpone con [from, to].
 func loadActiveSchedules(workshopID string, from, to time.Time) ([]Schedule, error) {
-	rows, err := db.Pool.Query(context.Background(), `
-		SELECT id, workshop_id, days_of_week, time_start::text, duration_min,
-		       valid_from::text, valid_until::text, created_at::text
+	var rows []schedRowRaw
+	err := db.DB.Raw(`
+		SELECT id, workshop_id,
+		       array_to_string(days_of_week, ',') as days_str,
+		       time_start::text as time_start, duration_min,
+		       valid_from::text as valid_from, valid_until::text as valid_until,
+		       created_at::text as created_at
 		FROM schedules
-		WHERE workshop_id = $1
-		  AND valid_from <= $2
-		  AND (valid_until IS NULL OR valid_until >= $3)
+		WHERE workshop_id = ?
+		  AND valid_from <= ?
+		  AND (valid_until IS NULL OR valid_until >= ?)
 		ORDER BY valid_from, time_start`,
 		workshopID, to.Format("2006-01-02"), from.Format("2006-01-02"),
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var schedules []Schedule
-	for rows.Next() {
-		var s Schedule
-		var validUntil *string
-		if err := rows.Scan(
-			&s.ID, &s.WorkshopID, &s.DaysOfWeek, &s.TimeStart, &s.DurationMin,
-			&s.ValidFrom, &validUntil, &s.CreatedAt,
-		); err != nil {
-			continue
-		}
-		s.ValidUntil = validUntil
-		schedules = append(schedules, s)
-	}
-	return schedules, nil
+	).Scan(&rows).Error
+	return rowsToSchedules(rows), err
 }
 
 // loadMaterializedSessions devuelve las sesiones ya materializadas en [from, to],
 // indexadas por "scheduleID:YYYY-MM-DD".
 func loadMaterializedSessions(workshopID string, from, to time.Time) (map[string]materializedSession, error) {
-	rows, err := db.Pool.Query(context.Background(), `
-		SELECT id, schedule_id::text, (starts_at AT TIME ZONE 'UTC')::date::text, cancelled
+	type sessionRow struct {
+		ID         string `gorm:"column:id"`
+		ScheduleID string `gorm:"column:schedule_id"`
+		DateStr    string `gorm:"column:date_str"`
+		Cancelled  bool   `gorm:"column:cancelled"`
+		OnlineURL  string `gorm:"column:online_url"`
+	}
+
+	var rows []sessionRow
+	err := db.DB.Raw(`
+		SELECT id, schedule_id::text as schedule_id,
+		       (starts_at AT TIME ZONE 'UTC')::date::text as date_str,
+		       cancelled, COALESCE(online_url,'') as online_url
 		FROM sessions
-		WHERE workshop_id = $1
+		WHERE workshop_id = ?
 		  AND schedule_id IS NOT NULL
-		  AND starts_at >= $2
-		  AND starts_at <= $3`,
+		  AND starts_at >= ?
+		  AND starts_at <= ?`,
 		workshopID,
 		from.Format("2006-01-02"),
 		to.Add(24*time.Hour).Format("2006-01-02"),
-	)
+	).Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	m := make(map[string]materializedSession)
-	for rows.Next() {
-		var id, scheduleID, dateStr string
-		var cancelled bool
-		if rows.Scan(&id, &scheduleID, &dateStr, &cancelled) == nil {
-			m[scheduleID+":"+dateStr] = materializedSession{ID: id, Cancelled: cancelled}
+	for _, r := range rows {
+		m[r.ScheduleID+":"+r.DateStr] = materializedSession{
+			ID:        r.ID,
+			Cancelled: r.Cancelled,
+			OnlineURL: r.OnlineURL,
 		}
 	}
 	return m, nil
@@ -252,27 +254,28 @@ func loadMaterializedSessions(workshopID string, from, to time.Time) (map[string
 
 // loadBookingCounts devuelve el conteo de reservas confirmadas por session_id.
 func loadBookingCounts(workshopID string) (map[string]int, error) {
-	rows, err := db.Pool.Query(context.Background(), `
-		SELECT session_id::text, COUNT(*)
+	type countRow struct {
+		SessionID string `gorm:"column:session_id"`
+		Count     int    `gorm:"column:count"`
+	}
+
+	var rows []countRow
+	err := db.DB.Raw(`
+		SELECT session_id::text as session_id, COUNT(*) as count
 		FROM bookings
-		WHERE workshop_id = $1
+		WHERE workshop_id = ?
 		  AND session_id IS NOT NULL
 		  AND status != 'cancelled'
 		GROUP BY session_id`,
 		workshopID,
-	)
+	).Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	counts := make(map[string]int)
-	for rows.Next() {
-		var sessionID string
-		var count int
-		if rows.Scan(&sessionID, &count) == nil {
-			counts[sessionID] = count
-		}
+	for _, r := range rows {
+		counts[r.SessionID] = r.Count
 	}
 	return counts, nil
 }
@@ -288,12 +291,16 @@ func GetWorkshops(c *gin.Context) {
 	categorySlug := c.Query("category")
 
 	query := `
-		SELECT w.id, w.title, w.slug, COALESCE(w.description,''),
+		SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
 		       w.type, w.modality, w.price, w.currency,
-		       w.capacity, COALESCE(w.location,''), COALESCE(w.cover_image_url,''),
-		       w.status, COALESCE(w.created_at::text,''),
-		       COALESCE(c.id::text,''), COALESCE(c.name,''), COALESCE(c.slug,''),
-		       COALESCE(p.name,'')
+		       w.capacity, COALESCE(w.location,'') as location,
+		       COALESCE(w.online_url,'') as online_url,
+		       COALESCE(w.cover_image_url,'') as cover_image_url,
+		       w.status, COALESCE(w.created_at::text,'') as created_at,
+		       COALESCE(c.id::text,'') as category_id,
+		       COALESCE(c.name,'') as category_name,
+		       COALESCE(c.slug,'') as category_slug,
+		       COALESCE(p.name,'') as instructor_name
 		FROM workshops w
 		LEFT JOIN categories c ON c.id = w.category_id
 		LEFT JOIN profiles p ON p.user_id = w.instructor_id
@@ -322,174 +329,131 @@ func GetWorkshops(c *gin.Context) {
 		args = append(args, categorySlug)
 		i++
 	}
+	_ = i
 
 	query += ` ORDER BY w.created_at DESC LIMIT 50`
 
-	rows, err := db.Pool.Query(context.Background(), query, args...)
-	if err != nil {
+	var workshops []Workshop
+	if err := db.DB.Raw(query, args...).Scan(&workshops).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener talleres"})
 		return
-	}
-	defer rows.Close()
-
-	workshops := []Workshop{}
-	for rows.Next() {
-		var w Workshop
-		if err := rows.Scan(
-			&w.ID, &w.Title, &w.Slug, &w.Description,
-			&w.Type, &w.Modality, &w.Price, &w.Currency,
-			&w.Capacity, &w.Location, &w.CoverImageURL,
-			&w.Status, &w.CreatedAt,
-			&w.CategoryID, &w.CategoryName, &w.CategorySlug,
-			&w.InstructorName,
-		); err != nil {
-			continue
-		}
-		workshops = append(workshops, w)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": workshops, "total": len(workshops)})
 }
 
 // GetWorkshop maneja GET /api/v1/workshops/:id (público).
-// Para type="class": retorna schedules como reglas de recurrencia + sesiones materializadas disponibles.
-// Para otros tipos: retorna sesiones manuales.
 func GetWorkshop(c *gin.Context) {
 	idOrSlug := c.Param("id")
-	ctx := context.Background()
 
 	var w Workshop
-	err := db.Pool.QueryRow(ctx, `
-		SELECT w.id, w.title, w.slug, COALESCE(w.description,''),
+	result := db.DB.Raw(`
+		SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
 		       w.type, w.modality, w.price, w.currency,
-		       w.capacity, COALESCE(w.location,''), COALESCE(w.cover_image_url,''),
-		       w.status, COALESCE(w.created_at::text,''),
-		       COALESCE(c.id::text,''), COALESCE(c.name,''), COALESCE(c.slug,''),
-		       w.instructor_id::text, COALESCE(p.name,''), COALESCE(p.bio,''),
-		       COALESCE(p.instagram_url,''), COALESCE(p.facebook_url,''),
-		       COALESCE(p.whatsapp,''), COALESCE(p.phone,'')
+		       w.capacity, COALESCE(w.location,'') as location,
+		       COALESCE(w.online_url,'') as online_url,
+		       COALESCE(w.cover_image_url,'') as cover_image_url,
+		       w.status, COALESCE(w.created_at::text,'') as created_at,
+		       COALESCE(c.id::text,'') as category_id,
+		       COALESCE(c.name,'') as category_name,
+		       COALESCE(c.slug,'') as category_slug,
+		       w.instructor_id::text as instructor_id,
+		       COALESCE(p.name,'') as instructor_name,
+		       COALESCE(p.bio,'') as instructor_bio,
+		       COALESCE(p.instagram_url,'') as instructor_instagram,
+		       COALESCE(p.facebook_url,'') as instructor_facebook,
+		       COALESCE(p.whatsapp,'') as instructor_whatsapp,
+		       COALESCE(p.phone,'') as instructor_phone
 		FROM workshops w
 		LEFT JOIN categories c ON c.id = w.category_id
 		LEFT JOIN profiles p ON p.user_id = w.instructor_id
-		WHERE (w.id::text = $1 OR w.slug = $1)`, idOrSlug,
-	).Scan(
-		&w.ID, &w.Title, &w.Slug, &w.Description,
-		&w.Type, &w.Modality, &w.Price, &w.Currency,
-		&w.Capacity, &w.Location, &w.CoverImageURL,
-		&w.Status, &w.CreatedAt,
-		&w.CategoryID, &w.CategoryName, &w.CategorySlug,
-		&w.InstructorID, &w.InstructorName, &w.InstructorBio,
-		&w.InstructorInstagram, &w.InstructorFacebook,
-		&w.InstructorWhatsapp, &w.InstructorPhone,
-	)
-	if err != nil {
+		WHERE (w.id::text = ? OR w.slug = ?)`, idOrSlug, idOrSlug,
+	).Scan(&w)
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})
 		return
 	}
 
-	db.Pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM bookings WHERE workshop_id = $1 AND status = 'confirmed'`,
-		w.ID,
+	db.DB.Raw(
+		`SELECT COUNT(*) FROM bookings WHERE workshop_id = ? AND status = 'confirmed'`, w.ID,
 	).Scan(&w.BookingsCount) //nolint:errcheck
 
 	if w.Type == "class" {
-		// Schedules como reglas de recurrencia (para mostrar "clases los lunes a las 19:00")
-		schedRows, err := db.Pool.Query(ctx, `
-			SELECT id, workshop_id, days_of_week, time_start::text, duration_min,
-			       valid_from::text, valid_until::text, created_at::text
+		var schedRows []schedRowRaw
+		db.DB.Raw(`
+			SELECT id, workshop_id,
+			       array_to_string(days_of_week, ',') as days_str,
+			       time_start::text as time_start, duration_min,
+			       valid_from::text as valid_from, valid_until::text as valid_until,
+			       created_at::text as created_at
 			FROM schedules
-			WHERE workshop_id = $1
+			WHERE workshop_id = ?
 			  AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
-			ORDER BY valid_from, time_start`, w.ID)
-		if err == nil {
-			defer schedRows.Close()
-			for schedRows.Next() {
-				var s Schedule
-				var validUntil *string
-				if schedRows.Scan(&s.ID, &s.WorkshopID, &s.DaysOfWeek, &s.TimeStart, &s.DurationMin,
-					&s.ValidFrom, &validUntil, &s.CreatedAt) == nil {
-					s.ValidUntil = validUntil
-					w.Schedules = append(w.Schedules, s)
-				}
-			}
-		}
+			ORDER BY valid_from, time_start`, w.ID,
+		).Scan(&schedRows)
+		w.Schedules = rowsToSchedules(schedRows)
 
-		// Sesiones materializadas disponibles (no canceladas, futuras) con conteo de reservas
-		srows, err := db.Pool.Query(ctx, `
-			SELECT s.id, s.starts_at::text, s.ends_at::text, COALESCE(s.notes,''),
-			       COALESCE(COUNT(b.id) FILTER (WHERE b.status != 'cancelled'), 0)
+		var sessions []Session
+		db.DB.Raw(`
+			SELECT s.id, s.starts_at::text as starts_at, s.ends_at::text as ends_at,
+			       COALESCE(s.notes,'') as notes, COALESCE(s.online_url,'') as online_url,
+			       COALESCE(COUNT(b.id) FILTER (WHERE b.status != 'cancelled'), 0) as booking_count
 			FROM sessions s
 			LEFT JOIN bookings b ON b.session_id = s.id
-			WHERE s.workshop_id = $1
+			WHERE s.workshop_id = ?
 			  AND s.schedule_id IS NOT NULL
 			  AND s.cancelled = false
 			  AND s.starts_at >= NOW()
 			GROUP BY s.id
-			ORDER BY s.starts_at`, w.ID)
-		if err == nil {
-			defer srows.Close()
-			for srows.Next() {
-				var s Session
-				var bookingCount int
-				if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Notes, &bookingCount) == nil {
-					s.BookingCount = bookingCount
-					if w.Capacity != nil {
-						remaining := *w.Capacity - bookingCount
-						if remaining < 0 {
-							remaining = 0
-						}
-						s.SpotsRemaining = &remaining
-					}
-					w.Sessions = append(w.Sessions, s)
+			ORDER BY s.starts_at`, w.ID,
+		).Scan(&sessions)
+
+		for i := range sessions {
+			if w.Capacity != nil {
+				remaining := *w.Capacity - sessions[i].BookingCount
+				if remaining < 0 {
+					remaining = 0
 				}
+				sessions[i].SpotsRemaining = &remaining
 			}
 		}
+		w.Sessions = sessions
 	} else {
-		// Sesiones manuales para workshop / course / event
-		srows, err := db.Pool.Query(ctx,
-			`SELECT id, starts_at::text, ends_at::text, cancelled, COALESCE(notes,'')
-			 FROM sessions WHERE workshop_id = $1 AND schedule_id IS NULL ORDER BY starts_at`, w.ID)
-		if err == nil {
-			defer srows.Close()
-			for srows.Next() {
-				var s Session
-				if srows.Scan(&s.ID, &s.StartsAt, &s.EndsAt, &s.Cancelled, &s.Notes) == nil {
-					w.Sessions = append(w.Sessions, s)
-				}
-			}
-		}
+		var sessions []Session
+		db.DB.Raw(`
+			SELECT id, starts_at::text as starts_at, ends_at::text as ends_at,
+			       cancelled, COALESCE(notes,'') as notes
+			FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL ORDER BY starts_at`, w.ID,
+		).Scan(&sessions)
+		w.Sessions = sessions
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": w})
 }
 
 // GetAvailableSlots maneja GET /api/v1/workshops/:id/available-slots (protegido — solo el tallerista).
-// Devuelve el calendario de slots calculados desde schedules en un rango de fechas,
-// fusionando los ya materializados con los que aún no existen en la DB.
-// Query params: from=YYYY-MM-DD, to=YYYY-MM-DD (default: hoy + 8 semanas)
 func GetAvailableSlots(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	workshopID := c.Param("id")
-	ctx := context.Background()
 
-	// Verificar propiedad del taller
-	var ownerID string
-	var capacity *int
-	err := db.Pool.QueryRow(ctx,
-		`SELECT instructor_id, capacity FROM workshops WHERE id = $1`, workshopID,
-	).Scan(&ownerID, &capacity)
-	if err != nil {
+	var winfo struct {
+		InstructorID string `gorm:"column:instructor_id"`
+		Capacity     *int   `gorm:"column:capacity"`
+	}
+	result := db.DB.Raw(
+		`SELECT instructor_id::text as instructor_id, capacity FROM workshops WHERE id = ?`, workshopID,
+	).Scan(&winfo)
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})
 		return
 	}
-	if ownerID != userID.(string) {
+	if winfo.InstructorID != userID.(string) {
 		c.JSON(http.StatusForbidden, gin.H{"message": "No tienes permiso para ver este calendario"})
 		return
 	}
 
-	// Parsear rango de fechas
 	from := time.Now().UTC().Truncate(24 * time.Hour)
-	to := from.AddDate(0, 0, 56) // 8 semanas por defecto
+	to := from.AddDate(0, 0, 56)
 
 	if fromStr := c.Query("from"); fromStr != "" {
 		if t, err := time.Parse("2006-01-02", fromStr); err == nil {
@@ -506,7 +470,7 @@ func GetAvailableSlots(c *gin.Context) {
 	materialized, _ := loadMaterializedSessions(workshopID, from, to)
 	bookingCounts, _ := loadBookingCounts(workshopID)
 
-	slots := computeAvailableSlots(schedules, from, to, materialized, bookingCounts, capacity)
+	slots := computeAvailableSlots(schedules, from, to, materialized, bookingCounts, winfo.Capacity)
 
 	c.JSON(http.StatusOK, gin.H{"data": slots})
 }
@@ -514,3 +478,4 @@ func GetAvailableSlots(c *gin.Context) {
 func itoa(i int) string {
 	return strconv.Itoa(i)
 }
+

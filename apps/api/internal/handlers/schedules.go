@@ -1,12 +1,14 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pedrodonoso/kawin/api/internal/db"
+	"github.com/pedrodonoso/kawin/api/internal/models"
 )
 
 // Schedule represents a recurring rule for a class workshop.
@@ -21,6 +23,53 @@ type Schedule struct {
 	CreatedAt   string  `json:"created_at"`
 }
 
+// schedRowRaw is an intermediate struct used when scanning schedule rows from DB.
+// GORM v1 cannot scan named-slice types (models.IntArray) via Raw().Scan(), so we
+// fetch days_of_week as a comma-separated string and convert in Go.
+type schedRowRaw struct {
+	ID          string  `gorm:"column:id"`
+	WorkshopID  string  `gorm:"column:workshop_id"`
+	DaysStr     string  `gorm:"column:days_str"`
+	TimeStart   string  `gorm:"column:time_start"`
+	DurationMin int     `gorm:"column:duration_min"`
+	ValidFrom   string  `gorm:"column:valid_from"`
+	ValidUntil  *string `gorm:"column:valid_until"`
+	CreatedAt   string  `gorm:"column:created_at"`
+}
+
+// parseIntCSV parses a comma-separated string of integers (e.g. "1,3,5") into []int.
+func parseIntCSV(s string) []int {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	result := make([]int, 0, len(parts))
+	for _, p := range parts {
+		if n, err := strconv.Atoi(strings.TrimSpace(p)); err == nil {
+			result = append(result, n)
+		}
+	}
+	return result
+}
+
+// rowsToSchedules converts raw DB scan results into handler Schedule structs.
+func rowsToSchedules(rows []schedRowRaw) []Schedule {
+	out := make([]Schedule, len(rows))
+	for i, r := range rows {
+		out[i] = Schedule{
+			ID:          r.ID,
+			WorkshopID:  r.WorkshopID,
+			DaysOfWeek:  parseIntCSV(r.DaysStr),
+			TimeStart:   r.TimeStart,
+			DurationMin: r.DurationMin,
+			ValidFrom:   r.ValidFrom,
+			ValidUntil:  r.ValidUntil,
+			CreatedAt:   r.CreatedAt,
+		}
+	}
+	return out
+}
+
 // createScheduleInput is the request body for POST /workshops/:id/schedules.
 type createScheduleInput struct {
 	DaysOfWeek  []int  `json:"days_of_week"  binding:"required"`
@@ -30,17 +79,15 @@ type createScheduleInput struct {
 }
 
 // CreateSchedule handles POST /api/v1/workshops/:id/schedules.
-// Only the workshop owner can create schedules.
 func CreateSchedule(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	workshopID := c.Param("id")
 
 	// Verify ownership
 	var ownerID string
-	err := db.Pool.QueryRow(context.Background(),
-		`SELECT instructor_id FROM workshops WHERE id = $1`, workshopID,
-	).Scan(&ownerID)
-	if err != nil {
+	result := db.DB.Raw(`SELECT instructor_id::text as instructor_id FROM workshops WHERE id = ?`, workshopID).
+		Scan(&ownerID)
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado"})
 		return
 	}
@@ -55,7 +102,6 @@ func CreateSchedule(c *gin.Context) {
 		return
 	}
 
-	// Validate days_of_week: must be non-empty, values 0-6
 	if len(input.DaysOfWeek) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "days_of_week no puede estar vacío"})
 		return
@@ -66,90 +112,77 @@ func CreateSchedule(c *gin.Context) {
 			return
 		}
 	}
-
-	// Validate time_start format (simple check — Postgres will validate properly)
 	if len(input.TimeStart) < 4 {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "time_start inválido, usa formato HH:MM"})
 		return
 	}
-
 	if input.DurationMin <= 0 {
 		input.DurationMin = 60
 	}
 
-	// valid_from defaults to today if not provided
 	validFrom := input.ValidFrom
 	if validFrom == "" {
-		validFrom = "today"
+		validFrom = time.Now().Format("2006-01-02")
 	}
 
-	var scheduleID string
-	err = db.Pool.QueryRow(context.Background(),
-		`INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, valid_from)
-		 VALUES ($1, $2, $3, $4, $5::date)
-		 RETURNING id`,
-		workshopID, input.DaysOfWeek, input.TimeStart, input.DurationMin, validFrom,
-	).Scan(&scheduleID)
+	parsedValidFrom, err := time.Parse("2006-01-02", validFrom)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "valid_from inválido, usa YYYY-MM-DD"})
+		return
+	}
+
+	sched := models.Schedule{
+		WorkshopID:  workshopID,
+		DaysOfWeek:  models.IntArray(input.DaysOfWeek),
+		TimeStart:   input.TimeStart,
+		DurationMin: input.DurationMin,
+		ValidFrom:   parsedValidFrom,
+	}
+	if err := db.DB.Create(&sched).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al crear schedule: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": gin.H{"id": scheduleID}})
+	c.JSON(http.StatusCreated, gin.H{"data": gin.H{"id": sched.ID}})
 }
 
 // GetSchedules handles GET /api/v1/workshops/:id/schedules.
-// Returns active schedules (valid_until IS NULL or >= today).
 func GetSchedules(c *gin.Context) {
 	workshopID := c.Param("id")
 
-	rows, err := db.Pool.Query(context.Background(),
-		`SELECT id, workshop_id, days_of_week, time_start::text, duration_min,
-		        valid_from::text, valid_until::text, created_at::text
-		 FROM schedules
-		 WHERE workshop_id = $1
-		   AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
-		 ORDER BY valid_from, time_start`,
-		workshopID,
-	)
-	if err != nil {
+	var rows []schedRowRaw
+	if err := db.DB.Raw(`
+		SELECT id, workshop_id,
+		       array_to_string(days_of_week, ',') as days_str,
+		       time_start::text as time_start, duration_min,
+		       valid_from::text as valid_from, valid_until::text as valid_until,
+		       created_at::text as created_at
+		FROM schedules
+		WHERE workshop_id = ?
+		  AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
+		ORDER BY valid_from, time_start`, workshopID,
+	).Scan(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener schedules"})
 		return
 	}
-	defer rows.Close()
 
-	schedules := []Schedule{}
-	for rows.Next() {
-		var s Schedule
-		var validUntil *string
-		if err := rows.Scan(
-			&s.ID, &s.WorkshopID, &s.DaysOfWeek, &s.TimeStart, &s.DurationMin,
-			&s.ValidFrom, &validUntil, &s.CreatedAt,
-		); err != nil {
-			continue
-		}
-		s.ValidUntil = validUntil
-		schedules = append(schedules, s)
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": schedules})
+	c.JSON(http.StatusOK, gin.H{"data": rowsToSchedules(rows)})
 }
 
 // DeleteSchedule handles DELETE /api/v1/schedules/:id.
-// Soft-deletes by setting valid_until = today. Only the workshop owner can do this.
+// Soft-deletes by setting valid_until = today.
 func DeleteSchedule(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	scheduleID := c.Param("id")
 
-	// Verify ownership via JOIN
 	var ownerID string
-	err := db.Pool.QueryRow(context.Background(),
-		`SELECT w.instructor_id
-		 FROM schedules s
-		 JOIN workshops w ON w.id = s.workshop_id
-		 WHERE s.id = $1`, scheduleID,
+	result := db.DB.Raw(`
+		SELECT w.instructor_id::text as instructor_id
+		FROM schedules s
+		JOIN workshops w ON w.id = s.workshop_id
+		WHERE s.id = ?`, scheduleID,
 	).Scan(&ownerID)
-	if err != nil {
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Schedule no encontrado"})
 		return
 	}
@@ -158,17 +191,12 @@ func DeleteSchedule(c *gin.Context) {
 		return
 	}
 
-	// Soft delete: set valid_until = today
-	result, err := db.Pool.Exec(context.Background(),
-		`UPDATE schedules SET valid_until = CURRENT_DATE WHERE id = $1 AND valid_until IS NULL`,
-		scheduleID,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al eliminar schedule: " + err.Error()})
+	res := db.DB.Exec(`UPDATE schedules SET valid_until = CURRENT_DATE WHERE id = ? AND valid_until IS NULL`, scheduleID)
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al eliminar schedule: " + res.Error.Error()})
 		return
 	}
-	if result.RowsAffected() == 0 {
-		// Already closed or not found — still OK from caller's perspective
+	if res.RowsAffected == 0 {
 		c.JSON(http.StatusOK, gin.H{"data": gin.H{"id": scheduleID, "already_closed": true}})
 		return
 	}
@@ -185,26 +213,25 @@ type updateScheduleInput struct {
 }
 
 // UpdateSchedule handles PUT /api/v1/schedules/:id.
-// Closes the old schedule the day before change_date and creates a new one from change_date.
 func UpdateSchedule(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	scheduleID := c.Param("id")
-	ctx := context.Background()
 
-	// Verify ownership
-	var ownerID string
-	var workshopID string
-	err := db.Pool.QueryRow(ctx,
-		`SELECT w.instructor_id, s.workshop_id
-		 FROM schedules s
-		 JOIN workshops w ON w.id = s.workshop_id
-		 WHERE s.id = $1`, scheduleID,
-	).Scan(&ownerID, &workshopID)
-	if err != nil {
+	var ownership struct {
+		OwnerID    string `gorm:"column:owner_id"`
+		WorkshopID string `gorm:"column:workshop_id"`
+	}
+	result := db.DB.Raw(`
+		SELECT w.instructor_id::text as owner_id, s.workshop_id::text as workshop_id
+		FROM schedules s
+		JOIN workshops w ON w.id = s.workshop_id
+		WHERE s.id = ?`, scheduleID,
+	).Scan(&ownership)
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Schedule no encontrado"})
 		return
 	}
-	if ownerID != userID.(string) {
+	if ownership.OwnerID != userID.(string) {
 		c.JSON(http.StatusForbidden, gin.H{"message": "No tienes permiso para modificar este schedule"})
 		return
 	}
@@ -226,40 +253,42 @@ func UpdateSchedule(c *gin.Context) {
 		input.DurationMin = 60
 	}
 
-	tx, err := db.Pool.Begin(ctx)
-	if err != nil {
+	tx := db.DB.Begin()
+	if tx.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al iniciar transacción"})
 		return
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	// Close old schedule
-	_, err = tx.Exec(ctx,
-		`UPDATE schedules SET valid_until = $1 WHERE id = $2`,
-		validUntilOld, scheduleID,
-	)
-	if err != nil {
+	if err := tx.Exec(`UPDATE schedules SET valid_until = ? WHERE id = ?`, validUntilOld, scheduleID).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al cerrar schedule antiguo: " + err.Error()})
 		return
 	}
 
-	// Insert new schedule
-	var newScheduleID string
-	err = tx.QueryRow(ctx,
-		`INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, valid_from)
-		 VALUES ($1, $2, $3, $4, $5::date)
-		 RETURNING id`,
-		workshopID, input.DaysOfWeek, input.TimeStart, input.DurationMin, input.ChangeDate,
-	).Scan(&newScheduleID)
-	if err != nil {
+	newSched := models.Schedule{
+		WorkshopID:  ownership.WorkshopID,
+		DaysOfWeek:  models.IntArray(input.DaysOfWeek),
+		TimeStart:   input.TimeStart,
+		DurationMin: input.DurationMin,
+		ValidFrom:   changeDate,
+	}
+	if err := tx.Create(&newSched).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al crear schedule nuevo: " + err.Error()})
 		return
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al confirmar cambio"})
 		return
 	}
+
+	var newScheduleID = newSched.ID
 
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{
 		"old_schedule_id": scheduleID,
@@ -269,17 +298,15 @@ func UpdateSchedule(c *gin.Context) {
 
 // affectedBookingRow is returned by GetAffectedBookings and used internally.
 type affectedBookingRow struct {
-	BookingID      string  `json:"booking_id"`
-	StudentName    string  `json:"student_name"`
-	SessionDate    string  `json:"session_date"`
-	SessionTime    string  `json:"session_time"`
-	Amount         float64 `json:"amount"`
+	BookingID      string  `json:"booking_id"     gorm:"column:booking_id"`
+	StudentName    string  `json:"student_name"   gorm:"column:student_name"`
+	SessionDate    string  `json:"session_date"   gorm:"column:session_date"`
+	SessionTime    string  `json:"session_time"   gorm:"column:session_time"`
+	Amount         float64 `json:"amount"         gorm:"column:amount"`
 	CommissionZone string  `json:"commission_zone"`
 }
 
-// commissionZone returns "instructor" if now is on or past the Monday that starts
-// the ISO week of sessionDate (week = Mon–Sun). Returns "platform" if the class
-// is still in a future week.
+// commissionZone returns "instructor" if now is on or past the Monday of sessionDate's ISO week.
 func commissionZone(sessionDate time.Time) string {
 	weekday := int(sessionDate.Weekday()) // 0=Sun,1=Mon,...,6=Sat
 	daysFromMonday := (weekday + 6) % 7   // Mon→0, Tue→1, ..., Sun→6
@@ -296,7 +323,6 @@ func GetAffectedBookings(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	scheduleID := c.Param("id")
 	changeDateStr := c.Query("change_date")
-	ctx := context.Background()
 
 	if changeDateStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "change_date requerido"})
@@ -307,15 +333,14 @@ func GetAffectedBookings(c *gin.Context) {
 		return
 	}
 
-	// Verify ownership
 	var ownerID string
-	err := db.Pool.QueryRow(ctx,
-		`SELECT w.instructor_id
-		 FROM schedules s
-		 JOIN workshops w ON w.id = s.workshop_id
-		 WHERE s.id = $1`, scheduleID,
+	result := db.DB.Raw(`
+		SELECT w.instructor_id::text as instructor_id
+		FROM schedules s
+		JOIN workshops w ON w.id = s.workshop_id
+		WHERE s.id = ?`, scheduleID,
 	).Scan(&ownerID)
-	if err != nil {
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Schedule no encontrado"})
 		return
 	}
@@ -324,41 +349,33 @@ func GetAffectedBookings(c *gin.Context) {
 		return
 	}
 
-	rows, err := db.Pool.Query(ctx,
-		`SELECT b.id, COALESCE(p.name, u.email), s.starts_at::date::text, s.starts_at::time::text, b.amount
-		 FROM bookings b
-		 JOIN sessions s ON s.id = b.session_id
-		 JOIN users u ON u.id = b.student_id
-		 LEFT JOIN profiles p ON p.user_id = b.student_id
-		 WHERE s.schedule_id = $1
-		   AND s.starts_at >= $2::date
-		   AND b.status != 'cancelled'
-		 ORDER BY s.starts_at`,
-		scheduleID, changeDateStr,
-	)
-	if err != nil {
+	var rows []affectedBookingRow
+	if err := db.DB.Raw(`
+		SELECT b.id as booking_id, COALESCE(p.name, u.email) as student_name,
+		       s.starts_at::date::text as session_date, s.starts_at::time::text as session_time,
+		       b.amount
+		FROM bookings b
+		JOIN sessions s ON s.id = b.session_id
+		JOIN users u ON u.id = b.student_id
+		LEFT JOIN profiles p ON p.user_id = b.student_id
+		WHERE s.schedule_id = ?
+		  AND s.starts_at >= ?::date
+		  AND b.status != 'cancelled'
+		ORDER BY s.starts_at`, scheduleID, changeDateStr,
+	).Scan(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener reservas afectadas: " + err.Error()})
 		return
 	}
-	defer rows.Close()
 
-	result := []affectedBookingRow{}
-	for rows.Next() {
-		var r affectedBookingRow
-		var sessionDateStr string
-		if err := rows.Scan(&r.BookingID, &r.StudentName, &sessionDateStr, &r.SessionTime, &r.Amount); err != nil {
-			continue
-		}
-		r.SessionDate = sessionDateStr
-		if sd, err := time.Parse("2006-01-02", sessionDateStr); err == nil {
-			r.CommissionZone = commissionZone(sd)
+	for i := range rows {
+		if sd, err := time.Parse("2006-01-02", rows[i].SessionDate); err == nil {
+			rows[i].CommissionZone = commissionZone(sd)
 		} else {
-			r.CommissionZone = "instructor"
+			rows[i].CommissionZone = "instructor"
 		}
-		result = append(result, r)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": result})
+	c.JSON(http.StatusOK, gin.H{"data": rows})
 }
 
 // bulkActionInput is the request body for POST /api/v1/schedules/:id/bulk-action.
@@ -372,7 +389,6 @@ type bulkActionInput struct {
 func BulkAction(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	scheduleID := c.Param("id")
-	ctx := context.Background()
 
 	var input bulkActionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -393,15 +409,14 @@ func BulkAction(c *gin.Context) {
 		return
 	}
 
-	// Verify ownership
 	var ownerID string
-	err := db.Pool.QueryRow(ctx,
-		`SELECT w.instructor_id
-		 FROM schedules s
-		 JOIN workshops w ON w.id = s.workshop_id
-		 WHERE s.id = $1`, scheduleID,
+	result := db.DB.Raw(`
+		SELECT w.instructor_id::text as instructor_id
+		FROM schedules s
+		JOIN workshops w ON w.id = s.workshop_id
+		WHERE s.id = ?`, scheduleID,
 	).Scan(&ownerID)
-	if err != nil {
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Schedule no encontrado"})
 		return
 	}
@@ -410,123 +425,117 @@ func BulkAction(c *gin.Context) {
 		return
 	}
 
-	// Fetch new schedule details for migrate_all
 	newSchedTimeStart := ""
 	newSchedDurationMin := 0
 	if input.Action == "migrate_all" {
-		var newSchedDaysOfWeek []int
-		err = db.Pool.QueryRow(ctx,
-			`SELECT days_of_week, time_start::text, duration_min FROM schedules WHERE id = $1`,
+		var newSchedInfo struct {
+			TimeStart   string `gorm:"column:time_start"`
+			DurationMin int    `gorm:"column:duration_min"`
+		}
+		res := db.DB.Raw(
+			`SELECT time_start::text as time_start, duration_min FROM schedules WHERE id = ?`,
 			input.NewScheduleID,
-		).Scan(&newSchedDaysOfWeek, &newSchedTimeStart, &newSchedDurationMin)
-		if err != nil {
+		).Scan(&newSchedInfo)
+		if res.Error != nil || res.RowsAffected == 0 {
 			c.JSON(http.StatusNotFound, gin.H{"message": "new_schedule_id no encontrado"})
 			return
 		}
+		newSchedTimeStart = newSchedInfo.TimeStart
+		newSchedDurationMin = newSchedInfo.DurationMin
 	}
 
-	// Get affected bookings with session info
 	type affectedRow struct {
-		bookingID      string
-		sessionID      string
-		sessionDate    time.Time
-		workshopID     string
-		oldSessionID   string
+		BookingID   string    `gorm:"column:booking_id"`
+		SessionID   string    `gorm:"column:session_id"`
+		SessionDate time.Time `gorm:"column:session_date"`
+		WorkshopID  string    `gorm:"column:workshop_id"`
 	}
 
-	rows, err := db.Pool.Query(ctx,
-		`SELECT b.id, b.session_id, s.starts_at::date, b.workshop_id
-		 FROM bookings b
-		 JOIN sessions s ON s.id = b.session_id
-		 WHERE s.schedule_id = $1
-		   AND s.starts_at >= $2::date
-		   AND b.status != 'cancelled'`,
+	var affected []affectedRow
+	if err := db.DB.Raw(`
+		SELECT b.id as booking_id, b.session_id::text as session_id,
+		       s.starts_at::date as session_date, b.workshop_id::text as workshop_id
+		FROM bookings b
+		JOIN sessions s ON s.id = b.session_id
+		WHERE s.schedule_id = ?
+		  AND s.starts_at >= ?::date
+		  AND b.status != 'cancelled'`,
 		scheduleID, input.ChangeDate,
-	)
-	if err != nil {
+	).Scan(&affected).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener reservas afectadas: " + err.Error()})
 		return
 	}
 
-	var affected []affectedRow
-	for rows.Next() {
-		var r affectedRow
-		if err := rows.Scan(&r.bookingID, &r.sessionID, &r.sessionDate, &r.workshopID); err != nil {
-			continue
-		}
-		r.oldSessionID = r.sessionID
-		affected = append(affected, r)
-	}
-	rows.Close()
-
-	tx, err := db.Pool.Begin(ctx)
-	if err != nil {
+	tx := db.DB.Begin()
+	if tx.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al iniciar transacción"})
 		return
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	migrated := 0
 	refunded := 0
 
 	for _, r := range affected {
 		if input.Action == "refund_all" {
-			zone := commissionZone(r.sessionDate)
-			_, err := tx.Exec(ctx,
-				`UPDATE bookings
-				 SET status = 'cancelled', payment_status = 'refunded',
-				     cancelled_reason = 'schedule_change', commission_absorbed_by = $1
-				 WHERE id = $2`,
-				zone, r.bookingID,
-			)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al reembolsar reserva " + r.bookingID + ": " + err.Error()})
+			zone := commissionZone(r.SessionDate)
+			if err := tx.Exec(`
+				UPDATE bookings
+				SET status = 'cancelled', payment_status = 'refunded',
+				    cancelled_reason = 'schedule_change', commission_absorbed_by = ?
+				WHERE id = ?`, zone, r.BookingID,
+			).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al reembolsar reserva " + r.BookingID + ": " + err.Error()})
 				return
 			}
 			refunded++
 		} else {
-			// migrate_all: keep same session date, move to new schedule
-			targetDateStr := r.sessionDate.Format("2006-01-02")
+			targetDateStr := r.SessionDate.Format("2006-01-02")
 			startsAt := targetDateStr + "T" + newSchedTimeStart + "Z"
 			startTime, _ := time.Parse("2006-01-02T15:04:05Z", startsAt)
 			endsAt := startTime.Add(time.Duration(newSchedDurationMin) * time.Minute).Format("2006-01-02T15:04:05Z")
 
 			var targetSessionID string
-			err = tx.QueryRow(ctx,
-				`INSERT INTO sessions (workshop_id, schedule_id, starts_at, ends_at)
-				 VALUES ($1, $2, $3, $4)
-				 ON CONFLICT (workshop_id, schedule_id, starts_at) DO UPDATE SET workshop_id = EXCLUDED.workshop_id
-				 RETURNING id`,
-				r.workshopID, input.NewScheduleID, startsAt, endsAt,
-			).Scan(&targetSessionID)
-			if err != nil {
+			if err := tx.Raw(`
+				INSERT INTO sessions (workshop_id, schedule_id, starts_at, ends_at)
+				VALUES (?, ?, ?, ?)
+				ON CONFLICT (workshop_id, schedule_id, starts_at) DO UPDATE SET workshop_id = EXCLUDED.workshop_id
+				RETURNING id`,
+				r.WorkshopID, input.NewScheduleID, startsAt, endsAt,
+			).Scan(&targetSessionID).Error; err != nil {
+				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al materializar sesión destino: " + err.Error()})
 				return
 			}
 
-			// Check target session not cancelled
 			var cancelled bool
-			tx.QueryRow(ctx, `SELECT cancelled FROM sessions WHERE id = $1`, targetSessionID).Scan(&cancelled) //nolint:errcheck
+			tx.Raw(`SELECT cancelled FROM sessions WHERE id = ?`, targetSessionID).Scan(&cancelled) //nolint:errcheck
 			if cancelled {
+				tx.Rollback()
 				c.JSON(http.StatusConflict, gin.H{"message": "La sesión destino está cancelada para la fecha " + targetDateStr})
 				return
 			}
 
-			_, err = tx.Exec(ctx,
-				`UPDATE bookings
-				 SET session_id = $1, migrated_from_session_id = $2, status = 'confirmed'
-				 WHERE id = $3`,
-				targetSessionID, r.oldSessionID, r.bookingID,
-			)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al migrar reserva " + r.bookingID + ": " + err.Error()})
+			if err := tx.Exec(`
+				UPDATE bookings
+				SET session_id = ?, migrated_from_session_id = ?, status = 'confirmed'
+				WHERE id = ?`,
+				targetSessionID, r.SessionID, r.BookingID,
+			).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al migrar reserva " + r.BookingID + ": " + err.Error()})
 				return
 			}
 			migrated++
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al confirmar operación bulk"})
 		return
 	}

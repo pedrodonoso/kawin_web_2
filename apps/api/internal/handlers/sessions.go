@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -20,6 +19,7 @@ type materializeSessionInput struct {
 	WorkshopID string `json:"workshop_id"  binding:"required"`
 	ScheduleID string `json:"schedule_id"  binding:"required"`
 	Date       string `json:"date"         binding:"required"` // "YYYY-MM-DD"
+	OnlineURL  string `json:"online_url"`
 }
 
 type sessionResponse struct {
@@ -29,16 +29,13 @@ type sessionResponse struct {
 	StartsAt   string `json:"starts_at"`
 	EndsAt     string `json:"ends_at"`
 	Cancelled  bool   `json:"cancelled"`
+	OnlineURL  string `json:"online_url,omitempty"`
 	Created    bool   `json:"created"` // true = recién creada, false = ya existía
 }
 
 // MaterializeSession maneja POST /api/v1/sessions/materialize.
-// Convierte un slot calculado desde un schedule en una sesión real en la base de datos.
-// Idempotente: si la sesión ya existe la devuelve sin error.
-// Solo el dueño del taller puede materializar sesiones.
 func MaterializeSession(c *gin.Context) {
 	userID, _ := c.Get("userID")
-	ctx := context.Background()
 
 	var input materializeSessionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -52,49 +49,55 @@ func MaterializeSession(c *gin.Context) {
 		return
 	}
 
-	// Verificar propiedad del taller y que el schedule pertenece al taller
-	var ownerID, workshopID string
-	var timeStart string
-	var durationMin int
-	err = db.Pool.QueryRow(ctx,
-		`SELECT w.instructor_id, s.workshop_id, s.time_start::text, s.duration_min
-		 FROM schedules s
-		 JOIN workshops w ON w.id = s.workshop_id
-		 WHERE s.id = $1 AND s.workshop_id = $2`,
+	// Verificar propiedad y obtener time_start y duration_min
+	var schedInfo struct {
+		OwnerID     string `gorm:"column:owner_id"`
+		WorkshopID  string `gorm:"column:workshop_id"`
+		TimeStart   string `gorm:"column:time_start"`
+		DurationMin int    `gorm:"column:duration_min"`
+	}
+	res := db.DB.Raw(`
+		SELECT w.instructor_id::text as owner_id, s.workshop_id::text as workshop_id,
+		       s.time_start::text as time_start, s.duration_min
+		FROM schedules s
+		JOIN workshops w ON w.id = s.workshop_id
+		WHERE s.id = ? AND s.workshop_id = ?`,
 		input.ScheduleID, input.WorkshopID,
-	).Scan(&ownerID, &workshopID, &timeStart, &durationMin)
-	if err != nil {
+	).Scan(&schedInfo)
+	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Schedule no encontrado o no pertenece al taller"})
 		return
 	}
-	if ownerID != userID.(string) {
+	if schedInfo.OwnerID != userID.(string) {
 		c.JSON(http.StatusForbidden, gin.H{"message": "No tienes permiso para materializar sesiones de este taller"})
 		return
 	}
 
 	// Verificar que el schedule aplica en el día solicitado
-	var daysOfWeek []int
-	var validFrom time.Time
-	var validUntilStr *string
-	db.Pool.QueryRow(ctx,
-		`SELECT days_of_week, valid_from, valid_until::text FROM schedules WHERE id = $1`,
+	var schedDetails struct {
+		DaysStr    string    `gorm:"column:days_str"`
+		ValidFrom  time.Time `gorm:"column:valid_from"`
+		ValidUntil *string   `gorm:"column:valid_until"`
+	}
+	db.DB.Raw(
+		`SELECT array_to_string(days_of_week, ',') as days_str, valid_from, valid_until::text as valid_until FROM schedules WHERE id = ?`,
 		input.ScheduleID,
-	).Scan(&daysOfWeek, &validFrom, &validUntilStr) //nolint:errcheck
+	).Scan(&schedDetails) //nolint:errcheck
 
 	daySet := make(map[int]bool)
-	for _, d := range daysOfWeek {
+	for _, d := range parseIntCSV(schedDetails.DaysStr) {
 		daySet[d] = true
 	}
 	if !daySet[int(sessionDate.Weekday())] {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "El schedule no aplica en el día indicado"})
 		return
 	}
-	if sessionDate.Before(validFrom.Truncate(24 * time.Hour)) {
+	if sessionDate.Before(schedDetails.ValidFrom.Truncate(24 * time.Hour)) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "La fecha es anterior al inicio del schedule"})
 		return
 	}
-	if validUntilStr != nil && len(*validUntilStr) >= 10 {
-		validUntil, _ := time.Parse("2006-01-02", (*validUntilStr)[:10])
+	if schedDetails.ValidUntil != nil && len(*schedDetails.ValidUntil) >= 10 {
+		validUntil, _ := time.Parse("2006-01-02", (*schedDetails.ValidUntil)[:10])
 		if sessionDate.After(validUntil) {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "La fecha es posterior al fin del schedule"})
 			return
@@ -102,7 +105,7 @@ func MaterializeSession(c *gin.Context) {
 	}
 
 	// Calcular starts_at y ends_at
-	parts := strings.SplitN(timeStart, ":", 3)
+	parts := strings.SplitN(schedInfo.TimeStart, ":", 3)
 	hour, _ := strconv.Atoi(parts[0])
 	minute := 0
 	if len(parts) > 1 {
@@ -110,34 +113,37 @@ func MaterializeSession(c *gin.Context) {
 	}
 	startsAt := fmt.Sprintf("%sT%02d:%02d:00Z", input.Date, hour, minute)
 	startTime, _ := time.Parse("2006-01-02T15:04:05Z", startsAt)
-	endsAt := startTime.Add(time.Duration(durationMin) * time.Minute).Format("2006-01-02T15:04:05Z")
+	endsAt := startTime.Add(time.Duration(schedInfo.DurationMin) * time.Minute).Format("2006-01-02T15:04:05Z")
 
 	// Upsert: crear si no existe, devolver existente si ya existe
-	var sessionID string
-	var cancelled bool
-	var created bool
+	var existing struct {
+		ID        string `gorm:"column:id"`
+		Cancelled bool   `gorm:"column:cancelled"`
+		OnlineURL string `gorm:"column:online_url"`
+	}
+
+	created := false
 
 	// Intentar insert; si hay conflicto, hacer select
-	err = db.Pool.QueryRow(ctx,
-		`INSERT INTO sessions (workshop_id, schedule_id, starts_at, ends_at)
-		 VALUES ($1, $2, $3, $4)
-		 ON CONFLICT (workshop_id, schedule_id, starts_at) DO NOTHING
-		 RETURNING id, cancelled`,
-		input.WorkshopID, input.ScheduleID, startsAt, endsAt,
-	).Scan(&sessionID, &cancelled)
+	insertRes := db.DB.Raw(`
+		INSERT INTO sessions (workshop_id, schedule_id, starts_at, ends_at, online_url)
+		VALUES (?, ?, ?, ?, NULLIF(?,''))
+		ON CONFLICT (workshop_id, schedule_id, starts_at) DO NOTHING
+		RETURNING id, cancelled, COALESCE(online_url,'') as online_url`,
+		input.WorkshopID, input.ScheduleID, startsAt, endsAt, input.OnlineURL,
+	).Scan(&existing)
 
-	if err != nil || sessionID == "" {
-		// La sesión ya existía — cargar la existente
-		err = db.Pool.QueryRow(ctx,
-			`SELECT id, cancelled FROM sessions
-			 WHERE workshop_id = $1 AND schedule_id = $2 AND starts_at = $3`,
+	if insertRes.Error != nil || existing.ID == "" {
+		// La sesión ya existía — cargarla
+		selectRes := db.DB.Raw(`
+			SELECT id, cancelled, COALESCE(online_url,'') as online_url FROM sessions
+			WHERE workshop_id = ? AND schedule_id = ? AND starts_at = ?`,
 			input.WorkshopID, input.ScheduleID, startsAt,
-		).Scan(&sessionID, &cancelled)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al materializar sesión: " + err.Error()})
+		).Scan(&existing)
+		if selectRes.Error != nil || selectRes.RowsAffected == 0 {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al materializar sesión"})
 			return
 		}
-		created = false
 	} else {
 		created = true
 	}
@@ -148,14 +154,59 @@ func MaterializeSession(c *gin.Context) {
 	}
 
 	c.JSON(status, gin.H{"data": sessionResponse{
-		ID:         sessionID,
+		ID:         existing.ID,
 		WorkshopID: input.WorkshopID,
 		ScheduleID: input.ScheduleID,
 		StartsAt:   startsAt,
 		EndsAt:     endsAt,
-		Cancelled:  cancelled,
+		Cancelled:  existing.Cancelled,
+		OnlineURL:  existing.OnlineURL,
 		Created:    created,
 	}})
+}
+
+// =============================================================================
+// UpdateSessionURL — PATCH /api/v1/sessions/:id/url
+// =============================================================================
+
+type updateSessionURLInput struct {
+	OnlineURL string `json:"online_url"`
+}
+
+// UpdateSessionURL maneja PATCH /api/v1/sessions/:id/url.
+func UpdateSessionURL(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	sessionID := c.Param("id")
+
+	var input updateSessionURLInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	var ownerID string
+	res := db.DB.Raw(`
+		SELECT w.instructor_id::text as instructor_id FROM sessions s
+		JOIN workshops w ON w.id = s.workshop_id
+		WHERE s.id = ?`, sessionID,
+	).Scan(&ownerID)
+	if res.Error != nil || res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Sesión no encontrada"})
+		return
+	}
+	if ownerID != userID.(string) {
+		c.JSON(http.StatusForbidden, gin.H{"message": "No tienes permiso para editar esta sesión"})
+		return
+	}
+
+	if err := db.DB.Exec(
+		`UPDATE sessions SET online_url = NULLIF(?,'') WHERE id = ?`, input.OnlineURL, sessionID,
+	).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al actualizar la sesión: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"online_url": input.OnlineURL})
 }
 
 // =============================================================================
@@ -167,11 +218,8 @@ type cancelSessionInput struct {
 }
 
 // CancelSession maneja POST /api/v1/sessions/cancel.
-// Cancela una sesión ya materializada y devuelve todas las reservas activas.
-// Solo el dueño del taller puede cancelar sesiones.
 func CancelSession(c *gin.Context) {
 	userID, _ := c.Get("userID")
-	ctx := context.Background()
 
 	var input cancelSessionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -179,35 +227,35 @@ func CancelSession(c *gin.Context) {
 		return
 	}
 
-	// Cargar sesión y verificar propiedad del taller
-	var workshopID, ownerID string
-	var startsAtStr string
-	var alreadyCancelled bool
-	err := db.Pool.QueryRow(ctx,
-		`SELECT s.workshop_id, w.instructor_id, s.starts_at::date::text, s.cancelled
-		 FROM sessions s
-		 JOIN workshops w ON w.id = s.workshop_id
-		 WHERE s.id = $1`,
-		input.SessionID,
-	).Scan(&workshopID, &ownerID, &startsAtStr, &alreadyCancelled)
-	if err != nil {
+	var sessionInfo struct {
+		WorkshopID       string `gorm:"column:workshop_id"`
+		OwnerID          string `gorm:"column:owner_id"`
+		StartsAtStr      string `gorm:"column:starts_at_str"`
+		AlreadyCancelled bool   `gorm:"column:already_cancelled"`
+	}
+	res := db.DB.Raw(`
+		SELECT s.workshop_id::text as workshop_id, w.instructor_id::text as owner_id,
+		       s.starts_at::date::text as starts_at_str, s.cancelled as already_cancelled
+		FROM sessions s
+		JOIN workshops w ON w.id = s.workshop_id
+		WHERE s.id = ?`, input.SessionID,
+	).Scan(&sessionInfo)
+	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Sesión no encontrada"})
 		return
 	}
-	if ownerID != userID.(string) {
+	if sessionInfo.OwnerID != userID.(string) {
 		c.JSON(http.StatusForbidden, gin.H{"message": "No tienes permiso para cancelar sesiones de este taller"})
 		return
 	}
-	if alreadyCancelled {
+	if sessionInfo.AlreadyCancelled {
 		c.JSON(http.StatusConflict, gin.H{"message": "Esta sesión ya fue cancelada"})
 		return
 	}
 
-	// Bloquear cancelación si la sesión tiene reservas activas
-	var activeBookings int
-	db.Pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM bookings WHERE session_id = $1 AND status != 'cancelled'`,
-		input.SessionID,
+	var activeBookings int64
+	db.DB.Raw(
+		`SELECT COUNT(*) FROM bookings WHERE session_id = ? AND status != 'cancelled'`, input.SessionID,
 	).Scan(&activeBookings) //nolint:errcheck
 	if activeBookings > 0 {
 		c.JSON(http.StatusConflict, gin.H{
@@ -217,58 +265,41 @@ func CancelSession(c *gin.Context) {
 		return
 	}
 
-	sessionDate, _ := time.Parse("2006-01-02", startsAtStr)
+	sessionDate, _ := time.Parse("2006-01-02", sessionInfo.StartsAtStr)
 
-	tx, err := db.Pool.Begin(ctx)
-	if err != nil {
+	tx := db.DB.Begin()
+	if tx.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al iniciar transacción"})
 		return
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	// Marcar sesión como cancelada
-	_, err = tx.Exec(ctx,
-		`UPDATE sessions SET cancelled = true WHERE id = $1`,
-		input.SessionID,
-	)
-	if err != nil {
+	if err := tx.Exec(`UPDATE sessions SET cancelled = true WHERE id = ?`, input.SessionID).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al cancelar sesión: " + err.Error()})
 		return
 	}
 
-	// Cargar reservas activas de esta sesión
-	rows, err := tx.Query(ctx,
-		`SELECT id FROM bookings WHERE session_id = $1 AND status != 'cancelled'`,
-		input.SessionID,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al obtener reservas: " + err.Error()})
-		return
-	}
-
 	var bookingIDs []string
-	for rows.Next() {
-		var bid string
-		if err := rows.Scan(&bid); err != nil {
-			continue
-		}
-		bookingIDs = append(bookingIDs, bid)
-	}
-	rows.Close()
+	tx.Raw(`SELECT id FROM bookings WHERE session_id = ? AND status != 'cancelled'`, input.SessionID).
+		Scan(&bookingIDs) //nolint:errcheck
 
 	zone := commissionZone(sessionDate)
 	byInstructor := 0
 	byPlatform := 0
 
 	for _, bid := range bookingIDs {
-		_, err = tx.Exec(ctx,
-			`UPDATE bookings
-			 SET status = 'cancelled', payment_status = 'refunded',
-			     cancelled_reason = 'instructor_cancel', commission_absorbed_by = $1
-			 WHERE id = $2`,
-			zone, bid,
-		)
-		if err != nil {
+		if err := tx.Exec(`
+			UPDATE bookings
+			SET status = 'cancelled', payment_status = 'refunded',
+			    cancelled_reason = 'instructor_cancel', commission_absorbed_by = ?
+			WHERE id = ?`, zone, bid,
+		).Error; err != nil {
+			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al cancelar reserva " + bid + ": " + err.Error()})
 			return
 		}
@@ -279,7 +310,7 @@ func CancelSession(c *gin.Context) {
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al confirmar cancelación"})
 		return
 	}
