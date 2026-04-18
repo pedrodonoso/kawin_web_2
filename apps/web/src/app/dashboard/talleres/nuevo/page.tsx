@@ -168,7 +168,7 @@ export default function NuevoTallerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
@@ -209,7 +209,7 @@ export default function NuevoTallerPage() {
                   value={form.description}
                   onChange={(e) => set("description", e.target.value)}
                 />
-                <p className="text-xs text-zinc-400 text-right">{form.description.length}/2000</p>
+                <p className="text-xs text-muted-foreground/70 text-right">{form.description.length}/2000</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -265,8 +265,8 @@ export default function NuevoTallerPage() {
                     onClick={() => set("modality", m.value)}
                     className={`py-3 border-2 rounded-lg text-sm font-medium transition-all ${
                       form.modality === m.value
-                        ? "border-zinc-900 bg-zinc-50"
-                        : "border-zinc-200 hover:border-zinc-400"
+                        ? "border-primary bg-secondary"
+                        : "border-border hover:border-primary/50"
                     }`}
                   >
                     {m.label}
@@ -295,7 +295,7 @@ export default function NuevoTallerPage() {
                     value={form.online_url}
                     onChange={(e) => set("online_url", e.target.value)}
                   />
-                  <p className="text-xs text-zinc-400">Zoom, Meet, Teams u otro. Solo visible para estudiantes con reserva confirmada.</p>
+                  <p className="text-xs text-muted-foreground/70">Zoom, Meet, Teams u otro. Solo visible para estudiantes con reserva confirmada.</p>
                 </div>
               )}
             </CardContent>
@@ -333,7 +333,7 @@ export default function NuevoTallerPage() {
                       onChange={(e) => set("price", e.target.value)}
                     />
                   </div>
-                  <p className="text-xs text-zinc-400">Ingresa 0 para talleres gratuitos</p>
+                  <p className="text-xs text-muted-foreground/70">Ingresa 0 para talleres gratuitos</p>
                 </div>
 
                 <div className="space-y-2">
@@ -368,7 +368,7 @@ export default function NuevoTallerPage() {
                       <button
                         type="button"
                         onClick={() => removeSchedule(i)}
-                        className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
+                        className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -388,8 +388,8 @@ export default function NuevoTallerPage() {
                               onClick={() => toggleDay(i, d.value)}
                               className={`w-10 h-10 rounded-full text-xs font-semibold border-2 transition-all ${
                                 active
-                                  ? "bg-zinc-900 text-white border-zinc-900"
-                                  : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "bg-card text-foreground/60 border-border hover:border-primary/50"
                               }`}
                             >
                               {d.label}
@@ -461,7 +461,7 @@ export default function NuevoTallerPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {sessions.length === 0 ? (
-                  <p className="text-sm text-zinc-400 text-center py-4">
+                  <p className="text-sm text-muted-foreground/70 text-center py-4">
                     Sin fechas — puedes agregarlas ahora o más tarde.
                   </p>
                 ) : (
@@ -470,7 +470,7 @@ export default function NuevoTallerPage() {
                       <button
                         type="button"
                         onClick={() => removeSession(i)}
-                        className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
+                        className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
                       >
                         <X className="h-4 w-4" />
                       </button>

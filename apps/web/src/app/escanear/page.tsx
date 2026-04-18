@@ -119,22 +119,22 @@ export default function EscanearPage() {
   const { internal } = detectedUrl ? parseUrl(detectedUrl) : { internal: false };
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
+    <main className="min-h-screen bg-primary flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
 
         {/* Header */}
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
-            <ScanLine className="h-6 w-6 text-green-400" />
+          <h1 className="text-2xl font-bold text-primary-foreground flex items-center justify-center gap-2">
+            <ScanLine className="h-6 w-6 text-accent" />
             Escanear QR
           </h1>
-          <p className="text-zinc-400 text-sm">
+          <p className="text-primary-foreground/60 text-sm">
             Apunta la cámara al código QR de un taller
           </p>
         </div>
 
         {/* Visor */}
-        <div className="relative rounded-2xl overflow-hidden bg-zinc-900 aspect-square flex items-center justify-center">
+        <div className="relative rounded-2xl overflow-hidden bg-primary/80 aspect-square flex items-center justify-center">
 
           {/* Video stream */}
           <video
@@ -152,19 +152,19 @@ export default function EscanearPage() {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               {/* Marco de enfoque */}
               <div className="w-56 h-56 relative">
-                <span className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-lg" />
-                <span className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-lg" />
-                <span className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-lg" />
-                <span className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-lg" />
+                <span className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent rounded-tl-lg" />
+                <span className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-accent rounded-tr-lg" />
+                <span className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-accent rounded-bl-lg" />
+                <span className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent rounded-br-lg" />
                 {/* Línea animada */}
-                <span className="absolute left-2 right-2 h-0.5 bg-green-400 opacity-80 animate-scan" />
+                <span className="absolute left-2 right-2 h-0.5 bg-accent opacity-80 animate-scan" />
               </div>
             </div>
           )}
 
           {/* Estado idle */}
           {state === "idle" && (
-            <div className="text-center text-zinc-600 space-y-3 p-8">
+            <div className="text-center text-primary-foreground/40 space-y-3 p-8">
               <Camera className="h-16 w-16 mx-auto opacity-40" />
               <p className="text-sm">Presiona el botón para activar la cámara</p>
             </div>
@@ -172,22 +172,22 @@ export default function EscanearPage() {
 
           {/* Detectado */}
           {state === "detected" && (
-            <div className="absolute inset-0 bg-zinc-900/90 flex flex-col items-center justify-center gap-4 p-6 text-center">
-              <CheckCircle className="h-12 w-12 text-green-400" />
-              <p className="text-white font-semibold">¡QR detectado!</p>
-              <p className="text-zinc-400 text-xs break-all">{detectedUrl}</p>
+            <div className="absolute inset-0 bg-primary/90 flex flex-col items-center justify-center gap-4 p-6 text-center">
+              <CheckCircle className="h-12 w-12 text-accent" />
+              <p className="text-primary-foreground font-semibold">¡QR detectado!</p>
+              <p className="text-primary-foreground/60 text-xs break-all">{detectedUrl}</p>
               {internal && (
-                <p className="text-green-400 text-sm animate-pulse">Abriendo taller...</p>
+                <p className="text-accent text-sm animate-pulse">Abriendo taller...</p>
               )}
             </div>
           )}
 
           {/* Sin permiso */}
           {state === "no-permission" && (
-            <div className="text-center text-zinc-400 space-y-3 p-8">
+            <div className="text-center text-primary-foreground/60 space-y-3 p-8">
               <CameraOff className="h-14 w-14 mx-auto text-red-400 opacity-70" />
               <p className="text-sm text-red-300">Sin acceso a la cámara</p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-primary-foreground/40">
                 Permite el acceso a la cámara en la configuración del navegador y vuelve a intentarlo.
               </p>
             </div>
@@ -195,10 +195,10 @@ export default function EscanearPage() {
 
           {/* Error */}
           {state === "error" && (
-            <div className="text-center text-zinc-400 space-y-2 p-8">
+            <div className="text-center text-primary-foreground/60 space-y-2 p-8">
               <AlertCircle className="h-12 w-12 mx-auto text-amber-400 opacity-70" />
               <p className="text-sm text-amber-300">Error al abrir la cámara</p>
-              <p className="text-xs text-zinc-500">{errorMsg}</p>
+              <p className="text-xs text-primary-foreground/40">{errorMsg}</p>
             </div>
           )}
         </div>
@@ -207,7 +207,7 @@ export default function EscanearPage() {
         <div className="space-y-3">
           {state !== "scanning" && (
             <Button
-              className="w-full bg-green-500 hover:bg-green-400 text-zinc-950 font-semibold"
+              className="w-full bg-accent hover:bg-accent/90 text-primary-foreground font-semibold"
               size="lg"
               onClick={startCamera}
             >
@@ -238,7 +238,7 @@ export default function EscanearPage() {
             </Button>
           )}
 
-          <Button asChild variant="ghost" className="w-full text-zinc-500">
+          <Button asChild variant="ghost" className="w-full text-primary-foreground/60">
             <Link href="/">Volver al inicio</Link>
           </Button>
         </div>

@@ -25,11 +25,11 @@ interface MyBooking {
 function statusBadge(status: string) {
   switch (status) {
     case "confirmed":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Confirmada</Badge>;
+      return <Badge className="bg-positive/15 text-positive hover:bg-positive/15">Confirmada</Badge>;
     case "pending":
       return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pendiente</Badge>;
     case "cancelled":
-      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Cancelada</Badge>;
+      return <Badge className="bg-muted text-muted-foreground hover:bg-muted">Cancelada</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -93,7 +93,7 @@ export default function MisReservasPage() {
   );
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
@@ -113,10 +113,10 @@ export default function MisReservasPage() {
           </div>
         ) : bookings.length === 0 ? (
           <div className="text-center py-16 space-y-4">
-            <Calendar className="h-12 w-12 text-zinc-300 mx-auto" />
+            <Calendar className="h-12 w-12 text-muted-foreground/40 mx-auto" />
             <div>
-              <p className="font-semibold text-zinc-600">Sin reservas aún</p>
-              <p className="text-sm text-zinc-400 mt-1">
+              <p className="font-semibold text-foreground/60">Sin reservas aún</p>
+              <p className="text-sm text-muted-foreground mt-1">
                 Explora talleres y reserva tu primera clase
               </p>
             </div>
@@ -129,7 +129,7 @@ export default function MisReservasPage() {
             {/* Upcoming */}
             {upcoming.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-base font-semibold text-zinc-700">Próximas</h2>
+                <h2 className="text-base font-semibold text-foreground/70">Próximas</h2>
                 {upcoming.map((b) => (
                   <BookingCard key={b.id} booking={b} onCancelled={handleCancelled} />
                 ))}
@@ -139,7 +139,7 @@ export default function MisReservasPage() {
             {/* Past / cancelled */}
             {past.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-base font-semibold text-zinc-400">Historial</h2>
+                <h2 className="text-base font-semibold text-muted-foreground">Historial</h2>
                 {past.map((b) => (
                   <BookingCard key={b.id} booking={b} muted />
                 ))}
@@ -184,18 +184,18 @@ function BookingCard({
 
   return (
     <div
-      className={`bg-white border rounded-lg p-4 space-y-2 ${muted ? "opacity-70" : ""}`}
+      className={`bg-card border rounded-lg p-4 space-y-2 ${muted ? "opacity-70" : ""}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1 min-w-0">
           <Link
             href={`/talleres/${b.workshop_slug}`}
-            className="font-semibold text-zinc-900 hover:underline truncate block"
+            className="font-semibold text-foreground hover:underline truncate block"
           >
             {b.workshop_title}
           </Link>
           {dateStr && (
-            <div className="flex items-center gap-1 text-sm text-zinc-500">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Calendar className="h-3.5 w-3.5 shrink-0" />
               <span className="capitalize">{dateStr}</span>
               {timeStr && (
@@ -206,9 +206,9 @@ function BookingCard({
               )}
             </div>
           )}
-          <p className="text-sm font-medium text-zinc-700">
+          <p className="text-sm font-medium text-foreground/70">
             ${b.amount.toLocaleString("es-CL")}
-            <span className="text-xs text-zinc-400 ml-1 font-normal">CLP</span>
+            <span className="text-xs text-muted-foreground/70 ml-1 font-normal">CLP</span>
           </p>
         </div>
         <div className="shrink-0 flex flex-col items-end gap-2">

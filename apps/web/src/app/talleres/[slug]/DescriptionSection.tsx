@@ -20,7 +20,7 @@ export function DescriptionSection({ description }: Props) {
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Descripción</h2>
       {paragraphs.map((p, i) => (
-        <p key={i} className="text-zinc-600 leading-relaxed">
+        <p key={i} className="text-foreground/60 leading-relaxed">
           {p}
           {isLong && !expanded && i === paragraphs.length - 1 && "..."}
         </p>
@@ -29,7 +29,7 @@ export function DescriptionSection({ description }: Props) {
         <Button
           variant="ghost"
           size="sm"
-          className="px-0 text-zinc-500 hover:text-zinc-900"
+          className="px-0 text-muted-foreground hover:text-foreground"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? "Ver menos" : "Ver más"}

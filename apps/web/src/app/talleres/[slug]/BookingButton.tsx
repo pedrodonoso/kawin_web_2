@@ -60,7 +60,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
 
   if (workshopType === "class") {
     return (
-      <p className="text-sm text-zinc-500 text-center py-2">
+      <p className="text-sm text-muted-foreground text-center py-2">
         Elige una clase en el listado para reservar.
       </p>
     );
@@ -103,7 +103,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
         <Button className="w-full" size="lg" disabled variant="outline">
           ✓ Reserva confirmada
         </Button>
-        <p className="text-xs text-zinc-400 text-center">
+        <p className="text-xs text-muted-foreground/70 text-center">
           Recibirás los detalles pronto.
         </p>
       </div>
@@ -123,7 +123,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
       <Button className="w-full" size="lg" onClick={handleBook} disabled={loading}>
         {loading ? "Reservando..." : "Reservar cupo"}
       </Button>
-      <p className="text-xs text-zinc-400 text-center">
+      <p className="text-xs text-muted-foreground/70 text-center">
         No se te cobrará hasta confirmar tu reserva
       </p>
     </div>

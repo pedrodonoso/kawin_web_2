@@ -37,7 +37,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-65px)] flex items-center justify-center px-4 bg-zinc-50">
+    <main className="min-h-[calc(100vh-65px)] flex items-center justify-center px-4 bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
@@ -71,9 +71,9 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Ingresando..." : "Iniciar sesión"}
             </Button>
-            <p className="text-sm text-zinc-500 text-center">
+            <p className="text-sm text-muted-foreground text-center">
               ¿No tienes cuenta?{" "}
-              <Link href="/registro" className="text-zinc-900 font-medium hover:underline">
+              <Link href="/registro" className="text-foreground font-medium hover:underline">
                 Regístrate
               </Link>
             </p>

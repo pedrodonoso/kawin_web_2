@@ -313,7 +313,7 @@ export default function EditarTallerPage() {
   // —— Loading ——
   if (loading) {
     return (
-      <main className="min-h-screen bg-zinc-50">
+      <main className="min-h-screen bg-background">
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
           <Skeleton className="h-8 w-48" />
           <Card>
@@ -337,11 +337,11 @@ export default function EditarTallerPage() {
   // —— Not found ——
   if (notFound) {
     return (
-      <main className="min-h-screen bg-zinc-50 flex items-center justify-center">
+      <main className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-3">
-          <AlertCircle className="h-10 w-10 text-zinc-400 mx-auto" />
-          <p className="font-semibold text-zinc-700">Taller no encontrado</p>
-          <p className="text-sm text-zinc-400">
+          <AlertCircle className="h-10 w-10 text-muted-foreground/70 mx-auto" />
+          <p className="font-semibold text-foreground/70">Taller no encontrado</p>
+          <p className="text-sm text-muted-foreground/70">
             No tienes acceso a este taller o no existe.
           </p>
           <Button variant="outline" asChild>
@@ -353,7 +353,7 @@ export default function EditarTallerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -365,7 +365,7 @@ export default function EditarTallerPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Editar taller</h1>
-            <p className="text-sm text-zinc-400 truncate max-w-xs">{form.title}</p>
+            <p className="text-sm text-muted-foreground/70 truncate max-w-xs">{form.title}</p>
           </div>
         </div>
 
@@ -407,16 +407,16 @@ export default function EditarTallerPage() {
                   value={form.description}
                   onChange={(e) => setField("description", e.target.value)}
                 />
-                <p className="text-xs text-zinc-400 text-right">{form.description.length}/2000</p>
+                <p className="text-xs text-muted-foreground/70 text-right">{form.description.length}/2000</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tipo</Label>
-                  <div className="flex h-10 w-full items-center rounded-md border border-input bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
+                  <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground/60">
                     {{ workshop: "Taller", course: "Curso", class: "Clase", event: "Evento" }[form.type] ?? form.type}
                   </div>
-                  <p className="text-xs text-zinc-400">El tipo no puede modificarse después de creado.</p>
+                  <p className="text-xs text-muted-foreground/70">El tipo no puede modificarse después de creado.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -459,8 +459,8 @@ export default function EditarTallerPage() {
                     onClick={() => setField("modality", m.value)}
                     className={`py-3 border-2 rounded-lg text-sm font-medium transition-all ${
                       form.modality === m.value
-                        ? "border-zinc-900 bg-zinc-50"
-                        : "border-zinc-200 hover:border-zinc-400"
+                        ? "border-primary bg-secondary"
+                        : "border-border hover:border-primary/50"
                     }`}
                   >
                     {m.label}
@@ -489,7 +489,7 @@ export default function EditarTallerPage() {
                     value={form.online_url}
                     onChange={(e) => setField("online_url", e.target.value)}
                   />
-                  <p className="text-xs text-zinc-400">Zoom, Meet, Teams u otro. Solo visible para estudiantes con reserva confirmada.</p>
+                  <p className="text-xs text-muted-foreground/70">Zoom, Meet, Teams u otro. Solo visible para estudiantes con reserva confirmada.</p>
                 </div>
               )}
             </CardContent>
@@ -534,7 +534,7 @@ export default function EditarTallerPage() {
                       disabled={bookingsCount > 0}
                     />
                   </div>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-muted-foreground/70">
                     {bookingsCount > 0 ? "No modificable con reservas activas" : "Ingresa 0 para talleres gratuitos"}
                   </p>
                 </div>
@@ -551,7 +551,7 @@ export default function EditarTallerPage() {
                     disabled={bookingsCount > 0}
                   />
                   {bookingsCount > 0 && (
-                    <p className="text-xs text-zinc-400">No modificable con reservas activas</p>
+                    <p className="text-xs text-muted-foreground/70">No modificable con reservas activas</p>
                   )}
                 </div>
               </div>
@@ -564,9 +564,9 @@ export default function EditarTallerPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-base">Reglas de horario</CardTitle>
-                  <p className="text-xs text-zinc-400 mt-1">
+                  <p className="text-xs text-muted-foreground/70 mt-1">
                     Define cuándo se ofrecen clases. Las sesiones se materializan desde el{" "}
-                    <Link href={`/dashboard/talleres/${id}/calendario`} className="underline text-zinc-600 hover:text-zinc-900">
+                    <Link href={`/dashboard/talleres/${id}/calendario`} className="underline text-foreground/60 hover:text-foreground">
                       calendario
                     </Link>.
                   </p>
@@ -602,13 +602,13 @@ export default function EditarTallerPage() {
                   <div key={sch.id} className="space-y-3">
                     {changeForm?.scheduleId === sch.id ? (
                       /* Change form for this schedule */
-                      <div className="border rounded-lg p-4 space-y-4 bg-zinc-50">
+                      <div className="border rounded-lg p-4 space-y-4 bg-background">
                         <div className="flex items-center justify-between">
                           <Badge variant="outline" className="text-xs">Cambiando horario</Badge>
                           <button
                             type="button"
                             onClick={() => setChangeForm(null)}
-                            className="text-zinc-400 hover:text-zinc-900"
+                            className="text-muted-foreground hover:text-foreground"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -627,8 +627,8 @@ export default function EditarTallerPage() {
                                   onClick={() => toggleChangeDay(d.value)}
                                   className={`w-10 h-10 rounded-full text-xs font-semibold border-2 transition-all ${
                                     active
-                                      ? "bg-zinc-900 text-white border-zinc-900"
-                                      : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "bg-card text-foreground/60 border-border hover:border-primary/50"
                                   }`}
                                 >
                                   {d.label}
@@ -703,7 +703,7 @@ export default function EditarTallerPage() {
                               setChangeForm({ ...changeForm, change_date: e.target.value })
                             }
                           />
-                          <p className="text-xs text-zinc-400">
+                          <p className="text-xs text-muted-foreground/70">
                             Las reservas a partir de esta fecha serán afectadas.
                           </p>
                         </div>
@@ -733,7 +733,7 @@ export default function EditarTallerPage() {
                           <p className="text-sm font-medium">
                             {formatDays(sch.days_of_week)} — {sch.time_start} ({sch.duration_min} min)
                           </p>
-                          <p className="text-xs text-zinc-500">
+                          <p className="text-xs text-muted-foreground">
                             Desde {sch.valid_from}
                             {sch.valid_until ? ` hasta ${sch.valid_until}` : " (sin fin)"}
                           </p>
@@ -764,7 +764,7 @@ export default function EditarTallerPage() {
                 ))}
 
                 {existingSchedules.length === 0 && !newScheduleDraft && (
-                  <p className="text-sm text-zinc-400 text-center py-4">
+                  <p className="text-sm text-muted-foreground/70 text-center py-4">
                     Sin horarios configurados. Agrega uno para empezar.
                   </p>
                 )}
@@ -777,7 +777,7 @@ export default function EditarTallerPage() {
                       <button
                         type="button"
                         onClick={() => setNewScheduleDraft(null)}
-                        className="text-zinc-400 hover:text-zinc-900"
+                        className="text-muted-foreground hover:text-foreground"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -796,8 +796,8 @@ export default function EditarTallerPage() {
                               onClick={() => toggleNewDay(d.value)}
                               className={`w-10 h-10 rounded-full text-xs font-semibold border-2 transition-all ${
                                 active
-                                  ? "bg-zinc-900 text-white border-zinc-900"
-                                  : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "bg-card text-foreground/60 border-border hover:border-primary/50"
                               }`}
                             >
                               {d.label}
@@ -897,7 +897,7 @@ export default function EditarTallerPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {sessions.length === 0 ? (
-                  <p className="text-sm text-zinc-400 text-center py-4">
+                  <p className="text-sm text-muted-foreground/70 text-center py-4">
                     Sin fechas agendadas.
                   </p>
                 ) : (
@@ -907,7 +907,7 @@ export default function EditarTallerPage() {
                         <button
                           type="button"
                           onClick={() => removeSession(i)}
-                          className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900"
+                          className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -955,9 +955,9 @@ export default function EditarTallerPage() {
 
           {/* Acciones */}
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-muted-foreground/70">
               Estado:{" "}
-              <span className="font-medium text-zinc-700">
+              <span className="font-medium text-foreground/70">
                 {form.status === "published"
                   ? "Publicado"
                   : form.status === "draft"

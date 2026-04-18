@@ -124,22 +124,22 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
 
   return (
     <div
-      className={`flex items-start justify-between gap-3 p-4 border rounded-lg bg-white ${
+      className={`flex items-start justify-between gap-3 p-4 border rounded-lg bg-card ${
         isCancelled ? "opacity-60" : ""
       }`}
     >
       <div className="flex items-start gap-3 min-w-0">
-        <Calendar className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
+        <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
         <div>
-          <p className={`font-medium capitalize ${isCancelled ? "line-through text-zinc-400" : ""}`}>
+          <p className={`font-medium capitalize ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
             {dateLabel}
           </p>
-          <div className="text-sm text-zinc-500 flex items-center gap-1 mt-0.5">
+          <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
             <Clock className="h-3 w-3" />
             <SessionTime isoStrStart={session.starts_at} isoStrEnd={session.ends_at}/>
           </div>
           {!isCancelled && (
-            <p className="text-xs mt-1 text-zinc-400">
+            <p className="text-xs mt-1 text-muted-foreground">
               {spotsRemaining === undefined
                 ? "Cupos disponibles"
                 : spotsRemaining === 0
@@ -148,14 +148,14 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
             </p>
           )}
           {session.notes && (
-            <p className="text-xs text-zinc-400 mt-1">{session.notes}</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">{session.notes}</p>
           )}
         </div>
       </div>
 
       <div className="shrink-0 flex items-center gap-2">
         {isCancelled && (
-          <Badge variant="secondary" className="text-xs text-zinc-400 line-through">
+          <Badge variant="secondary" className="text-xs text-muted-foreground line-through">
             Cancelada
           </Badge>
         )}
@@ -167,7 +167,7 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
         )}
         {!isCancelled && !checkingBooking && alreadyBooked && (
           <div className="flex flex-col items-end gap-1">
-            <Badge className="bg-green-100 text-green-700 text-xs px-2 py-1">
+            <Badge className="bg-positive/15 text-positive text-xs px-2 py-1">
               ✓ Reservado
             </Badge>
             {session.online_url && (
@@ -183,7 +183,7 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
           </div>
         )}
         {!isCancelled && !checkingBooking && !alreadyBooked && isFull && (
-          <Badge variant="secondary" className="text-xs text-zinc-500">
+          <Badge variant="secondary" className="text-xs text-muted-foreground">
             Sin cupos
           </Badge>
         )}
@@ -194,7 +194,7 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
         )}
         {isAvailable && isInstructor && (
           session.booking_count && session.booking_count > 0 ? (
-            <Badge variant="secondary" className="text-xs text-zinc-500">
+            <Badge variant="secondary" className="text-xs text-muted-foreground">
               {session.booking_count} reserva{session.booking_count !== 1 ? "s" : ""}
             </Badge>
           ) : (
