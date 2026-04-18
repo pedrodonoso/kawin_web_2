@@ -67,10 +67,10 @@ La base de datos se inicializa automáticamente con el schema y las categorías 
 
 ```bash
 # Seed de 12 talleres con descripciones completas
-docker compose exec db psql -U kawin -d kawin -f /dev/stdin < infra/db/seed_workshops.sql
+docker compose exec -T db psql -U kawin -d kawin -f /dev/stdin < infra/db/seed_workshops.sql
 
 # Seed de sesiones para los talleres
-docker compose exec db psql -U kawin -d kawin -f /dev/stdin < infra/db/seed_sessions.sql
+docker compose exec -T db psql -U kawin -d kawin -f /dev/stdin < infra/db/seed_sessions.sql
 ```
 
 ### 4. Verificar que todo funcione

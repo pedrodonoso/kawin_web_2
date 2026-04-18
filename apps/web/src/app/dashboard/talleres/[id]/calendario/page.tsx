@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, X, AlertCircle, Globe, Check, Pencil } from "lucide-react";
 import Link from "next/link";
 import { api, type AvailableSlot, type ApiResponse } from "@/lib/api";
 
@@ -79,6 +79,8 @@ export default function CalendarioTallerPage() {
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [workshopTitle, setWorkshopTitle] = useState("");
   const [operating, setOperating] = useState<string | null>(null); // slot key being operated on
+  const [editingURL, setEditingURL] = useState<string | null>(null);   // session_id editando url
+  const [urlDraft, setUrlDraft] = useState("");
 
   const weekEnd = addDays(weekStart, 6);
   const fromStr = toYMD(weekStart);
@@ -153,6 +155,18 @@ export default function CalendarioTallerPage() {
       toast.error(err instanceof Error ? err.message : "Error al cancelar sesión");
     } finally {
       setOperating(null);
+    }
+  }
+
+  async function handleUpdateURL(slot: AvailableSlot) {
+    if (!slot.session_id) return;
+    try {
+      await api.patch(`/api/v1/sessions/${slot.session_id}/url`, { online_url: urlDraft });
+      toast.success("Link actualizado");
+      setEditingURL(null);
+      await loadSlots();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar link");
     }
   }
 
@@ -313,6 +327,56 @@ export default function CalendarioTallerPage() {
                                 <X className="h-3 w-3 mr-1" />
                                 {busy ? "Cancelando..." : "Cancelar"}
                               </Button>
+                            )
+                          )}
+
+                          {/* Link online — editable por sesión */}
+                          {slot.session_id && (
+                            editingURL === slot.session_id ? (
+                              <div className="flex gap-1 mt-1">
+                                <input
+                                  className="flex-1 text-xs border rounded px-1 py-0.5 min-w-0"
+                                  placeholder="https://meet.google.com/..."
+                                  value={urlDraft}
+                                  onChange={(e) => setUrlDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleUpdateURL(slot);
+                                    if (e.key === "Escape") setEditingURL(null);
+                                  }}
+                                  autoFocus
+                                />
+                                <button
+                                  className="text-green-600 hover:text-green-700 shrink-0"
+                                  onClick={() => handleUpdateURL(slot)}
+                                  title="Guardar"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Globe className="h-3 w-3 text-zinc-400 shrink-0" />
+                                {slot.online_url ? (
+                                  <a
+                                    href={slot.online_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:underline truncate flex-1"
+                                    title={slot.online_url}
+                                  >
+                                    {slot.online_url.replace(/^https?:\/\//, "").slice(0, 22)}…
+                                  </a>
+                                ) : (
+                                  <span className="text-xs text-zinc-400 italic flex-1">Sin link</span>
+                                )}
+                                <button
+                                  className="text-zinc-400 hover:text-zinc-600 shrink-0"
+                                  onClick={() => { setEditingURL(slot.session_id!); setUrlDraft(slot.online_url ?? ""); }}
+                                  title="Editar link"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                              </div>
                             )
                           )}
                         </div>

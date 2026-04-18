@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Users, Calendar, Clock, Globe, CheckCircle, Instagram, Facebook, Phone, MessageCircle } from "lucide-react";
+import { MapPin, Users, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { BookingButton } from "./BookingButton";
+import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
 import { DescriptionSection } from "./DescriptionSection";
 import { ShareButtons } from "./ShareButtons";
 import Link from "next/link";
@@ -318,11 +319,11 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                     {workshop.location}
                   </div>
                 )}
-                {workshop.modality === "online" && (
-                  <div className="flex items-center gap-2 text-zinc-600">
-                    <Globe className="h-4 w-4 shrink-0" />
-                    Sesión online (link al confirmar)
-                  </div>
+                {(workshop.modality === "online" || workshop.modality === "hybrid") && (
+                  <OnlineUrlDisplay
+                    workshopId={workshop.id}
+                    workshopOnlineUrl={workshop.online_url}
+                  />
                 )}
                 {workshop.capacity && (
                   <div className="flex items-center gap-2 text-zinc-600">

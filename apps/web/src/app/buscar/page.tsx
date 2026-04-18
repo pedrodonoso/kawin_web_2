@@ -138,6 +138,20 @@ function WorkshopCard({ w }: { w: Workshop }) {
     hybrid: "Híbrido",
   };
 
+  const typeLabel: Record<string, string> = {
+    workshop: "Taller",
+    course: "Curso",
+    class: "Clase",
+    event: "Evento",
+  };
+
+  const typeColor: Record<string, string> = {
+    workshop: "bg-violet-100 text-violet-700",
+    course: "bg-blue-100 text-blue-700",
+    class: "bg-emerald-100 text-emerald-700",
+    event: "bg-orange-100 text-orange-700",
+  };
+
   return (
     <Link href={`/talleres/${w.slug}`}>
       <Card className="hover:shadow-md transition-shadow h-full">
@@ -156,6 +170,11 @@ function WorkshopCard({ w }: { w: Workshop }) {
               {modalityLabel[w.modality]}
             </Badge>
           </div>
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeColor[w.type] ?? "bg-zinc-100 text-zinc-600"}`}>
+              {typeLabel[w.type] ?? w.type}
+            </span>
+          </div>
           {w.category && (
             <Badge variant="secondary" className="text-xs">
               {w.category.name}
@@ -165,18 +184,21 @@ function WorkshopCard({ w }: { w: Workshop }) {
           <Separator />
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-3 text-zinc-500">
-              {w.location && (
+              {w.modality === "online" ? (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  Online
+                </span>
+              ) : w.location ? (
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
                   {w.location.split(",")[0]}
                 </span>
-              )}
-              {w.capacity && (
-                <span className="flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  {w.capacity} cupos
-                </span>
-              )}
+              ) : null}
+              <span className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {w.capacity ? `${w.capacity} cupos` : "Sin límite"}
+              </span>
             </div>
             <span className="font-bold text-zinc-900">
               {w.price === 0

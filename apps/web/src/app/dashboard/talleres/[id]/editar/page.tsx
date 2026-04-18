@@ -114,6 +114,7 @@ export default function EditarTallerPage() {
     currency: "CLP",
     capacity: "",
     location: "",
+    online_url: "",
     category_id: "",
     status: "draft",
   });
@@ -143,6 +144,7 @@ export default function EditarTallerPage() {
           currency: w.currency,
           capacity: w.capacity != null ? String(w.capacity) : "",
           location: w.location ?? "",
+          online_url: w.online_url ?? "",
           category_id: w.category_id ?? "",
           status: w.status,
         });
@@ -475,6 +477,19 @@ export default function EditarTallerPage() {
                     value={form.location}
                     onChange={(e) => setField("location", e.target.value)}
                   />
+                </div>
+              )}
+              {(form.modality === "online" || form.modality === "hybrid") && (
+                <div className="space-y-2">
+                  <Label htmlFor="online_url">Link de la clase</Label>
+                  <Input
+                    id="online_url"
+                    type="url"
+                    placeholder="Ej: https://meet.google.com/abc-xyz"
+                    value={form.online_url}
+                    onChange={(e) => setField("online_url", e.target.value)}
+                  />
+                  <p className="text-xs text-zinc-400">Zoom, Meet, Teams u otro. Solo visible para estudiantes con reserva confirmada.</p>
                 </div>
               )}
             </CardContent>

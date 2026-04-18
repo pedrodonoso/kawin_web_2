@@ -64,6 +64,7 @@ export default function NuevoTallerPage() {
     currency: "CLP",
     capacity: "",
     location: "",
+    online_url: "",
     category_id: "",
     status: "draft",
   });
@@ -282,6 +283,19 @@ export default function NuevoTallerPage() {
                     value={form.location}
                     onChange={(e) => set("location", e.target.value)}
                   />
+                </div>
+              )}
+              {(form.modality === "online" || form.modality === "hybrid") && (
+                <div className="space-y-2">
+                  <Label htmlFor="online_url">Link de la clase</Label>
+                  <Input
+                    id="online_url"
+                    type="url"
+                    placeholder="Ej: https://meet.google.com/abc-xyz"
+                    value={form.online_url}
+                    onChange={(e) => set("online_url", e.target.value)}
+                  />
+                  <p className="text-xs text-zinc-400">Zoom, Meet, Teams u otro. Solo visible para estudiantes con reserva confirmada.</p>
                 </div>
               )}
             </CardContent>
