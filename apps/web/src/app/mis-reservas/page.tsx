@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Clock, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, ArrowLeft, X } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface MyBooking {
@@ -79,6 +79,12 @@ export default function MisReservasPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
+  function handleCancelled(bookingId: string) {
+    setBookings((prev) =>
+      prev.map((b) => (b.id === bookingId ? { ...b, status: "cancelled" } : b))
+    );
+  }
+
   const upcoming = bookings.filter(
     (b) => b.status !== "cancelled" && b.session_date && new Date(b.session_date) >= new Date()
   );
@@ -125,7 +131,7 @@ export default function MisReservasPage() {
               <section className="space-y-3">
                 <h2 className="text-base font-semibold text-zinc-700">Próximas</h2>
                 {upcoming.map((b) => (
-                  <BookingCard key={b.id} booking={b} />
+                  <BookingCard key={b.id} booking={b} onCancelled={handleCancelled} />
                 ))}
               </section>
             )}
@@ -146,41 +152,82 @@ export default function MisReservasPage() {
   );
 }
 
-function BookingCard({ booking: b, muted = false }: { booking: MyBooking; muted?: boolean }) {
+function BookingCard({
+  booking: b,
+  muted = false,
+  onCancelled,
+}: {
+  booking: MyBooking;
+  muted?: boolean;
+  onCancelled?: (id: string) => void;
+}) {
+  const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const dateStr = formatDate(b.session_date ?? b.created_at);
   const timeStr = formatTime(b.session_date ?? "");
+  const canCancel = b.status === "confirmed" || b.status === "pending";
+
+  async function handleCancel() {
+    if (!confirm(`¿Cancelar tu reserva en "${b.workshop_title}"?`)) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      await api.post(`/api/v1/bookings/${b.id}/cancel`, {});
+      onCancelled?.(b.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al cancelar");
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   return (
     <div
-      className={`bg-white border rounded-lg p-4 flex items-start justify-between gap-4 ${
-        muted ? "opacity-70" : ""
-      }`}
+      className={`bg-white border rounded-lg p-4 space-y-2 ${muted ? "opacity-70" : ""}`}
     >
-      <div className="space-y-1 min-w-0">
-        <Link
-          href={`/talleres/${b.workshop_slug}`}
-          className="font-semibold text-zinc-900 hover:underline truncate block"
-        >
-          {b.workshop_title}
-        </Link>
-        {dateStr && (
-          <div className="flex items-center gap-1 text-sm text-zinc-500">
-            <Calendar className="h-3.5 w-3.5 shrink-0" />
-            <span className="capitalize">{dateStr}</span>
-            {timeStr && (
-              <>
-                <Clock className="h-3.5 w-3.5 shrink-0 ml-1" />
-                <span>{timeStr}</span>
-              </>
-            )}
-          </div>
-        )}
-        <p className="text-sm font-medium text-zinc-700">
-          ${b.amount.toLocaleString("es-CL")}
-          <span className="text-xs text-zinc-400 ml-1 font-normal">CLP</span>
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1 min-w-0">
+          <Link
+            href={`/talleres/${b.workshop_slug}`}
+            className="font-semibold text-zinc-900 hover:underline truncate block"
+          >
+            {b.workshop_title}
+          </Link>
+          {dateStr && (
+            <div className="flex items-center gap-1 text-sm text-zinc-500">
+              <Calendar className="h-3.5 w-3.5 shrink-0" />
+              <span className="capitalize">{dateStr}</span>
+              {timeStr && (
+                <>
+                  <Clock className="h-3.5 w-3.5 shrink-0 ml-1" />
+                  <span>{timeStr}</span>
+                </>
+              )}
+            </div>
+          )}
+          <p className="text-sm font-medium text-zinc-700">
+            ${b.amount.toLocaleString("es-CL")}
+            <span className="text-xs text-zinc-400 ml-1 font-normal">CLP</span>
+          </p>
+        </div>
+        <div className="shrink-0 flex flex-col items-end gap-2">
+          {statusBadge(b.status)}
+          {canCancel && onCancelled && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2"
+              onClick={handleCancel}
+              disabled={cancelling}
+            >
+              <X className="h-3 w-3 mr-1" />
+              {cancelling ? "Cancelando..." : "Cancelar"}
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="shrink-0">{statusBadge(b.status)}</div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
 }
