@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,22 +35,28 @@ export function Navbar() {
   }
 
   return (
-    <header className="border-b sticky top-0 bg-white z-50">
+    <header className="border-b sticky top-0 bg-background z-50">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          kawin
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/brand/kwin-wordmark-600.png"
+            alt="kwin"
+            width={90}
+            height={30}
+            priority
+          />
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm">
-          <Link href="/buscar" className="text-zinc-600 hover:text-zinc-900 transition-colors">
+          <Link href="/buscar" className="text-foreground/60 hover:text-foreground transition-colors">
             Explorar
           </Link>
-          <Link href="/escanear" className="text-zinc-600 hover:text-zinc-900 transition-colors flex items-center gap-1">
+          <Link href="/escanear" className="text-foreground/60 hover:text-foreground transition-colors flex items-center gap-1">
             <ScanLine className="h-4 w-4" />
             Escanear QR
           </Link>
           {user?.role === "instructor" || user?.role === "both" ? (
-            <Link href="/dashboard" className="text-zinc-600 hover:text-zinc-900 transition-colors">
+            <Link href="/dashboard" className="text-foreground/60 hover:text-foreground transition-colors">
               Mi panel
             </Link>
           ) : null}

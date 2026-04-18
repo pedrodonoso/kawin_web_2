@@ -4,48 +4,53 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    /* kwin brand: cream background, dark brown text, terracotta accent */
+    --background: 38 39% 93%;       /* #f4efe6 cream */
+    --foreground: 45 9% 9%;         /* #1a1916 dark brown */
+    --card: 38 39% 96%;
+    --card-foreground: 45 9% 9%;
+    --popover: 38 39% 96%;
+    --popover-foreground: 45 9% 9%;
+    --primary: 45 9% 9%;            /* #1a1916 dark brown */
+    --primary-foreground: 38 39% 93%;
+    --secondary: 38 20% 86%;
+    --secondary-foreground: 45 9% 9%;
+    --muted: 38 20% 86%;
+    --muted-foreground: 13 30% 42%;  /* terracotta-tinted muted */
+    --accent: 13 60% 44%;           /* #b54a2c terracotta */
+    --accent-foreground: 38 39% 93%;
+    --positive: 137 40% 41%;          /* #3f9457 */
+    --positive-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+    --border: 38 20% 82%;
+    --input: 38 20% 82%;
+    --ring: 13 60% 44%;
+    --radius: 0.375rem;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 45 9% 9%;
+    --foreground: 38 39% 93%;
+    --card: 45 9% 12%;
+    --card-foreground: 38 39% 93%;
+    --popover: 45 9% 12%;
+    --popover-foreground: 38 39% 93%;
+    --primary: 38 39% 93%;
+    --primary-foreground: 45 9% 9%;
+    --secondary: 45 9% 16%;
+    --secondary-foreground: 38 39% 93%;
+    --muted: 45 9% 16%;
+    --muted-foreground: 13 25% 62%;  /* terracotta-tinted muted */
+    --accent: 13 60% 52%;           /* terracotta, lighter for dark mode */
+    --accent-foreground: 38 39% 93%;
+    --positive: 137 40% 48%;
+    --positive-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 45 9% 18%;
+    --input: 45 9% 18%;
+    --ring: 13 60% 52%;
   }
 }
 
