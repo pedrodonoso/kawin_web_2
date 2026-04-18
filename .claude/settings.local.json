@@ -24,7 +24,10 @@
       "PowerShell(docker exec kawin_web_2-api-1 go build ./... 2>&1)",
       "PowerShell(docker restart kawin_web_2-api-1 2>&1)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git checkout *)",
+      "Bash(xargs sed *)",
+      "Bash(xargs ls *)"
     ]
   }
 }
