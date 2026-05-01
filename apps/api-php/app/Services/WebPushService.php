@@ -81,6 +81,7 @@ class WebPushService
             'workshop_approved'  => ($data['recipient_role'] ?? '') === 'student'
                                         ? '/mis-reservas'
                                         : '/dashboard',
+            'workshop_updated'   => '/mis-reservas',
         ];
 
         $type = $data['type'] ?? 'notification';

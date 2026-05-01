@@ -24,6 +24,7 @@ function NotifIcon({ type }: { type: string }) {
     class_reminder:     "📅",
     workshop_submitted: "📋",
     workshop_approved:  "✅",
+    workshop_updated:   "📝",
   };
   return <span className="text-base leading-none">{icons[type] ?? "🔔"}</span>;
 }

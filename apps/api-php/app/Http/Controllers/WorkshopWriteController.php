@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Notifications\WorkshopSubmittedNotification;
+use App\Notifications\WorkshopUpdatedNotification;
+use App\Services\PusherService;
 use App\Services\WebPushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -300,6 +302,36 @@ class WorkshopWriteController extends Controller
                     "INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES (?, ?, ?, ?)",
                     [$id, $s['starts_at'], $s['ends_at'], $s['notes'] ?? '']
                 );
+            }
+        }
+
+        // Notify students with confirmed bookings when the published workshop changes
+        if ($current->status === 'published' && $confirmedBookings > 0) {
+            try {
+                $students = DB::select(
+                    "SELECT DISTINCT b.student_id::text as student_id
+                     FROM bookings b
+                     WHERE b.workshop_id = ? AND b.status = 'confirmed'",
+                    [$id]
+                );
+                $workshop = DB::selectOne("SELECT title FROM workshops WHERE id = ?", [$id]);
+                $title    = $workshop?->title ?? $current->title;
+
+                foreach ($students as $s) {
+                    $notifiable = new User();
+                    $notifiable->id = $s->student_id;
+                    $notif = new WorkshopUpdatedNotification(
+                        workshopId:    $id,
+                        workshopTitle: $title,
+                        pendingReview: $sensitiveChanged,
+                    );
+                    Notification::send($notifiable, $notif);
+                    $payload = $notif->toDatabase($notifiable);
+                    app(PusherService::class)->notifyUser($s->student_id, $payload);
+                    app(WebPushService::class)->notifyUser($s->student_id, WebPushService::buildPayload($payload));
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to dispatch WorkshopUpdatedNotification: ' . $e->getMessage());
             }
         }
 
