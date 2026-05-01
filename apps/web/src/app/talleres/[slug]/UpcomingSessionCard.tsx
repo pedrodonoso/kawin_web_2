@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Globe } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, type Session } from "@/lib/api";
 
@@ -175,9 +175,11 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
                 href={session.online_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md
+                  bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
               >
-                Acceder →
+                <Globe className="h-3 w-3" />
+                Unirse a la clase
               </a>
             )}
           </div>

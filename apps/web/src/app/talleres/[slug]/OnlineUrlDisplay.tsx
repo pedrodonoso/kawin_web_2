@@ -34,19 +34,23 @@ export function OnlineUrlDisplay({ workshopId, workshopOnlineUrl }: Props) {
   }, [workshopId, workshopOnlineUrl]);
 
   return (
-    <div className="flex items-center gap-2 text-muted-foreground">
-      <Globe className="h-4 w-4 shrink-0" />
+    <div className="flex items-center gap-2">
       {booked && workshopOnlineUrl ? (
         <a
           href={workshopOnlineUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-blue-600 hover:underline truncate"
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-md
+            bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
         >
-          Acceder a la clase online
+          <Globe className="h-3.5 w-3.5" />
+          Unirse a la clase online
         </a>
       ) : (
-        <span className="italic text-sm">Link disponible al confirmar reserva</span>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Globe className="h-4 w-4 shrink-0" />
+          <span className="italic text-sm">Link disponible al confirmar reserva</span>
+        </div>
       )}
     </div>
   );
