@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Plus, X,
   Check, Pencil, CalendarDays, Users, Wifi, WifiOff, Trash2,
-  LayoutGrid, CalendarRange,
+  LayoutGrid, CalendarRange, RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
 import { api, type AvailableSlot, type Schedule, type ApiResponse } from "@/lib/api";
@@ -188,7 +188,7 @@ function ScheduleForm({
 function SlotCard({
   slot, busy, dayView,
   editingURL, urlDraft,
-  onMaterialize, onCancel, onEditURL, onSaveURL, onCancelURL, onUrlDraftChange,
+  onMaterialize, onCancel, onReactivate, onEditURL, onSaveURL, onCancelURL, onUrlDraftChange,
 }: {
   slot: AvailableSlot;
   busy: boolean;
@@ -197,6 +197,7 @@ function SlotCard({
   urlDraft: string;
   onMaterialize: () => void;
   onCancel: () => void;
+  onReactivate: () => void;
   onEditURL: () => void;
   onSaveURL: () => void;
   onCancelURL: () => void;
@@ -341,6 +342,23 @@ function SlotCard({
           )
         )
       )}
+
+      {slot.status === "cancelled" && slot.session_id && (
+        dayView ? (
+          <Button size="sm" variant="outline" disabled={busy} onClick={onReactivate}
+            className="w-full text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+            <RotateCcw className="h-3.5 w-3.5 mr-1" />
+            {busy ? "Reactivando…" : "Reactivar sesión"}
+          </Button>
+        ) : (
+          <button disabled={busy} onClick={onReactivate}
+            className="w-full flex items-center justify-center gap-1 rounded-lg border border-emerald-200
+              py-1.5 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50 transition-colors">
+            <RotateCcw className="h-3 w-3" />
+            {busy ? "Reactivando…" : "Reactivar"}
+          </button>
+        )
+      )}
     </div>
   );
 }
@@ -458,6 +476,19 @@ export default function CalendarioTallerPage() {
     } finally { setOperating(null); }
   }
 
+  async function handleReactivate(slot: AvailableSlot) {
+    if (!slot.session_id) return;
+    const key = slotKey(slot);
+    setOperating(key);
+    try {
+      await api.post(`/api/v1/sessions/${slot.session_id}/reactivate`, {});
+      toast.success("Sesión reactivada");
+      await loadSlots();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al reactivar");
+    } finally { setOperating(null); }
+  }
+
   async function handleCancel(slot: AvailableSlot) {
     if (!slot.session_id) return;
     if (!window.confirm(`¿Cancelar la sesión del ${slot.date} a las ${slot.time}?`)) return;
@@ -559,6 +590,7 @@ export default function CalendarioTallerPage() {
         urlDraft={urlDraft}
         onMaterialize={() => handleMaterialize(slot)}
         onCancel={() => handleCancel(slot)}
+        onReactivate={() => handleReactivate(slot)}
         onEditURL={() => { setEditingURL(slot.session_id!); setUrlDraft(slot.online_url ?? ""); }}
         onSaveURL={() => handleUpdateURL(slot)}
         onCancelURL={() => setEditingURL(null)}

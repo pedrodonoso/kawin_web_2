@@ -144,6 +144,33 @@ class SessionController extends Controller
         return response()->json(['online_url' => $url ?? '']);
     }
 
+    // POST /api/v1/sessions/:id/reactivate
+    public function reactivate(Request $request, string $id): JsonResponse
+    {
+        $userID = $this->userId($request);
+
+        $sessionInfo = DB::selectOne(
+            "SELECT s.workshop_id::text as workshop_id, w.instructor_id::text as owner_id, s.cancelled
+             FROM sessions s
+             JOIN workshops w ON w.id = s.workshop_id
+             WHERE s.id = ?",
+            [$id]
+        );
+        if (!$sessionInfo) {
+            return response()->json(['message' => 'Sesión no encontrada'], 404);
+        }
+        if ($sessionInfo->owner_id !== $userID) {
+            return response()->json(['message' => 'No tienes permiso para reactivar esta sesión'], 403);
+        }
+        if (!$sessionInfo->cancelled) {
+            return response()->json(['message' => 'La sesión no está cancelada'], 409);
+        }
+
+        DB::update("UPDATE sessions SET cancelled = false WHERE id = ?", [$id]);
+
+        return response()->json(['data' => ['session_id' => $id, 'cancelled' => false]]);
+    }
+
     // POST /api/v1/sessions/cancel
     public function cancel(Request $request): JsonResponse
     {

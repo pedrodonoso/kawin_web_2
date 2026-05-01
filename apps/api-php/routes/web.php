@@ -53,6 +53,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
         $router->get('/workshops/{id}/available-slots', 'WorkshopController@availableSlots');
         $router->post('/sessions/materialize',          'SessionController@materialize');
         $router->post('/sessions/cancel',               'SessionController@cancel');
+        $router->post('/sessions/{id}/reactivate',      'SessionController@reactivate');
         $router->patch('/sessions/{id}/url',            'SessionController@updateUrl');
 
         // Bookings
