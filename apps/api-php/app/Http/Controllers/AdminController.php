@@ -233,6 +233,37 @@ class AdminController extends Controller
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
 
+        // Notify students with confirmed bookings
+        try {
+            $workshop  = DB::selectOne("SELECT title, status FROM workshops WHERE id = ?", [$id]);
+            if (($workshop->status ?? '') === 'published') {
+                $students = DB::select(
+                    "SELECT DISTINCT b.student_id::text as student_id
+                     FROM bookings b WHERE b.workshop_id = ? AND b.status = 'confirmed'",
+                    [$id]
+                );
+                foreach ($students as $s) {
+                    $notifiable = new User();
+                    $notifiable->id = $s->student_id;
+                    $notif = new \App\Notifications\WorkshopUpdatedNotification(
+                        workshopId:    $id,
+                        workshopTitle: $workshop->title ?? '',
+                        pendingReview: false,
+                    );
+                    \Illuminate\Support\Facades\Notification::send($notifiable, $notif);
+                    $payload = $notif->toDatabase($notifiable);
+                    app(PusherService::class)->notifyUser($s->student_id, $payload);
+                    try {
+                        app(WebPushService::class)->notifyUser($s->student_id, WebPushService::buildPayload($payload));
+                    } catch (\Throwable $e) {
+                        \Log::warning('WebPush (admin update) failed: ' . $e->getMessage());
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to dispatch admin WorkshopUpdatedNotification: ' . $e->getMessage());
+        }
+
         return response()->json(['data' => ['id' => $id]]);
     }
 }
