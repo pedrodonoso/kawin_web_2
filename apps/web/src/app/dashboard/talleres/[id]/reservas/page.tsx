@@ -40,12 +40,12 @@ type Tab = "reservas" | "descuentos";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-CL", {
-    weekday: "long", day: "numeric", month: "long", timeZone: "UTC",
+    weekday: "long", day: "numeric", month: "long",
   });
 }
 function fmtTime(start: string, end?: string) {
   const fmt = (s: string) =>
-    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
   return end ? `${fmt(start)} – ${fmt(end)}` : fmt(start);
 }
 

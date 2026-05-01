@@ -57,13 +57,12 @@ function formatDate(iso: string) {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "UTC",
   });
 }
 
 function formatTime(start: string, end: string) {
   const fmt = (s: string) =>
-    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
@@ -102,20 +101,6 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Cover */}
-      <div className="bg-primary h-56 flex items-center justify-center text-primary-foreground/30">
-        {workshop.cover_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={workshop.cover_image_url}
-            alt={workshop.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <span className="text-5xl">🎨</span>
-        )}
-      </div>
-
       <div className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
@@ -298,8 +283,8 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           )}
         </div>
 
-        {/* Sidebar booking */}
-        <div>
+        {/* Sidebar */}
+        <div className="space-y-6">
           <Card className="sticky top-24">
             <CardHeader className="pb-3">
               {(() => {
@@ -415,6 +400,21 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
               />
             </CardContent>
           </Card>
+
+          {/* Audiovisual */}
+          {workshop.cover_image_url && (
+            <div className="space-y-3">
+              <h2 className="text-base font-semibold">Audiovisual</h2>
+              <div className="grid grid-cols-1 gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={workshop.cover_image_url}
+                  alt={workshop.title}
+                  className="w-full rounded-lg object-cover aspect-video"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>
