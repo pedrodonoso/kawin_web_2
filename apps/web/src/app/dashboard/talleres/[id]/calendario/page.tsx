@@ -244,7 +244,7 @@ function SlotCard({
                   <Users className={dayView ? "h-3 w-3" : "h-2.5 w-2.5"} />
                   {slot.booking_count ?? 0}/{totalCap}
                 </span>
-                <span>{slot.spots_remaining} libre{slot.spots_remaining !== 1 ? "s" : ""}</span>
+                <span>{slot.spots_remaining} cupos libres</span>
               </div>
               <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
