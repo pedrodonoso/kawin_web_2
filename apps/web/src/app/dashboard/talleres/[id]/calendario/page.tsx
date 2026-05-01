@@ -202,7 +202,7 @@ function SlotCard({
   onCancelURL: () => void;
   onUrlDraftChange: (v: string) => void;
 }) {
-  const hasCap   = slot.spots_remaining !== undefined;
+  const hasCap   = slot.spots_remaining != null;
   const totalCap = hasCap ? (slot.booking_count ?? 0) + slot.spots_remaining! : null;
   const isEditing = editingURL === slot.session_id;
 
