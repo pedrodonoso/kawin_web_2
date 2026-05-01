@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Eye, Pencil, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { BookOpen, Eye, Pencil, Clock, CheckCircle2, XCircle, AlertCircle, Users } from "lucide-react";
 import { adminApi, type AdminWorkshop } from "@/lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -139,6 +139,27 @@ export default function AdminTalleresPage() {
                       {" · "}
                       <span className="font-medium">${w.price.toLocaleString("es-CL")} {w.currency}</span>
                     </p>
+                    {/* Booking count indicator */}
+                    {w.capacity != null ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 max-w-[160px] h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${Math.min(((w.bookings_count ?? 0) / w.capacity) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {w.bookings_count ?? 0}/{w.capacity} reservas
+                        </span>
+                      </div>
+                    ) : (w.bookings_count ?? 0) > 0 ? (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <Users className="h-3 w-3" />
+                        {w.bookings_count} reserva{(w.bookings_count ?? 0) !== 1 ? "s" : ""} confirmada{(w.bookings_count ?? 0) !== 1 ? "s" : ""}
+                      </p>
+                    ) : null}
+
                     {w.admin_observations && (
                       <p className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mt-1 truncate max-w-lg">
                         Observación: {w.admin_observations}

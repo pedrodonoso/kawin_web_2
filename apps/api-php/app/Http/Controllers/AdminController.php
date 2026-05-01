@@ -53,7 +53,9 @@ class AdminController extends Controller
                        COALESCE(c.name,'') as category_name,
                        w.instructor_id::text as instructor_id,
                        COALESCE(p.name,'') as instructor_name,
-                       COALESCE(u.email,'') as instructor_email
+                       COALESCE(u.email,'') as instructor_email,
+                       (SELECT COUNT(*) FROM bookings b
+                        WHERE b.workshop_id = w.id AND b.status = 'confirmed') AS bookings_count
                 FROM workshops w
                 LEFT JOIN categories c ON c.id = w.category_id
                 LEFT JOIN profiles p ON p.user_id = w.instructor_id
@@ -72,6 +74,7 @@ class AdminController extends Controller
             $row->pending_changes = $row->pending_changes
                 ? json_decode($row->pending_changes, true)
                 : null;
+            $row->bookings_count = (int)($row->bookings_count ?? 0);
         }
 
         return response()->json(['data' => $rows]);
