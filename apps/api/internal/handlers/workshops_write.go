@@ -57,19 +57,20 @@ func CreateWorkshop(c *gin.Context) {
 	}
 
 	w := models.Workshop{
-		InstructorID:  userID.(string),
-		CategoryID:    catID,
-		Title:         input.Title,
-		Slug:          slug,
-		Description:   input.Description,
-		Type:          input.Type,
-		Modality:      input.Modality,
-		Price:         input.Price,
-		Currency:      input.Currency,
-		Capacity:      input.Capacity,
-		Location:      input.Location,
-		OnlineURL:     input.OnlineURL,
-		Status:        input.Status,
+		InstructorID:   userID.(string),
+		CategoryID:     catID,
+		Title:          input.Title,
+		Slug:           slug,
+		Description:    input.Description,
+		Type:           input.Type,
+		Modality:       input.Modality,
+		Price:          input.Price,
+		Currency:       input.Currency,
+		Capacity:       input.Capacity,
+		Location:       input.Location,
+		OnlineURL:      input.OnlineURL,
+		Status:         "draft",
+		ApprovalStatus: "not_submitted",
 	}
 	if err := db.DB.Create(&w).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al crear taller: " + err.Error()})
@@ -100,7 +101,9 @@ func GetMyWorkshop(c *gin.Context) {
 		       w.capacity, COALESCE(w.location,'') as location,
 		       COALESCE(w.online_url,'') as online_url,
 		       COALESCE(w.cover_image_url,'') as cover_image_url,
-		       w.status, COALESCE(w.created_at::text,'') as created_at,
+		       w.status, w.approval_status,
+		       COALESCE(w.admin_observations,'') as admin_observations,
+		       COALESCE(w.created_at::text,'') as created_at,
 		       COALESCE(c.id::text,'') as category_id,
 		       COALESCE(c.name,'') as category_name,
 		       COALESCE(c.slug,'') as category_slug,
@@ -180,16 +183,23 @@ func UpdateWorkshop(c *gin.Context) {
 	}
 
 	var current struct {
-		Type     string  `gorm:"column:type"`
-		Status   string  `gorm:"column:status"`
-		Price    float64 `gorm:"column:price"`
-		Capacity *int    `gorm:"column:capacity"`
+		Type           string  `gorm:"column:type"`
+		Status         string  `gorm:"column:status"`
+		ApprovalStatus string  `gorm:"column:approval_status"`
+		Price          float64 `gorm:"column:price"`
+		Capacity       *int    `gorm:"column:capacity"`
 	}
 	res := db.DB.Raw(
-		`SELECT type, status, price, capacity FROM workshops WHERE id = ? AND instructor_id = ?`, id, userID,
+		`SELECT type, status, approval_status, price, capacity FROM workshops WHERE id = ? AND instructor_id = ?`, id, userID,
 	).Scan(&current)
 	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o sin permisos"})
+		return
+	}
+
+	// Instructors cannot self-publish; publication is handled by admin approval.
+	if input.Status == "published" && current.ApprovalStatus != "approved" {
+		c.JSON(http.StatusForbidden, gin.H{"message": "El taller debe ser aprobado por un administrador antes de publicarse"})
 		return
 	}
 
@@ -325,7 +335,9 @@ func GetMyWorkshops(c *gin.Context) {
 		       w.capacity, COALESCE(w.location,'') as location,
 		       COALESCE(w.online_url,'') as online_url,
 		       COALESCE(w.cover_image_url,'') as cover_image_url,
-		       w.status, COALESCE(w.created_at::text,'') as created_at,
+		       w.status, w.approval_status,
+		       COALESCE(w.admin_observations,'') as admin_observations,
+		       COALESCE(w.created_at::text,'') as created_at,
 		       COALESCE(c.id::text,'') as category_id,
 		       COALESCE(c.name,'') as category_name,
 		       COALESCE(c.slug,'') as category_slug,
@@ -341,6 +353,46 @@ func GetMyWorkshops(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": workshops})
+}
+
+// SubmitForReview lets an instructor send their workshop to admin moderation queue.
+// POST /api/v1/my-workshops/:id/submit-review
+func SubmitForReview(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	id := c.Param("id")
+
+	var current struct {
+		ApprovalStatus string `gorm:"column:approval_status"`
+	}
+	res := db.DB.Raw(
+		`SELECT approval_status FROM workshops WHERE id = ? AND instructor_id = ? AND status != 'archived'`, id, userID,
+	).Scan(&current)
+	if res.Error != nil || res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Taller no encontrado o sin permisos"})
+		return
+	}
+	if current.ApprovalStatus == "approved" {
+		c.JSON(http.StatusConflict, gin.H{"message": "El taller ya está aprobado"})
+		return
+	}
+	if current.ApprovalStatus == "pending_review" {
+		c.JSON(http.StatusConflict, gin.H{"message": "El taller ya está en revisión"})
+		return
+	}
+
+	result := db.DB.Exec(`
+		UPDATE workshops
+		SET approval_status    = 'pending_review',
+		    admin_observations = NULL,
+		    updated_at         = NOW()
+		WHERE id = ? AND instructor_id = ?`, id, userID,
+	)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Error al enviar a revisión"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"id": id, "approval_status": "pending_review"}})
 }
 
 var nonAlpha = regexp.MustCompile(`[^a-z0-9]+`)

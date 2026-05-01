@@ -3,3 +3,7 @@
 - [ ] En editar clase, al eliminar algún horario recurrente muestra un alert, cambialo por un modal.(NEGOCIO.md - Requerimientos de Scheduling - Cambios de horario)
 - [ ] En editar clase, al eliminar algún horario recurrente no entra en el flujo de edición de horario recurrente.(NEGOCIO.md - Requerimientos de Scheduling - Cambios de horario)
 - [ ] Eliminaste el modal que mostraba los horarios con conflicto o a modificar cuando se cambiaba un horario recurrente, era muy util, quiero que vuelvas a integrarlo.
+
+
+
+Migrar reservas unitarias y masivas. Es decir, seleccionar una o varias reservas o todas las reservas de un bloque horario para permitir solicitar modificación de reserva, es decir, al seleccionar una clase diferente, debería cambiar el estado de la reserva a un estado adicional "pendiente revision" y que envie una consulta al cliente o estudiante preguntando si valida la migración de la reserva al nuevo horario. Una vez 

@@ -1,0 +1,48 @@
+{
+    "name": "kawin/api-php",
+    "description": "Kawin API — Lumen backend",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.2",
+        "firebase/php-jwt": "^6.10",
+        "illuminate/mail": "^10.0",
+        "illuminate/notifications": "^10.0",
+        "illuminate/redis": "^10.0",
+        "laravel/lumen-framework": "^10.0",
+        "predis/predis": "^2.2",
+        "pusher/pusher-php-server": "^7.2"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.23",
+        "mockery/mockery": "^1.6",
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "audit": {
+            "ignore": {
+                "PKSA-y2cr-5h3j-g3ys": "JWT tokens are validated server-side with a controlled secret; advisory does not apply to this usage pattern."
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

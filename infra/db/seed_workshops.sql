@@ -124,3 +124,10 @@ INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, vali
 SELECT id, ARRAY[1, 3, 5], '08:00', 60, CURRENT_DATE
 FROM workshops WHERE slug = 'yoga-restaurativo'
 ON CONFLICT DO NOTHING;
+
+-- Talleres seed ya publicados se consideran pre-aprobados
+UPDATE workshops
+SET approval_status = 'approved',
+    reviewed_by     = '00000000-0000-0000-0000-000000000099',
+    reviewed_at     = NOW()
+WHERE status = 'published';

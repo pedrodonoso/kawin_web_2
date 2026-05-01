@@ -12,11 +12,14 @@ services:
       - /app/.next
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8080
-      - API_INTERNAL_URL=http://api:8080
+      - NEXT_PUBLIC_API_URL=http://localhost:8081
+      - API_INTERNAL_URL=http://api-php:8080
       - WATCHPACK_POLLING=true
+      - NEXT_PUBLIC_PUSHER_KEY=kawin-key
+      - NEXT_PUBLIC_PUSHER_HOST=localhost
+      - NEXT_PUBLIC_PUSHER_PORT=6001
     depends_on:
-      - api
+      - api-php
     networks:
       - kawin
 
@@ -56,11 +59,69 @@ services:
       - ./infra/db/init.sql:/docker-entrypoint-initdb.d/01_init.sql
       - ./infra/db/seed_workshops.sql:/docker-entrypoint-initdb.d/02_seed_workshops.sql
       - ./infra/db/seed_sessions.sql:/docker-entrypoint-initdb.d/03_seed_sessions.sql
+      - ./infra/db/04_notifications.sql:/docker-entrypoint-initdb.d/04_notifications.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kawin"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - kawin
+
+  api-php:
+    build:
+      context: ./apps/api-php
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./apps/api-php:/app
+      - /app/vendor
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:ZGV2LWtleS1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=kawin
+      - DB_USERNAME=kawin
+      - DB_PASSWORD=kawin
+      - API_SECRET=dev-secret-change-in-prod
+      - CACHE_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MAIL_MAILER=log
+      - MAIL_FROM_ADDRESS=noreply@kawin.app
+      - MAIL_FROM_NAME=Kawin
+      - PUSHER_APP_ID=kawin-app
+      - PUSHER_APP_KEY=kawin-key
+      - PUSHER_APP_SECRET=kawin-secret
+      - PUSHER_HOST=soketi
+      - PUSHER_PORT=6001
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      soketi:
+        condition: service_started
+    networks:
+      - kawin
+
+  soketi:
+    image: quay.io/soketi/soketi:1.4-16-alpine
+    ports:
+      - "6001:6001"
+    environment:
+      SOKETI_DEFAULT_APP_ID: "kawin-app"
+      SOKETI_DEFAULT_APP_KEY: "kawin-key"
+      SOKETI_DEFAULT_APP_SECRET: "kawin-secret"
+      SOKETI_DEFAULT_APP_ENABLE_CLIENT_MESSAGES: "false"
+      SOKETI_DEFAULT_APP_ENABLED: "true"
+      SOKETI_DEBUG: "0"
     networks:
       - kawin
 

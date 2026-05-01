@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pedrodonoso/kawin/api/internal/handlers"
-	"github.com/pedrodonoso/kawin/api/internal/middleware"
+	mw "github.com/pedrodonoso/kawin/api/internal/middleware"
 )
 
 func Register(r *gin.Engine) {
@@ -23,7 +23,7 @@ func Register(r *gin.Engine) {
 		v1.POST("/auth/login", handlers.Login)
 
 		// Protected
-		auth := v1.Group("/", middleware.Auth())
+		auth := v1.Group("/", mw.Auth())
 		{
 			auth.GET("/my-profile", handlers.GetMyProfile)
 			auth.PUT("/my-profile", handlers.UpdateMyProfile)
@@ -55,6 +55,18 @@ func Register(r *gin.Engine) {
 			auth.POST("/bookings/:id/migrate", handlers.MigrateBooking)
 			auth.POST("/bookings/:id/refund", handlers.RefundBooking)
 			auth.GET("/instructor-bookings", handlers.GetInstructorBookings)
+
+			// Instructor: submit workshop for admin review
+			auth.POST("/my-workshops/:id/submit-review", handlers.SubmitForReview)
+
+			// Admin-only routes
+			admin := v1.Group("/admin", mw.Auth(), mw.AdminOnly())
+			{
+				admin.GET("/stats", handlers.GetAdminStats)
+				admin.GET("/workshops", handlers.GetAdminWorkshops)
+				admin.PUT("/workshops/:id", handlers.UpdateWorkshopAdmin)
+				admin.POST("/workshops/:id/review", handlers.ReviewWorkshop)
+			}
 		}
 	}
 }

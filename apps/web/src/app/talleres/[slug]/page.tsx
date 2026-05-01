@@ -300,11 +300,11 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           <Card className="sticky top-24">
             <CardHeader>
               <CardTitle className="text-2xl">
-                {workshop.price === 0
+                {Number(workshop.price) === 0
                   ? "Gratis"
-                  : `$${workshop.price.toLocaleString("es-CL")}`}
-                {workshop.price > 0 && (
-                  <span className="text-base font-normal text-muted-foreground ml-1">
+                  : `$${Number(workshop.price).toLocaleString("es-CL")}`}
+                {Number(workshop.price) > 0 && (
+                  <span className="text-base font-normal text-muted-foreground ml-1.5">
                     {workshop.currency}
                   </span>
                 )}

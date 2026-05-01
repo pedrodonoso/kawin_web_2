@@ -61,23 +61,27 @@ type Category struct {
 
 // Workshop maps to the workshops table.
 type Workshop struct {
-	ID            string     `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	InstructorID  string     `gorm:"type:uuid;not null;column:instructor_id"`
-	CategoryID    *string    `gorm:"type:uuid;column:category_id"`
-	Title         string     `gorm:"not null"`
-	Slug          string     `gorm:"uniqueIndex;not null"`
-	Description   string
-	Type          string     `gorm:"not null"`
-	Modality      string     `gorm:"not null"`
-	Price         float64    `gorm:"not null;default:0"`
-	Currency      string     `gorm:"not null;default:'CLP'"`
-	Capacity      *int
-	Location      string
-	OnlineURL     string     `gorm:"column:online_url"`
-	CoverImageURL string     `gorm:"column:cover_image_url"`
-	Status        string     `gorm:"not null;default:'draft'"`
-	CreatedAt     time.Time  `gorm:"autoCreateTime"`
-	UpdatedAt     *time.Time `gorm:"autoUpdateTime"`
+	ID                 string     `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	InstructorID       string     `gorm:"type:uuid;not null;column:instructor_id"`
+	CategoryID         *string    `gorm:"type:uuid;column:category_id"`
+	Title              string     `gorm:"not null"`
+	Slug               string     `gorm:"uniqueIndex;not null"`
+	Description        string
+	Type               string     `gorm:"not null"`
+	Modality           string     `gorm:"not null"`
+	Price              float64    `gorm:"not null;default:0"`
+	Currency           string     `gorm:"not null;default:'CLP'"`
+	Capacity           *int
+	Location           string
+	OnlineURL          string     `gorm:"column:online_url"`
+	CoverImageURL      string     `gorm:"column:cover_image_url"`
+	Status             string     `gorm:"not null;default:'draft'"`
+	ApprovalStatus     string     `gorm:"column:approval_status;not null;default:'not_submitted'"`
+	AdminObservations  *string    `gorm:"column:admin_observations"`
+	ReviewedBy         *string    `gorm:"type:uuid;column:reviewed_by"`
+	ReviewedAt         *time.Time `gorm:"column:reviewed_at"`
+	CreatedAt          time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt          *time.Time `gorm:"autoUpdateTime"`
 }
 
 // Schedule maps to the schedules table.
@@ -101,6 +105,22 @@ type Session struct {
 	EndsAt     *time.Time `gorm:"column:ends_at"`
 	Cancelled  bool       `gorm:"not null;default:false"`
 	Notes      string
+}
+
+// Discount maps to the discounts table.
+type Discount struct {
+	ID         string     `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	WorkshopID string     `gorm:"type:uuid;not null;column:workshop_id"`
+	SessionID  *string    `gorm:"type:uuid;column:session_id"`
+	Type       string     `gorm:"not null"`        // "percent" | "flat"
+	Value      float64    `gorm:"not null"`
+	Label      string     `gorm:"not null;default:''"`
+	MaxUses    *int       `gorm:"column:max_uses"`
+	UsesCount  int        `gorm:"column:uses_count;not null;default:0"`
+	Active     bool       `gorm:"not null;default:true"`
+	ValidFrom  *time.Time `gorm:"column:valid_from"`
+	ValidUntil *time.Time `gorm:"column:valid_until"`
+	CreatedAt  time.Time  `gorm:"autoCreateTime"`
 }
 
 // Booking maps to the bookings table.

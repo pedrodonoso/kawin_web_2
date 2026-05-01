@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, type Category } from "@/lib/api";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { api, adminApi, type Category } from "@/lib/api";
+import { ArrowLeft, Plus, Send, X } from "lucide-react";
 import Link from "next/link";
 
 interface SessionDraft {
@@ -50,6 +50,7 @@ function emptySchedule(): ScheduleDraft {
 
 export default function NuevoTallerPage() {
   const router = useRouter();
+  const submitModeRef = useRef<"draft" | "review">("draft");
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
@@ -123,20 +124,24 @@ export default function NuevoTallerPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    const mode = submitModeRef.current;
     try {
       if (Number(form.price) > 9_999_999) {
         toast.error("El precio no puede superar 9.999.999");
         setLoading(false);
         return;
       }
+
+      let workshopId: string | undefined;
+
       if (form.type === "class") {
-        // Create workshop first, then post schedules
         const res = await api.post<{ data: { id: string } }>("/api/v1/workshops", {
           ...form,
+          status: "draft",
           price: Number(form.price),
           capacity: form.capacity ? Number(form.capacity) : undefined,
         });
-        const workshopId = res?.data?.id;
+        workshopId = res?.data?.id;
         if (workshopId) {
           for (const sch of schedules) {
             if (sch.days_of_week.length > 0 && sch.time_start) {
@@ -151,14 +156,22 @@ export default function NuevoTallerPage() {
           }
         }
       } else {
-        await api.post<{ data: { id: string } }>("/api/v1/workshops", {
+        const res = await api.post<{ data: { id: string } }>("/api/v1/workshops", {
           ...form,
+          status: "draft",
           price: Number(form.price),
           capacity: form.capacity ? Number(form.capacity) : undefined,
           sessions,
         });
+        workshopId = res?.data?.id;
       }
-      toast.success("¡Taller creado exitosamente!");
+
+      if (mode === "review" && workshopId) {
+        await adminApi.submitForReview(workshopId);
+        toast.success("¡Taller enviado a revisión!");
+      } else {
+        toast.success("¡Taller guardado como borrador!");
+      }
       router.push("/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al crear el taller");
@@ -516,16 +529,17 @@ export default function NuevoTallerPage() {
               type="submit"
               variant="outline"
               disabled={loading}
-              onClick={() => set("status", "draft")}
+              onClick={() => { submitModeRef.current = "draft"; }}
             >
               Guardar borrador
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              onClick={() => set("status", "published")}
+              onClick={() => { submitModeRef.current = "review"; }}
             >
-              {loading ? "Publicando..." : "Publicar taller"}
+              <Send className="h-4 w-4 mr-2" />
+              {loading ? "Enviando..." : "Enviar a revisión"}
             </Button>
           </div>
         </form>

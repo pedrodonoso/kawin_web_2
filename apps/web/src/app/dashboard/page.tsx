@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle } from "lucide-react";
+import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle, AlertCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { api, type Workshop } from "@/lib/api";
 
@@ -65,6 +65,20 @@ const statusLabel: Record<string, string> = {
   archived: "Archivado",
 };
 
+const approvalStyle: Record<string, string> = {
+  not_submitted: "bg-muted text-muted-foreground",
+  pending_review: "bg-amber-100 text-amber-700",
+  approved: "bg-green-100 text-green-700",
+  changes_requested: "bg-orange-100 text-orange-700",
+};
+
+const approvalLabel: Record<string, string> = {
+  not_submitted: "Sin enviar a revisión",
+  pending_review: "En revisión",
+  approved: "Aprobado",
+  changes_requested: "Observaciones pendientes",
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -112,7 +126,7 @@ export default function DashboardPage() {
     const d = new Date(b.created_at);
     return b.status === "confirmed" && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   }).length ?? 0;
-  const totalRevenue = bookings?.filter((b) => b.status === "confirmed").reduce((acc, b) => acc + b.amount, 0) ?? 0;
+  const totalRevenue = bookings?.filter((b) => b.status === "confirmed").reduce((acc, b) => acc + Number(b.amount), 0) ?? 0;
 
   return (
     <main className="min-h-screen bg-background">
@@ -169,7 +183,12 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">
-                {loading ? "—" : `$${totalRevenue?.toLocaleString("es-CL")}`}
+                {loading ? "—" : (
+                  <>
+                    ${totalRevenue.toLocaleString("es-CL")}
+                    <span className="ml-1.5 text-base font-normal text-muted-foreground">CLP</span>
+                  </>
+                )}
               </p>
             </CardContent>
           </Card>
@@ -213,25 +232,33 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {workshops?.map((w) => (
                 <Card key={w.id}>
-                  <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                  <CardContent className="p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold">{w.title}</h3>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[w.status]}`}
-                        >
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[w.status]}`}>
                           {statusLabel[w.status]}
                         </span>
+                        {w.approval_status && w.approval_status !== "approved" && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${approvalStyle[w.approval_status]}`}>
+                            {w.approval_status === "pending_review" && <Clock className="h-3 w-3" />}
+                            {w.approval_status === "changes_requested" && <AlertCircle className="h-3 w-3" />}
+                            {approvalLabel[w.approval_status]}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {w.type === "workshop" ? "Taller" : w.type === "course" ? "Curso" : "Clase"} ·{" "}
                         {w.modality === "in-person" ? "Presencial" : w.modality === "online" ? "Online" : "Híbrido"} ·{" "}
-                        <span className="font-medium">
-                          ${w.price.toLocaleString("es-CL")} {w.currency}
-                        </span>
+                        <span className="font-medium">${w.price.toLocaleString("es-CL")} {w.currency}</span>
                       </p>
+                      {w.admin_observations && (
+                        <p className="text-xs text-orange-700 bg-orange-50 px-2 py-1.5 rounded border border-orange-200 mt-1">
+                          <span className="font-medium">Observación del admin:</span> {w.admin_observations}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex gap-2 shrink-0 flex-wrap">
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/talleres/${w.slug}`}>
                           <Eye className="h-3.5 w-3.5 mr-1" />

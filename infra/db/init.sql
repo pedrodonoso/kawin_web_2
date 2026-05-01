@@ -71,6 +71,11 @@ CREATE TABLE workshops (
   online_url      TEXT,
   cover_image_url TEXT,
   status          workshop_status NOT NULL DEFAULT 'draft',
+  approval_status VARCHAR(30) NOT NULL DEFAULT 'not_submitted'
+                  CHECK (approval_status IN ('not_submitted','pending_review','approved','changes_requested')),
+  admin_observations TEXT,
+  reviewed_by     UUID REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at     TIMESTAMPTZ,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -179,10 +184,13 @@ INSERT INTO users (id, email, password_hash, role) VALUES
   ('00000000-0000-0000-0000-000000000004', 'camila@kawin.app',
    '$2a$10$8lU7Wn25aYsRnBURkQB.Q.ZeOcDorE1W9h3RSMxwuMAoW.xlV/rhW', 'instructor'),
   ('00000000-0000-0000-0000-000000000005', 'pablo@kawin.app',
-   '$2a$10$8lU7Wn25aYsRnBURkQB.Q.ZeOcDorE1W9h3RSMxwuMAoW.xlV/rhW', 'instructor')
+   '$2a$10$8lU7Wn25aYsRnBURkQB.Q.ZeOcDorE1W9h3RSMxwuMAoW.xlV/rhW', 'instructor'),
+  ('00000000-0000-0000-0000-000000000099', 'admin@kawin.app',
+   '$2a$10$8lU7Wn25aYsRnBURkQB.Q.ZeOcDorE1W9h3RSMxwuMAoW.xlV/rhW', 'admin')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO profiles (user_id, name, bio, city, country) VALUES
+  ('00000000-0000-0000-0000-000000000099', 'Administrador Kawin', 'Equipo de revisión y moderación de Kawin.', 'Santiago', 'Chile'),
   ('00000000-0000-0000-0000-000000000001', 'María González',
    'Artista visual con 10 años de experiencia. Estudié Bellas Artes en la Universidad de Chile.',
    'Santiago', 'Chile'),

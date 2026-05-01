@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
-import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock } from "lucide-react";
+import { api, adminApi, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
+import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send } from "lucide-react";
 import Link from "next/link";
 
 interface SessionDraft {
@@ -95,6 +95,8 @@ export default function EditarTallerPage() {
   const [saving, setSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [bookingsCount, setBookingsCount] = useState(0);
+  const [adminObservations, setAdminObservations] = useState<string | null>(null);
+  const [approvalStatus, setApprovalStatus] = useState<string>("not_submitted");
   const [categories, setCategories] = useState<Category[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
 
@@ -104,6 +106,9 @@ export default function EditarTallerPage() {
   const [newScheduleDraft, setNewScheduleDraft] = useState<ScheduleDraft | null>(null);
   // Which existing schedule is being edited (change flow)
   const [changeForm, setChangeForm] = useState<ChangeForm | null>(null);
+
+  // Snapshot de los campos "sensibles" al cargar — para detectar si requieren revisión
+  const originalRef = useRef({ title: "", description: "", modality: "" });
 
   const [form, setFormState] = useState({
     title: "",
@@ -135,6 +140,13 @@ export default function EditarTallerPage() {
         setCategories(cats);
         const w = res.data;
         setBookingsCount(w.bookings_count ?? 0);
+        setAdminObservations(w.admin_observations ?? null);
+        setApprovalStatus(w.approval_status ?? "not_submitted");
+        originalRef.current = {
+          title:       w.title,
+          description: w.description ?? "",
+          modality:    w.modality,
+        };
         setFormState({
           title: w.title,
           description: w.description ?? "",
@@ -301,10 +313,41 @@ export default function EditarTallerPage() {
         capacity: form.capacity ? Number(form.capacity) : undefined,
         sessions: form.type !== "class" ? sessions : undefined,
       });
-      toast.success(status === "published" ? "Taller publicado" : "Cambios guardados");
+      toast.success("Cambios guardados");
       router.push("/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveAndSubmit() {
+    if (Number(form.price) > 9_999_999) {
+      toast.error("El precio no puede superar 9.999.999");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put(`/api/v1/workshops/${id}`, {
+        ...form,
+        status: form.status,
+        price: Number(form.price),
+        capacity: form.capacity ? Number(form.capacity) : undefined,
+        sessions: form.type !== "class" ? sessions : undefined,
+      });
+
+      // Para talleres en borrador también hay que llamar submit-review.
+      // Para talleres publicados, el backend detecta los cambios sensibles
+      // y los guarda en pending_changes automáticamente al hacer PUT.
+      if (form.status !== "published") {
+        await adminApi.submitForReview(id);
+      }
+
+      toast.success("Cambios enviados a revisión");
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al enviar a revisión");
     } finally {
       setSaving(false);
     }
@@ -368,6 +411,20 @@ export default function EditarTallerPage() {
             <p className="text-sm text-muted-foreground/70 truncate max-w-xs">{form.title}</p>
           </div>
         </div>
+
+        {/* Observaciones del admin */}
+        {adminObservations && (
+          <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
+            <div>
+              <p className="font-semibold mb-0.5">Observaciones del administrador</p>
+              <p>{adminObservations}</p>
+              {approvalStatus === "changes_requested" && (
+                <p className="mt-1 text-orange-600 font-medium">Corrige los puntos indicados y envía nuevamente a revisión.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Aviso de campos bloqueados */}
         {bookingsCount > 0 && (
@@ -965,25 +1022,64 @@ export default function EditarTallerPage() {
                   : "Archivado"}
               </span>
             </p>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={saving}
-                onClick={() =>
-                  save(form.status === "published" ? "draft" : "draft")
-                }
-              >
-                {form.status === "published" ? "Pasar a borrador" : "Guardar borrador"}
-              </Button>
-              <Button
-                type="button"
-                disabled={saving}
-                onClick={() => save("published")}
-              >
-                {saving ? "Guardando..." : "Publicar"}
-              </Button>
-            </div>
+            {(() => {
+              const isPublished = form.status === "published";
+              const hasObservations = approvalStatus === "changes_requested";
+              const sensitiveChanged =
+                form.title       !== originalRef.current.title ||
+                form.description !== originalRef.current.description ||
+                form.modality    !== originalRef.current.modality;
+
+              // Taller publicado + cambios en campos sensibles → revisión
+              const needsReview = isPublished && sensitiveChanged;
+
+              return (
+                <div className="flex gap-3">
+                  {isPublished && !hasObservations ? (
+                    needsReview ? (
+                      // Cambió título/descripción/modalidad → solo revisión
+                      <Button
+                        type="button"
+                        disabled={saving}
+                        onClick={saveAndSubmit}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        {saving ? "Enviando..." : "Guardar y enviar a revisión"}
+                      </Button>
+                    ) : (
+                      // Solo cambios menores → guardar directo
+                      <Button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => save("published")}
+                      >
+                        {saving ? "Guardando..." : "Guardar cambios"}
+                      </Button>
+                    )
+                  ) : (
+                    // Borrador u observaciones pendientes → flujo de revisión
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() => save("draft")}
+                      >
+                        Guardar borrador
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={saving}
+                        onClick={saveAndSubmit}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        {saving ? "Enviando..." : "Enviar a revisión"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

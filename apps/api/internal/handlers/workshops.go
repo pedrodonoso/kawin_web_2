@@ -52,6 +52,8 @@ type Workshop struct {
 	OnlineURL           string     `json:"online_url,omitempty"`
 	CoverImageURL       string     `json:"cover_image_url,omitempty"`
 	Status              string     `json:"status"`
+	ApprovalStatus      string     `json:"approval_status,omitempty"`
+	AdminObservations   string     `json:"admin_observations,omitempty"`
 	CategoryID          string     `json:"category_id,omitempty"`
 	CategoryName        string     `json:"category_name,omitempty"`
 	CategorySlug        string     `json:"category_slug,omitempty"`

@@ -60,6 +60,8 @@ export interface Workshop {
   online_url?: string;
   cover_image_url?: string;
   status: "draft" | "published" | "archived";
+  approval_status?: "not_submitted" | "pending_review" | "approved" | "changes_requested";
+  admin_observations?: string;
   category?: { id: string; name: string; slug: string };
   instructor?: { name: string; avatar_url?: string; bio?: string };
   instructor_id?: string;
@@ -141,3 +143,82 @@ export interface Profile {
   instagram_url: string;
   facebook_url: string;
 }
+
+export interface PendingChanges {
+  title?:       string;
+  description?: string;
+  modality?:    string;
+}
+
+export interface AdminWorkshop extends Workshop {
+  instructor_id:   string;
+  instructor_email: string;
+  pending_changes?: PendingChanges | null;
+}
+
+export interface AdminStats {
+  total_workshops: number;
+  published_workshops: number;
+  draft_workshops: number;
+  pending_review: number;
+  changes_requested: number;
+  total_instructors: number;
+  total_students: number;
+  total_bookings: number;
+  confirmed_bookings: number;
+  cancelled_bookings: number;
+  total_revenue: number;
+  platform_commission: number;
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  data: {
+    type: string;
+    message: string;
+    workshop_id?: string;
+    workshop_title?: string;
+    booking_id?: string;
+    student_name?: string;
+    session_date?: string;
+    amount?: number;
+    reason?: string;
+    instructor_name?: string;
+    recipient_role?: string;
+    [key: string]: unknown;
+  };
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+}
+
+export const notificationsApi = {
+  list: () =>
+    api
+      .get<{ data: AppNotification[]; unread_count: number }>("/api/v1/my-notifications")
+      .then((r) => r),
+  markRead: (id: string) =>
+    api.post<{ data: { id: string; read: boolean } }>(`/api/v1/notifications/${id}/read`, {}),
+  markAllRead: () =>
+    api.post<{ data: { marked_read: number } }>("/api/v1/notifications/read-all", {}),
+};
+
+export const adminApi = {
+  getStats: () => api.get<{ data: AdminStats }>("/api/v1/admin/stats").then((r) => r.data),
+  getWorkshops: (status?: string) =>
+    api
+      .get<{ data: AdminWorkshop[] }>(`/api/v1/admin/workshops${status ? `?status=${status}` : ""}`)
+      .then((r) => r.data),
+  updateWorkshop: (id: string, body: Partial<AdminWorkshop>) =>
+    api.put<{ data: { id: string } }>(`/api/v1/admin/workshops/${id}`, body),
+  reviewWorkshop: (id: string, action: "approve" | "send_observations", observations?: string) =>
+    api.post<{ data: { id: string; approval_status: string } }>(`/api/v1/admin/workshops/${id}/review`, {
+      action,
+      observations: observations ?? "",
+    }),
+  submitForReview: (id: string, previousValues?: PendingChanges) =>
+    api.post<{ data: { id: string; approval_status: string } }>(`/api/v1/my-workshops/${id}/submit-review`, {
+      previous_values: previousValues ?? null,
+    }),
+};
