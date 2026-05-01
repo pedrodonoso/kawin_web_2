@@ -18,31 +18,9 @@ services:
       - NEXT_PUBLIC_PUSHER_KEY=kawin-key
       - NEXT_PUBLIC_PUSHER_HOST=localhost
       - NEXT_PUBLIC_PUSHER_PORT=6001
+      - NEXT_PUBLIC_VAPID_PUBLIC_KEY=BGMHr2xij-88Qxqm550T4cFDgqQI1B6ibiE72E8ZOY6PL-qxwpF1reMZDuvzC9tTL7NCXIcdoFux7DAoJQYhwGA
     depends_on:
       - api-php
-    networks:
-      - kawin
-
-  api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-      target: development
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./apps/api:/app
-    environment:
-      - GO_ENV=development
-      - PORT=8080
-      - DATABASE_URL=postgres://kawin:kawin@db:5432/kawin?sslmode=disable
-      - REDIS_URL=redis://redis:6379
-      - API_SECRET=dev-secret-change-in-prod
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
     networks:
       - kawin
 
@@ -61,6 +39,7 @@ services:
       - ./infra/db/seed_sessions.sql:/docker-entrypoint-initdb.d/03_seed_sessions.sql
       - ./infra/db/04_notifications.sql:/docker-entrypoint-initdb.d/04_notifications.sql
       - ./infra/db/05_discounts.sql:/docker-entrypoint-initdb.d/05_discounts.sql
+      - ./infra/db/06_push_subscriptions.sql:/docker-entrypoint-initdb.d/06_push_subscriptions.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kawin"]
       interval: 5s
@@ -102,6 +81,8 @@ services:
       - PUSHER_APP_SECRET=kawin-secret
       - PUSHER_HOST=soketi
       - PUSHER_PORT=6001
+      - VAPID_PUBLIC_KEY=BGMHr2xij-88Qxqm550T4cFDgqQI1B6ibiE72E8ZOY6PL-qxwpF1reMZDuvzC9tTL7NCXIcdoFux7DAoJQYhwGA
+      - VAPID_PRIVATE_KEY=-hrPUhfVp38olENoZaCuGOUUZ5P86IewxysMtgmQGf0
     depends_on:
       db:
         condition: service_healthy
