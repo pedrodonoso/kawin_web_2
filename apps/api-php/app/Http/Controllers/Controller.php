@@ -84,7 +84,7 @@ abstract class Controller extends BaseController
              JOIN sessions s ON s.id = b.session_id
              WHERE b.workshop_id = ?
                AND b.status = 'confirmed'
-               AND s.starts_at > NOW()",
+               AND s.starts_at > (NOW() AT TIME ZONE 'America/Santiago')::timestamp",
             [$workshopID]
         );
         $directBookings = \DB::selectOne(

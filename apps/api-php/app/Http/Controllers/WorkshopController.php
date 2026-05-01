@@ -110,7 +110,7 @@ class WorkshopController extends Controller
                  WHERE s.workshop_id = ?
                    AND s.schedule_id IS NOT NULL
                    AND s.cancelled = false
-                   AND s.ends_at >= NOW()
+                   AND s.ends_at >= (NOW() AT TIME ZONE 'America/Santiago')::timestamp
                  GROUP BY s.id
                  ORDER BY s.starts_at",
                 [$w->id]
