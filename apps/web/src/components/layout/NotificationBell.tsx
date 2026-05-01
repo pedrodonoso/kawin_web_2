@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Pusher from "pusher-js";
 import { Bell } from "lucide-react";
 import { notificationsApi, type AppNotification } from "@/lib/api";
+import { registerServiceWorker, subscribeToPush } from "@/lib/push";
 import { cn } from "@/lib/utils";
 
 function timeAgo(iso: string): string {
@@ -56,6 +57,16 @@ export function NotificationBell() {
       cancelled = true;
       window.removeEventListener("focus", load);
     };
+  }, []); // runs once on mount
+
+  // ── Service Worker + Push subscription (runs once on mount) ───────────
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    registerServiceWorker().then((reg) => {
+      if (reg) subscribeToPush(token).catch(() => {});
+    });
   }, []); // runs once on mount
 
   // ── WebSocket via Soketi (runs once on mount) ───────────────────────────

@@ -77,6 +77,10 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
         $router->post('/notifications/{id}/read',       'NotificationController@markAsRead');
         $router->post('/notifications/read-all',        'NotificationController@markAllAsRead');
 
+        // Web Push subscriptions
+        $router->post('/push/subscribe',                'PushSubscriptionController@subscribe');
+        $router->delete('/push/subscribe',              'PushSubscriptionController@unsubscribe');
+
         // WebSocket channel auth (Soketi/Pusher private channels)
         $router->post('/broadcasting/auth',             'BroadcastingController@auth');
 

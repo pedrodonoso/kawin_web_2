@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Notifications\WorkshopApprovedNotification;
+use App\Services\WebPushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -135,12 +136,17 @@ class AdminController extends Controller
                 // Notify the instructor
                 $notifiable = new User();
                 $notifiable->id = $workshop->instructor_id;
-                Notification::send($notifiable, new WorkshopApprovedNotification(
+                $instrNotif = new WorkshopApprovedNotification(
                     workshopId:      $id,
                     workshopTitle:   $workshop->title ?? '',
                     instructorName:  $instructorName,
                     recipientRole:   'instructor',
-                ));
+                );
+                Notification::send($notifiable, $instrNotif);
+                app(WebPushService::class)->notifyUser(
+                    $workshop->instructor_id,
+                    WebPushService::buildPayload($instrNotif->toDatabase($notifiable))
+                );
 
                 // Notify all students with confirmed bookings
                 $students = DB::select(
@@ -152,12 +158,17 @@ class AdminController extends Controller
                 foreach ($students as $s) {
                     $studentNotifiable = new User();
                     $studentNotifiable->id = $s->student_id;
-                    Notification::send($studentNotifiable, new WorkshopApprovedNotification(
+                    $studentNotif = new WorkshopApprovedNotification(
                         workshopId:      $id,
                         workshopTitle:   $workshop->title ?? '',
                         instructorName:  $instructorName,
                         recipientRole:   'student',
-                    ));
+                    );
+                    Notification::send($studentNotifiable, $studentNotif);
+                    app(WebPushService::class)->notifyUser(
+                        $s->student_id,
+                        WebPushService::buildPayload($studentNotif->toDatabase($studentNotifiable))
+                    );
                 }
             } catch (\Throwable $e) {
                 \Log::warning('Failed to dispatch WorkshopApprovedNotification: ' . $e->getMessage());

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Notifications\WorkshopSubmittedNotification;
+use App\Services\WebPushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -379,11 +380,16 @@ class WorkshopWriteController extends Controller
             foreach ($admins as $admin) {
                 $notifiable = new User();
                 $notifiable->id = $admin->id;
-                Notification::send($notifiable, new WorkshopSubmittedNotification(
+                $notif = new WorkshopSubmittedNotification(
                     workshopId:      $id,
                     workshopTitle:   $workshop?->title ?? '',
                     instructorName:  $instructor?->name ?? '',
-                ));
+                );
+                Notification::send($notifiable, $notif);
+                app(WebPushService::class)->notifyUser(
+                    $admin->id,
+                    WebPushService::buildPayload($notif->toDatabase($notifiable))
+                );
             }
         } catch (\Throwable $e) {
             \Log::warning('Failed to dispatch WorkshopSubmittedNotification: ' . $e->getMessage());

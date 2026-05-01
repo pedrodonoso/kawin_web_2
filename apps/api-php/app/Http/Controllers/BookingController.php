@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Notifications\BookingCancelledNotification;
 use App\Notifications\NewBookingNotification;
 use App\Services\PusherService;
+use App\Services\WebPushService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -459,9 +460,10 @@ class BookingController extends Controller
 
             Notification::send($instructor, $notification);
 
-            // Push real-time event to instructor via WebSocket
+            // Push real-time event to instructor via WebSocket + mobile push
             $payload = $notification->toDatabase($instructor);
             app(PusherService::class)->notifyUser($workshop->instructor_id, $payload);
+            app(WebPushService::class)->notifyUser($workshop->instructor_id, WebPushService::buildPayload($payload));
         } catch (\Throwable $e) {
             \Log::warning('Failed to dispatch BookingCancelledNotification: ' . $e->getMessage());
         }
@@ -507,9 +509,10 @@ class BookingController extends Controller
 
             Notification::send($instructor, $notification);
 
-            // Push real-time event to instructor via WebSocket
+            // Push real-time event to instructor via WebSocket + mobile push
             $payload = $notification->toDatabase($instructor);
             app(PusherService::class)->notifyUser($instructorId, $payload);
+            app(WebPushService::class)->notifyUser($instructorId, WebPushService::buildPayload($payload));
         } catch (\Throwable $e) {
             // Notification failures must never break booking creation
             \Log::warning('Failed to dispatch NewBookingNotification: ' . $e->getMessage());
