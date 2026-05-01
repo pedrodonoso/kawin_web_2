@@ -60,6 +60,7 @@ services:
       - ./infra/db/seed_workshops.sql:/docker-entrypoint-initdb.d/02_seed_workshops.sql
       - ./infra/db/seed_sessions.sql:/docker-entrypoint-initdb.d/03_seed_sessions.sql
       - ./infra/db/04_notifications.sql:/docker-entrypoint-initdb.d/04_notifications.sql
+      - ./infra/db/05_discounts.sql:/docker-entrypoint-initdb.d/05_discounts.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kawin"]
       interval: 5s

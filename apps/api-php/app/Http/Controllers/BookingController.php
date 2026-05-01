@@ -31,9 +31,8 @@ class BookingController extends Controller
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
 
-        $price      = (float)$workshopInfo->price;
-        $commission = $price * 0.15;
-        $sessionID  = null;
+        $price     = (float)$workshopInfo->price;
+        $sessionID = null;
 
         if ($workshopInfo->type === 'class') {
             if (!$request->input('session_id')) {
@@ -56,6 +55,11 @@ class BookingController extends Controller
 
             $sid = $request->input('session_id');
 
+            // Apply best active discount (session-specific takes priority)
+            $discount = DiscountController::bestActiveDiscount($request->input('workshop_id'), $sid);
+            [$finalPrice, $discountAmount] = DiscountController::applyDiscount($price, $discount);
+            $commission = $finalPrice * 0.15;
+
             DB::beginTransaction();
             try {
                 if ($workshopInfo->capacity !== null) {
@@ -73,8 +77,16 @@ class BookingController extends Controller
                     "INSERT INTO bookings (student_id, workshop_id, session_id, status, payment_status, amount, commission)
                      VALUES (?, ?, ?, 'confirmed', 'pending', ?, ?)
                      RETURNING id",
-                    [$studentID, $request->input('workshop_id'), $sid, $price, $commission]
+                    [$studentID, $request->input('workshop_id'), $sid, $finalPrice, $commission]
                 );
+
+                // Increment discount uses_count
+                if ($discount) {
+                    DB::update(
+                        "UPDATE discounts SET uses_count = uses_count + 1 WHERE id = ?",
+                        [$discount->id]
+                    );
+                }
 
                 DB::commit();
                 $sessionID = $sid;
@@ -83,27 +95,42 @@ class BookingController extends Controller
                 return response()->json(['message' => 'Error al crear reserva: ' . $e->getMessage()], 500);
             }
         } else {
+            // Apply best active discount (workshop-wide only for non-class types)
+            $discount = DiscountController::bestActiveDiscount($request->input('workshop_id'), null);
+            [$finalPrice, $discountAmount] = DiscountController::applyDiscount($price, $discount);
+            $commission = $finalPrice * 0.15;
+
             $booking = DB::selectOne(
                 "INSERT INTO bookings (student_id, workshop_id, status, payment_status, amount, commission)
                  VALUES (?, ?, 'confirmed', 'pending', ?, ?)
                  RETURNING id",
-                [$studentID, $request->input('workshop_id'), $price, $commission]
+                [$studentID, $request->input('workshop_id'), $finalPrice, $commission]
             );
+
+            if ($discount) {
+                DB::update(
+                    "UPDATE discounts SET uses_count = uses_count + 1 WHERE id = ?",
+                    [$discount->id]
+                );
+            }
         }
 
         // ----------------------------------------------------------------
         // Notify instructor (queued via Redis)
         // ----------------------------------------------------------------
-        $this->notifyInstructor($booking->id, $workshopInfo->instructor_id, $request->input('workshop_id'), $sessionID, $studentID, $price);
+        $this->notifyInstructor($booking->id, $workshopInfo->instructor_id, $request->input('workshop_id'), $sessionID, $studentID, $finalPrice);
 
         return response()->json(['data' => [
-            'id'             => $booking->id,
-            'workshop_id'    => $request->input('workshop_id'),
-            'session_id'     => $sessionID,
-            'status'         => 'confirmed',
-            'payment_status' => 'pending',
-            'amount'         => $price,
-            'commission'     => $commission,
+            'id'              => $booking->id,
+            'workshop_id'     => $request->input('workshop_id'),
+            'session_id'      => $sessionID,
+            'status'          => 'confirmed',
+            'payment_status'  => 'pending',
+            'amount'          => $finalPrice,
+            'original_amount' => $discountAmount > 0 ? $price : null,
+            'discount_amount' => $discountAmount > 0 ? $discountAmount : null,
+            'discount_label'  => $discount?->label,
+            'commission'      => $commission,
         ]], 201);
     }
 

@@ -134,6 +134,21 @@ class WorkshopController extends Controller
             $w->schedules = [];
         }
 
+        // Active discounts (workshop-wide and session-specific)
+        $w->discounts = DB::select(
+            "SELECT id, session_id::text as session_id, type, value::float as value,
+                    label, max_uses, uses_count,
+                    valid_from::text as valid_from, valid_until::text as valid_until
+             FROM discounts
+             WHERE workshop_id = ?
+               AND active = true
+               AND (max_uses IS NULL OR uses_count < max_uses)
+               AND (valid_from IS NULL  OR valid_from  <= NOW())
+               AND (valid_until IS NULL OR valid_until >= NOW())
+             ORDER BY (CASE WHEN session_id IS NOT NULL THEN 1 ELSE 0 END), value DESC",
+            [$w->id]
+        );
+
         return response()->json(['data' => $w]);
     }
 

@@ -28,7 +28,9 @@ class WorkshopWriteController extends Controller
                     COALESCE(c.id::text,'') as category_id,
                     COALESCE(c.name,'') as category_name,
                     COALESCE(c.slug,'') as category_slug,
-                    COALESCE(p.name,'') as instructor_name
+                    COALESCE(p.name,'') as instructor_name,
+                    (SELECT COUNT(*) FROM bookings b
+                     WHERE b.workshop_id = w.id AND b.status = 'confirmed') AS bookings_count
              FROM workshops w
              LEFT JOIN categories c ON c.id = w.category_id
              LEFT JOIN profiles p ON p.user_id = w.instructor_id

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Users, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle } from "lucide-react";
+import { MapPin, Users, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { BookingButton } from "./BookingButton";
@@ -71,6 +71,9 @@ function formatTime(start: string, end: string) {
 export default async function TallerPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const workshop = await getWorkshop(slug);
+  const activeDiscounts = workshop?.discounts ?? [];
+  const workshopDiscounts = activeDiscounts.filter((d) => !d.session_id);
+  const hasSessionDiscounts = activeDiscounts.some((d) => !!d.session_id);
 
   if (!workshop) {
     return (
@@ -298,17 +301,83 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
         {/* Sidebar booking */}
         <div>
           <Card className="sticky top-24">
-            <CardHeader>
-              <CardTitle className="text-2xl">
-                {Number(workshop.price) === 0
-                  ? "Gratis"
-                  : `$${Number(workshop.price).toLocaleString("es-CL")}`}
-                {Number(workshop.price) > 0 && (
-                  <span className="text-base font-normal text-muted-foreground ml-1.5">
-                    {workshop.currency}
-                  </span>
-                )}
-              </CardTitle>
+            <CardHeader className="pb-3">
+              {(() => {
+                const originalPrice = Number(workshop.price);
+                if (originalPrice === 0) {
+                  return <CardTitle className="text-2xl">Gratis</CardTitle>;
+                }
+
+                // Accumulate all workshop-wide discounts
+                let finalPrice = originalPrice;
+                for (const d of workshopDiscounts) {
+                  const cut = d.type === "percent"
+                    ? finalPrice * d.value / 100
+                    : Math.min(d.value, finalPrice);
+                  finalPrice = Math.max(0, finalPrice - cut);
+                }
+                const hasDiscount = workshopDiscounts.length > 0;
+
+                return (
+                  <div className="space-y-3">
+                    <div>
+                      {hasDiscount && (
+                        <p className="text-sm text-muted-foreground line-through">
+                          ${originalPrice.toLocaleString("es-CL")} {workshop.currency}
+                        </p>
+                      )}
+                      <CardTitle className="text-2xl">
+                        ${finalPrice.toLocaleString("es-CL")}
+                        <span className="text-base font-normal text-muted-foreground ml-1.5">{workshop.currency}</span>
+                      </CardTitle>
+                    </div>
+
+                    {/* List each active discount */}
+                    {workshopDiscounts.map((d) => {
+                      const dateRange = (() => {
+                        if (!d.valid_from && !d.valid_until) return null;
+                        const fmt = (s: string) =>
+                          new Date(s).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+                        if (d.valid_from && d.valid_until)
+                          return `${fmt(d.valid_from)} – ${fmt(d.valid_until)}`;
+                        if (d.valid_until) return `hasta el ${fmt(d.valid_until)}`;
+                        return `desde el ${fmt(d.valid_from!)}`;
+                      })();
+
+                      const savingLabel = d.type === "percent"
+                        ? `${d.value}% off`
+                        : `-$${d.value.toLocaleString("es-CL")}`;
+
+                      return (
+                        <div key={d.id} className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 text-sm font-medium text-green-800">
+                              <Tag className="h-3.5 w-3.5 shrink-0" />
+                              {d.label}
+                            </span>
+                            <span className="text-sm font-bold text-green-700 shrink-0">{savingLabel}</span>
+                          </div>
+                          {dateRange && (
+                            <p className="text-xs text-green-700/70 pl-5">{dateRange}</p>
+                          )}
+                          {d.max_uses != null && (
+                            <p className="text-xs text-green-700/70 pl-5">
+                              {d.max_uses - d.uses_count} uso{d.max_uses - d.uses_count !== 1 ? "s" : ""} disponible{d.max_uses - d.uses_count !== 1 ? "s" : ""}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {hasSessionDiscounts && (
+                      <p className="text-xs text-green-700 flex items-center gap-1">
+                        <Tag className="h-3 w-3 shrink-0" />
+                        Algunas sesiones tienen descuento especial
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Details */}

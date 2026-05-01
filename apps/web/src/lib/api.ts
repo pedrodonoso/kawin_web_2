@@ -78,6 +78,7 @@ export interface Workshop {
   sessions?: Session[];
   schedules?: Schedule[];
   bookings_count?: number;
+  discounts?: Discount[];
   created_at: string;
 }
 

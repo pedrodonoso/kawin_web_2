@@ -20,6 +20,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     $router->post('/auth/register',   'AuthController@register');
     $router->post('/auth/login',      'AuthController@login');
 
+    // Active discounts for a workshop (public — no auth needed)
+    $router->get('/workshops/{id}/active-discounts', 'DiscountController@publicDiscounts');
+
     // -------------------------------------------------------------------------
     // Protected routes (require JWT)
     // -------------------------------------------------------------------------
@@ -59,6 +62,15 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
         $router->post('/bookings/{id}/migrate',     'BookingController@migrate');
         $router->post('/bookings/{id}/refund',      'BookingController@refund');
         $router->get('/instructor-bookings',        'BookingController@instructorBookings');
+
+        // Discounts
+        $router->get('/workshops/{id}/discounts',  'DiscountController@index');
+        $router->post('/workshops/{id}/discounts', 'DiscountController@store');
+        $router->put('/discounts/{id}',            'DiscountController@update');
+        $router->delete('/discounts/{id}',         'DiscountController@destroy');
+
+        // Instructor stats
+        $router->get('/instructor/stats', 'InstructorStatsController@stats');
 
         // In-app notifications
         $router->get('/my-notifications',               'NotificationController@index');
