@@ -14,13 +14,19 @@ export default function InstallAppSection() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
+  const [isFirefoxAndroid, setIsFirefoxAndroid] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    const ua = navigator.userAgent;
+
     const ios =
-      /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+      /iphone|ipad|ipod/i.test(ua) &&
       !(window.navigator as { standalone?: boolean }).standalone;
     setIsIOS(ios);
+
+    const firefoxAndroid = /firefox/i.test(ua) && /android/i.test(ua);
+    setIsFirefoxAndroid(firefoxAndroid);
 
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
@@ -45,7 +51,7 @@ export default function InstallAppSection() {
   }
 
   if (isInstalled) return null;
-  if (!deferredPrompt && !isIOS) return null;
+  if (!deferredPrompt && !isIOS && !isFirefoxAndroid) return null;
 
   return (
     <section className="py-16 px-4 bg-primary/5 border-y">
@@ -93,6 +99,30 @@ export default function InstallAppSection() {
             </div>
             <div className="flex items-center gap-3">
               <MoreVertical className="h-5 w-5 shrink-0 text-blue-500" />
+              <span>Confirma tocando Agregar</span>
+            </div>
+          </div>
+        )}
+
+        {isFirefoxAndroid && !deferredPrompt && (
+          <div className="inline-flex flex-col items-start gap-3 text-sm text-left bg-background border rounded-xl px-6 py-4 mx-auto">
+            <p className="font-medium text-center w-full mb-1">
+              Instalar en Firefox Android
+            </p>
+            <div className="flex items-center gap-3">
+              <MoreVertical className="h-5 w-5 shrink-0 text-orange-500" />
+              <span>
+                Toca el menú <strong>⋮</strong> en la esquina superior derecha
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Plus className="h-5 w-5 shrink-0 text-orange-500" />
+              <span>
+                Selecciona <strong>Instalar</strong>
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Share2 className="h-5 w-5 shrink-0 text-orange-500" />
               <span>Confirma tocando Agregar</span>
             </div>
           </div>
