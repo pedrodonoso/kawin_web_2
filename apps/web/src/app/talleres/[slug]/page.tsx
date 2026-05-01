@@ -57,12 +57,13 @@ function formatDate(iso: string) {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
 function formatTime(start: string, end: string) {
   const fmt = (s: string) =>
-    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 

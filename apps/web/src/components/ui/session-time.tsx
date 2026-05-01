@@ -13,6 +13,7 @@ const SessionTime = React.forwardRef<HTMLInputElement, SessionTimeProps>(
             new Date(isStr).toLocaleTimeString("es-CL", {
                 hour: "2-digit",
                 minute: "2-digit",
+                timeZone: "UTC",
             });
         return (
             <p>{formatSessionTime(isoStrStart)} - {formatSessionTime(isoStrEnd)}</p>

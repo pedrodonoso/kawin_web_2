@@ -40,12 +40,12 @@ type Tab = "reservas" | "descuentos";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-CL", {
-    weekday: "long", day: "numeric", month: "long",
+    weekday: "long", day: "numeric", month: "long", timeZone: "UTC",
   });
 }
 function fmtTime(start: string, end?: string) {
   const fmt = (s: string) =>
-    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+    new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   return end ? `${fmt(start)} – ${fmt(end)}` : fmt(start);
 }
 
@@ -288,7 +288,7 @@ export default function WorkshopReservasPage() {
                           {b.session_date
                             ? new Date(b.session_date).toLocaleString("es-CL", {
                                 day: "numeric", month: "short", year: "numeric",
-                                hour: "2-digit", minute: "2-digit",
+                                hour: "2-digit", minute: "2-digit", timeZone: "UTC",
                               })
                             : "—"}
                         </td>
