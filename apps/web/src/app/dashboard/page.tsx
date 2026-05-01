@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle, AlertCircle, Clock } from "lucide-react";
+import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle, AlertCircle, Clock, BarChart2, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
 import { api, type Workshop } from "@/lib/api";
 
@@ -137,11 +137,17 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold">Hola, {userName} 👋</h1>
             <p className="text-muted-foreground mt-1">Gestiona tus talleres y reservas</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
             <Button variant="outline" asChild>
               <Link href="/perfil">
                 <UserCircle className="h-4 w-4 mr-2" />
                 Mi perfil
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/estadisticas">
+                <BarChart2 className="h-4 w-4 mr-2" />
+                Estadísticas
               </Link>
             </Button>
             <Button asChild>
@@ -263,6 +269,12 @@ export default function DashboardPage() {
                         <Link href={`/talleres/${w.slug}`}>
                           <Eye className="h-3.5 w-3.5 mr-1" />
                           Ver
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/dashboard/talleres/${w.id}/reservas`}>
+                          <CalendarCheck className="h-3.5 w-3.5 mr-1" />
+                          Reservas
                         </Link>
                       </Button>
                       <Button variant="outline" size="sm" asChild>

@@ -204,6 +204,65 @@ export const notificationsApi = {
     api.post<{ data: { marked_read: number } }>("/api/v1/notifications/read-all", {}),
 };
 
+export interface Discount {
+  id: string;
+  workshop_id: string;
+  session_id?: string;
+  type: "percent" | "flat";
+  value: number;
+  label: string;
+  max_uses?: number;
+  uses_count: number;
+  active: boolean;
+  valid_from?: string;
+  valid_until?: string;
+  created_at: string;
+}
+
+export interface InstructorStats {
+  total_bookings: number;
+  confirmed_bookings: number;
+  cancelled_bookings: number;
+  total_revenue: number;
+  this_month_bookings: number;
+  this_month_revenue: number;
+  by_workshop: {
+    workshop_id: string;
+    workshop_title: string;
+    confirmed: number;
+    cancelled: number;
+    revenue: number;
+  }[];
+  over_time: {
+    month: string;
+    bookings: number;
+    revenue: number;
+  }[];
+  top_students: {
+    student_name: string;
+    student_email: string;
+    booking_count: number;
+    total_spent: number;
+    last_workshop: string;
+  }[];
+}
+
+export const discountApi = {
+  list: (workshopId: string) =>
+    api.get<{ data: Discount[] }>(`/api/v1/workshops/${workshopId}/discounts`).then((r) => r.data),
+  create: (workshopId: string, body: Omit<Discount, "id" | "workshop_id" | "uses_count" | "created_at">) =>
+    api.post<{ data: Discount }>(`/api/v1/workshops/${workshopId}/discounts`, body).then((r) => r.data),
+  update: (id: string, body: Partial<Pick<Discount, "active" | "label" | "value" | "max_uses" | "valid_from" | "valid_until">>) =>
+    api.put<{ data: Discount }>(`/api/v1/discounts/${id}`, body).then((r) => r.data),
+  delete: (id: string) =>
+    api.delete<{ data: { id: string; deleted: boolean } }>(`/api/v1/discounts/${id}`).then((r) => r.data),
+};
+
+export const instructorApi = {
+  getStats: () =>
+    api.get<{ data: InstructorStats }>("/api/v1/instructor/stats").then((r) => r.data),
+};
+
 export const adminApi = {
   getStats: () => api.get<{ data: AdminStats }>("/api/v1/admin/stats").then((r) => r.data),
   getWorkshops: (status?: string) =>
