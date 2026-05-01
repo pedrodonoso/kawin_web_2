@@ -181,13 +181,16 @@ class BookingController extends Controller
 
         $sql = "SELECT b.id as booking_id, b.workshop_id, w.title as workshop_title,
                        COALESCE(p.name, u.email) as student_name,
-                       COALESCE(
-                           s.starts_at::text,
-                           (SELECT ns.starts_at::text FROM sessions ns
-                            WHERE ns.workshop_id = b.workshop_id AND ns.schedule_id IS NULL
-                            ORDER BY ns.starts_at ASC LIMIT 1),
-                           ''
-                       ) as session_date,
+                       COALESCE(s.starts_at::text, '') as session_date,
+                       COALESCE(s.ends_at::text, '') as session_ends_at,
+                       CASE WHEN b.session_id IS NULL THEN
+                           (SELECT json_agg(json_build_object(
+                               'starts_at', ns.starts_at::text,
+                               'ends_at',   ns.ends_at::text
+                           ) ORDER BY ns.starts_at)
+                            FROM sessions ns
+                            WHERE ns.workshop_id = b.workshop_id AND ns.schedule_id IS NULL)
+                       ELSE NULL END as all_sessions,
                        b.status, b.payment_status, b.amount, b.created_at::text as created_at
                 FROM bookings b
                 JOIN workshops w ON w.id = b.workshop_id
@@ -217,7 +220,14 @@ class BookingController extends Controller
 
         $sql .= " ORDER BY b.created_at DESC LIMIT 100";
 
-        return response()->json(['data' => DB::select($sql, $bindings)]);
+        $rows = DB::select($sql, $bindings);
+        foreach ($rows as $row) {
+            $row->all_sessions = $row->all_sessions
+                ? json_decode($row->all_sessions, true)
+                : null;
+        }
+
+        return response()->json(['data' => $rows]);
     }
 
     // POST /api/v1/bookings/:id/cancel

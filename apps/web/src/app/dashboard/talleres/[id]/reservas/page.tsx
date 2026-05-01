@@ -13,12 +13,20 @@ import {
 import { toast } from "sonner";
 import { api, discountApi, type Discount, type Session, type Workshop } from "@/lib/api";
 
+interface BookingSession {
+  starts_at: string;
+  ends_at: string;
+}
+
 interface InstructorBooking {
   booking_id: string;
   workshop_id: string;
   workshop_title: string;
   student_name: string;
   session_date: string;
+  session_ends_at: string;
+  /** Populated for full-workshop bookings (non-class type). Null for per-session bookings. */
+  all_sessions: BookingSession[] | null;
   status: string;
   payment_status: string;
   amount: number;
@@ -281,30 +289,73 @@ export default function WorkshopReservasPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {bookings.map((b) => (
-                      <tr key={b.booking_id} className="border-b last:border-0 hover:bg-secondary/20">
-                        <td className="px-4 py-3 font-medium">{b.student_name}</td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {b.session_date
-                            ? new Date(b.session_date).toLocaleString("es-CL", {
-                                day: "numeric", month: "short", year: "numeric",
-                                hour: "2-digit", minute: "2-digit", timeZone: "UTC",
-                              })
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[b.status] ?? ""}`}>
-                            {STATUS_LABEL[b.status] ?? b.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium">
-                          ${Number(b.amount).toLocaleString("es-CL")}
-                        </td>
-                        <td className="px-4 py-3 text-right text-muted-foreground text-xs">
-                          {new Date(b.created_at).toLocaleDateString("es-CL")}
-                        </td>
-                      </tr>
-                    ))}
+                    {bookings.flatMap((b) => {
+                      const fmtSession = (starts_at: string) =>
+                        new Date(starts_at).toLocaleString("es-CL", {
+                          day: "numeric", month: "short", year: "numeric",
+                          hour: "2-digit", minute: "2-digit", timeZone: "UTC",
+                        });
+
+                      // Full-workshop booking with multiple sessions → expand one visual row per session
+                      if (b.all_sessions && b.all_sessions.length > 0) {
+                        return b.all_sessions.map((sess, idx) => (
+                          <tr key={`${b.booking_id}-${idx}`} className="border-b last:border-0 hover:bg-secondary/20">
+                            <td className="px-4 py-3 font-medium">
+                              {idx === 0 ? b.student_name : (
+                                <span className="text-muted-foreground text-xs pl-2 flex items-center gap-1">
+                                  <span className="inline-block w-3 border-l-2 border-b-2 border-muted h-3 rounded-bl" />
+                                  {b.student_name}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground text-sm">
+                              {fmtSession(sess.starts_at)}
+                              {idx === 0 && b.all_sessions!.length > 1 && (
+                                <span className="ml-2 text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                                  {b.all_sessions!.length} sesiones
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {idx === 0 && (
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[b.status] ?? ""}`}>
+                                  {STATUS_LABEL[b.status] ?? b.status}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium">
+                              {idx === 0 ? `$${Number(b.amount).toLocaleString("es-CL")}` : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right text-muted-foreground text-xs">
+                              {idx === 0 ? new Date(b.created_at).toLocaleDateString("es-CL") : ""}
+                            </td>
+                          </tr>
+                        ));
+                      }
+
+                      // Per-session booking (class type) or single session → single row
+                      return [(
+                        <tr key={b.booking_id} className="border-b last:border-0 hover:bg-secondary/20">
+                          <td className="px-4 py-3 font-medium">{b.student_name}</td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {b.session_date ? fmtSession(b.session_date) : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[b.status] ?? ""}`}>
+                              {STATUS_LABEL[b.status] ?? b.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium">
+                            ${Number(b.amount).toLocaleString("es-CL")}
+                          </td>
+                          <td className="px-4 py-3 text-right text-muted-foreground text-xs">
+                            {new Date(b.created_at).toLocaleDateString("es-CL")}
+                          </td>
+                        </tr>
+                      )];
+                    })}
                   </tbody>
                 </table>
               </CardContent></Card>
