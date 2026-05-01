@@ -463,7 +463,11 @@ class BookingController extends Controller
             // Push real-time event to instructor via WebSocket + mobile push
             $payload = $notification->toDatabase($instructor);
             app(PusherService::class)->notifyUser($workshop->instructor_id, $payload);
-            app(WebPushService::class)->notifyUser($workshop->instructor_id, WebPushService::buildPayload($payload));
+            try {
+                app(WebPushService::class)->notifyUser($workshop->instructor_id, WebPushService::buildPayload($payload));
+            } catch (\Throwable $e) {
+                \Log::warning('WebPush (cancel) failed: ' . $e->getMessage());
+            }
         } catch (\Throwable $e) {
             \Log::warning('Failed to dispatch BookingCancelledNotification: ' . $e->getMessage());
         }
@@ -512,7 +516,11 @@ class BookingController extends Controller
             // Push real-time event to instructor via WebSocket + mobile push
             $payload = $notification->toDatabase($instructor);
             app(PusherService::class)->notifyUser($instructorId, $payload);
-            app(WebPushService::class)->notifyUser($instructorId, WebPushService::buildPayload($payload));
+            try {
+                app(WebPushService::class)->notifyUser($instructorId, WebPushService::buildPayload($payload));
+            } catch (\Throwable $e) {
+                \Log::warning('WebPush (new booking) failed: ' . $e->getMessage());
+            }
         } catch (\Throwable $e) {
             // Notification failures must never break booking creation
             \Log::warning('Failed to dispatch NewBookingNotification: ' . $e->getMessage());

@@ -328,7 +328,11 @@ class WorkshopWriteController extends Controller
                     Notification::send($notifiable, $notif);
                     $payload = $notif->toDatabase($notifiable);
                     app(PusherService::class)->notifyUser($s->student_id, $payload);
-                    app(WebPushService::class)->notifyUser($s->student_id, WebPushService::buildPayload($payload));
+                    try {
+                        app(WebPushService::class)->notifyUser($s->student_id, WebPushService::buildPayload($payload));
+                    } catch (\Throwable $e) {
+                        \Log::warning('WebPush failed for student ' . $s->student_id . ': ' . $e->getMessage());
+                    }
                 }
             } catch (\Throwable $e) {
                 \Log::warning('Failed to dispatch WorkshopUpdatedNotification: ' . $e->getMessage());
@@ -417,11 +421,14 @@ class WorkshopWriteController extends Controller
                     workshopTitle:   $workshop?->title ?? '',
                     instructorName:  $instructor?->name ?? '',
                 );
+                $payload = $notif->toDatabase($notifiable);
                 Notification::send($notifiable, $notif);
-                app(WebPushService::class)->notifyUser(
-                    $admin->id,
-                    WebPushService::buildPayload($notif->toDatabase($notifiable))
-                );
+                app(PusherService::class)->notifyUser($admin->id, $payload);
+                try {
+                    app(WebPushService::class)->notifyUser($admin->id, WebPushService::buildPayload($payload));
+                } catch (\Throwable $e) {
+                    \Log::warning('WebPush (submit) failed: ' . $e->getMessage());
+                }
             }
         } catch (\Throwable $e) {
             \Log::warning('Failed to dispatch WorkshopSubmittedNotification: ' . $e->getMessage());
