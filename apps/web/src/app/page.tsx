@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin, Users, Star } from "lucide-react";
+import InstallAppSection from "./InstallAppSection";
 
 const categories = [
   { name: "Arte y Creatividad", icon: "🎨", slug: "arte-creatividad" },
@@ -105,6 +106,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <InstallAppSection />
 
       {/* CTA Talleristas */}
       <section className="py-20 px-4">
