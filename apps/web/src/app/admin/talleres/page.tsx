@@ -10,6 +10,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, Eye, Pencil, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { adminApi, type AdminWorkshop } from "@/lib/api";
 
+const STATUS_LABEL: Record<string, string> = {
+  published: "Publicado",
+  draft:     "Borrador",
+  archived:  "Archivado",
+};
+
+const STATUS_STYLE: Record<string, string> = {
+  published: "bg-green-100 text-green-700",
+  draft:     "bg-yellow-100 text-yellow-700",
+  archived:  "bg-muted text-muted-foreground",
+};
+
 const APPROVAL_LABEL: Record<string, string> = {
   not_submitted: "Sin enviar",
   pending_review: "En revisión",
@@ -106,6 +118,11 @@ export default function AdminTalleresPage() {
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold truncate">{w.title}</h3>
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[w.status ?? "draft"]}`}
+                      >
+                        {STATUS_LABEL[w.status ?? "draft"]}
+                      </span>
                       <span
                         className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${APPROVAL_STYLE[w.approval_status ?? "not_submitted"]}`}
                       >
