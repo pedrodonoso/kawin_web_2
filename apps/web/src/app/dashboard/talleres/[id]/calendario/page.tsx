@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { api, type AvailableSlot, type Schedule, type ApiResponse } from "@/lib/api";
+import { SlotStatus } from "@/lib/constants";
 
 // ——— Constantes ————————————————————————————————————————————————
 
@@ -218,9 +219,9 @@ function SlotCard({
         <div className="flex items-center gap-1.5">
           {dayView && (
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium
-              ${slot.status === "available" ? "bg-emerald-100 text-emerald-700"
-              : slot.status === "full" ? "bg-amber-100 text-amber-700"
-              : slot.status === "cancelled" ? "bg-red-100 text-red-500"
+              ${slot.status === SlotStatus.AVAILABLE ? "bg-emerald-100 text-emerald-700"
+              : slot.status === SlotStatus.FULL ? "bg-amber-100 text-amber-700"
+              : slot.status === SlotStatus.CANCELLED ? "bg-red-100 text-red-500"
               : "bg-muted text-muted-foreground"}`}>
               {STATUS_LABEL[slot.status]}
             </span>
@@ -272,7 +273,7 @@ function SlotCard({
       )}
 
       {/* Acciones */}
-      {slot.status === "not_materialized" && (
+      {slot.status === SlotStatus.NOT_MATERIALIZED && (
         dayView ? (
           <Button size="sm" variant="outline" disabled={busy} onClick={onMaterialize}
             className="w-full border-dashed">
@@ -289,7 +290,7 @@ function SlotCard({
         )
       )}
 
-      {(slot.status === "available" || slot.status === "full") && (
+      {(slot.status === SlotStatus.AVAILABLE || slot.status === SlotStatus.FULL) && (
         slot.booking_count > 0 ? (
           <div className={`text-muted-foreground/60 text-center py-0.5 ${dayView ? "text-xs" : "text-[10px]"}`}>
             Con reservas — no cancelable
@@ -312,7 +313,7 @@ function SlotCard({
         )
       )}
 
-      {slot.status === "cancelled" && slot.session_id && (
+      {slot.status === SlotStatus.CANCELLED && slot.session_id && (
         dayView ? (
           <Button size="sm" variant="outline" disabled={busy} onClick={onReactivate}
             className="w-full text-emerald-600 border-emerald-200 hover:bg-emerald-50">

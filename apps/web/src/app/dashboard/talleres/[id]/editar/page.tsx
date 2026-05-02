@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, adminApi, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
+import { ApprovalStatus, Modality, WorkshopStatus, WorkshopStatusLabel, WorkshopType } from "@/lib/constants";
 import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send } from "lucide-react";
 import { LocationPicker } from "@/components/map/LocationPicker";
 import Link from "next/link";
@@ -175,7 +176,7 @@ export default function EditarTallerPage() {
         );
 
         // Load schedules for class type
-        if (w.type === "class") {
+        if (w.type === WorkshopType.CLASS) {
           return api
             .getList<Schedule>(`/api/v1/workshops/${id}/schedules`)
             .then((scheds) => setExistingSchedules(scheds))
@@ -321,7 +322,7 @@ export default function EditarTallerPage() {
         status,
         price: Number(form.price),
         capacity: form.capacity ? Number(form.capacity) : undefined,
-        sessions: form.type !== "class" ? sessions : undefined,
+        sessions: form.type !== WorkshopType.CLASS ? sessions : undefined,
       });
       toast.success("Cambios guardados");
       router.push("/dashboard");
@@ -349,13 +350,13 @@ export default function EditarTallerPage() {
         status: form.status,
         price: Number(form.price),
         capacity: form.capacity ? Number(form.capacity) : undefined,
-        sessions: form.type !== "class" ? sessions : undefined,
+        sessions: form.type !== WorkshopType.CLASS ? sessions : undefined,
       });
 
       // Para talleres en borrador también hay que llamar submit-review.
       // Para talleres publicados, el backend detecta los cambios sensibles
       // y los guarda en pending_changes automáticamente al hacer PUT.
-      if (form.status !== "published") {
+      if (form.status !== WorkshopStatus.PUBLISHED) {
         await adminApi.submitForReview(id);
       }
 
@@ -434,7 +435,7 @@ export default function EditarTallerPage() {
             <div>
               <p className="font-semibold mb-0.5">Observaciones del administrador</p>
               <p>{adminObservations}</p>
-              {approvalStatus === "changes_requested" && (
+              {approvalStatus === ApprovalStatus.CHANGES_REQUESTED && (
                 <p className="mt-1 text-orange-600 font-medium">Corrige los puntos indicados y envía nuevamente a revisión.</p>
               )}
             </div>
@@ -540,7 +541,7 @@ export default function EditarTallerPage() {
                 ))}
               </div>
 
-              {form.modality !== "online" && (
+              {form.modality !== Modality.ONLINE && (
                 <LocationPicker
                   location={form.location}
                   lat={form.lat}
@@ -549,7 +550,7 @@ export default function EditarTallerPage() {
                   onCoordsChange={(lat, lng) => setFormState((f) => ({ ...f, lat, lng }))}
                 />
               )}
-              {(form.modality === "online" || form.modality === "hybrid") && (
+              {(form.modality === Modality.ONLINE || form.modality === Modality.HYBRID) && (
                 <div className="space-y-2">
                   <Label htmlFor="online_url">Link de la clase</Label>
                   <Input
@@ -629,7 +630,7 @@ export default function EditarTallerPage() {
           </Card>
 
           {/* Horario recurrente (solo clases) */}
-          {form.type === "class" && (
+          {form.type === WorkshopType.CLASS && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -951,7 +952,7 @@ export default function EditarTallerPage() {
           )}
 
           {/* Sesiones (non-class types) */}
-          {form.type !== "class" && (
+          {form.type !== WorkshopType.CLASS && (
             <Card className={bookingsCount > 0 ? "opacity-60" : ""}>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -1028,16 +1029,12 @@ export default function EditarTallerPage() {
             <p className="text-sm text-muted-foreground/70">
               Estado:{" "}
               <span className="font-medium text-foreground/70">
-                {form.status === "published"
-                  ? "Publicado"
-                  : form.status === "draft"
-                  ? "Borrador"
-                  : "Archivado"}
+                {WorkshopStatusLabel[form.status] ?? form.status}
               </span>
             </p>
             {(() => {
-              const isPublished = form.status === "published";
-              const hasObservations = approvalStatus === "changes_requested";
+              const isPublished = form.status === WorkshopStatus.PUBLISHED;
+              const hasObservations = approvalStatus === ApprovalStatus.CHANGES_REQUESTED;
               const sensitiveChanged =
                 form.title       !== originalRef.current.title ||
                 form.description !== originalRef.current.description ||

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\BookingStatus;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,7 +43,7 @@ class ScheduleController extends Controller
         }
 
         $durationMin = (int)$request->input('duration_min', 60) ?: 60;
-        $validFrom   = $request->input('valid_from') ?: now()->format('Y-m-d');
+        $validFrom   = $request->input('valid_from') ?: \Carbon\Carbon::now()->format('Y-m-d');
 
         try {
             Carbon::createFromFormat('Y-m-d', $validFrom);
@@ -220,9 +221,9 @@ class ScheduleController extends Controller
              LEFT JOIN profiles p ON p.user_id = b.student_id
              WHERE s.schedule_id = ?
                AND s.starts_at >= ?::date
-               AND b.status != 'cancelled'
+               AND b.status != ?
              ORDER BY s.starts_at",
-            [$id, $changeDateStr]
+            [$id, $changeDateStr, BookingStatus::CANCELLED]
         );
 
         foreach ($rows as $row) {
@@ -293,8 +294,8 @@ class ScheduleController extends Controller
              JOIN sessions s ON s.id = b.session_id
              WHERE s.schedule_id = ?
                AND s.starts_at >= ?::date
-               AND b.status != 'cancelled'",
-            [$id, $request->input('change_date')]
+               AND b.status != ?",
+            [$id, $request->input('change_date'), BookingStatus::CANCELLED]
         );
 
         DB::beginTransaction();

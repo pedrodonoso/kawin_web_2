@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { api, type InstructorProfile, type ApiResponse } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import { ModalityLabel, WorkshopTypeLabel } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,18 +12,8 @@ import {
   ArrowLeft, ExternalLink,
 } from "lucide-react";
 
-const MODALITY: Record<string, string> = {
-  "in-person": "Presencial",
-  online: "Online",
-  hybrid: "Híbrido",
-};
-
-const TYPE: Record<string, string> = {
-  workshop: "Taller",
-  course: "Curso",
-  class: "Clase",
-  event: "Evento",
-};
+const MODALITY = ModalityLabel;
+const TYPE = WorkshopTypeLabel;
 
 async function getProfile(id: string): Promise<InstructorProfile | null> {
   try {

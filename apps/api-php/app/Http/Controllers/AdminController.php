@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\AdminAction;
+use App\Constants\ApprovalStatus;
+use App\Constants\BookingStatus;
+use App\Constants\UserRole;
+use App\Constants\WorkshopStatus;
 use App\Models\User;
 use App\Notifications\WorkshopApprovedNotification;
 use App\Services\PusherService;
@@ -18,18 +23,18 @@ class AdminController extends Controller
     {
         $s = new \stdClass();
 
-        $s->total_workshops     = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE status != 'archived'")->c;
-        $s->published_workshops = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE status = 'published'")->c;
-        $s->draft_workshops     = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE status = 'draft'")->c;
-        $s->pending_review      = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE approval_status = 'pending_review'")->c;
-        $s->changes_requested   = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE approval_status = 'changes_requested'")->c;
-        $s->total_instructors   = (int)DB::selectOne("SELECT COUNT(*) as c FROM users WHERE role IN ('instructor','both')")->c;
-        $s->total_students      = (int)DB::selectOne("SELECT COUNT(*) as c FROM users WHERE role IN ('student','both')")->c;
+        $s->total_workshops     = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE status != ?", [WorkshopStatus::ARCHIVED])->c;
+        $s->published_workshops = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE status = ?", [WorkshopStatus::PUBLISHED])->c;
+        $s->draft_workshops     = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE status = ?", [WorkshopStatus::DRAFT])->c;
+        $s->pending_review      = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE approval_status = ?", [ApprovalStatus::PENDING_REVIEW])->c;
+        $s->changes_requested   = (int)DB::selectOne("SELECT COUNT(*) as c FROM workshops WHERE approval_status = ?", [ApprovalStatus::CHANGES_REQUESTED])->c;
+        $s->total_instructors   = (int)DB::selectOne("SELECT COUNT(*) as c FROM users WHERE role IN (?, ?)", [UserRole::INSTRUCTOR, UserRole::BOTH])->c;
+        $s->total_students      = (int)DB::selectOne("SELECT COUNT(*) as c FROM users WHERE role IN (?, ?)", [UserRole::STUDENT, UserRole::BOTH])->c;
         $s->total_bookings      = (int)DB::selectOne("SELECT COUNT(*) as c FROM bookings")->c;
-        $s->confirmed_bookings  = (int)DB::selectOne("SELECT COUNT(*) as c FROM bookings WHERE status = 'confirmed'")->c;
-        $s->cancelled_bookings  = (int)DB::selectOne("SELECT COUNT(*) as c FROM bookings WHERE status = 'cancelled'")->c;
-        $s->total_revenue       = (float)DB::selectOne("SELECT COALESCE(SUM(amount),0) as c FROM bookings WHERE status = 'confirmed'")->c;
-        $s->platform_commission = (float)DB::selectOne("SELECT COALESCE(SUM(commission),0) as c FROM bookings WHERE status = 'confirmed'")->c;
+        $s->confirmed_bookings  = (int)DB::selectOne("SELECT COUNT(*) as c FROM bookings WHERE status = ?", [BookingStatus::CONFIRMED])->c;
+        $s->cancelled_bookings  = (int)DB::selectOne("SELECT COUNT(*) as c FROM bookings WHERE status = ?", [BookingStatus::CANCELLED])->c;
+        $s->total_revenue       = (float)DB::selectOne("SELECT COALESCE(SUM(amount),0) as c FROM bookings WHERE status = ?", [BookingStatus::CONFIRMED])->c;
+        $s->platform_commission = (float)DB::selectOne("SELECT COALESCE(SUM(commission),0) as c FROM bookings WHERE status = ?", [BookingStatus::CONFIRMED])->c;
 
         return response()->json(['data' => $s]);
     }
@@ -55,17 +60,18 @@ class AdminController extends Controller
                        COALESCE(p.name,'') as instructor_name,
                        COALESCE(u.email,'') as instructor_email,
                        (SELECT COUNT(*) FROM bookings b
-                        WHERE b.workshop_id = w.id AND b.status = 'confirmed') AS bookings_count
+                        WHERE b.workshop_id = w.id AND b.status = ?) AS bookings_count
                 FROM workshops w
                 LEFT JOIN categories c ON c.id = w.category_id
                 LEFT JOIN profiles p ON p.user_id = w.instructor_id
                 LEFT JOIN users u ON u.id = w.instructor_id
-                WHERE w.status != 'archived'";
+                WHERE w.status != ?";
 
-        $bindings = [];
+        $bindings = [BookingStatus::CONFIRMED, WorkshopStatus::ARCHIVED];
+
         if ($filter !== '') {
             $sql .= " AND w.approval_status = ?";
-            $bindings[] = $filter;
+            $bindings[] = $filter;  // already a validated approval_status string from query param
         }
         $sql .= " ORDER BY w.created_at DESC";
 
@@ -91,8 +97,8 @@ class AdminController extends Controller
         ]);
 
         $exists = DB::selectOne(
-            "SELECT true as ok FROM workshops WHERE id = ? AND status != 'archived'",
-            [$id]
+            "SELECT true as ok FROM workshops WHERE id = ? AND status != ?",
+            [$id, WorkshopStatus::ARCHIVED]
         );
         if (!$exists) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
@@ -100,7 +106,7 @@ class AdminController extends Controller
 
         $action = $request->input('action');
 
-        if ($action === 'approve') {
+        if ($action === AdminAction::APPROVE) {
             // Fetch pending_changes before the update so we can apply proposed sensitive values
             $workshopBefore = DB::selectOne(
                 "SELECT instructor_id::text as instructor_id, pending_changes FROM workshops WHERE id = ?",
@@ -113,14 +119,14 @@ class AdminController extends Controller
 
             DB::update(
                 "UPDATE workshops
-                 SET approval_status = 'approved', status = 'published',
+                 SET approval_status = ?, status = ?,
                      admin_observations = NULL, pending_changes = NULL,
                      title       = COALESCE(?, title),
                      description = COALESCE(?, description),
                      modality    = COALESCE(?, modality),
                      reviewed_by = ?, reviewed_at = NOW(), updated_at = NOW()
                  WHERE id = ?",
-                [$propTitle, $propDesc, $propModality, $adminID, $id]
+                [ApprovalStatus::APPROVED, WorkshopStatus::PUBLISHED, $propTitle, $propDesc, $propModality, $adminID, $id]
             );
 
             // Notify instructor + students with confirmed bookings
@@ -159,8 +165,8 @@ class AdminController extends Controller
                 $students = DB::select(
                     "SELECT DISTINCT b.student_id::text as student_id
                      FROM bookings b
-                     WHERE b.workshop_id = ? AND b.status = 'confirmed'",
-                    [$id]
+                     WHERE b.workshop_id = ? AND b.status = ?",
+                    [$id, BookingStatus::CONFIRMED]
                 );
                 foreach ($students as $s) {
                     $studentNotifiable = new User();
@@ -184,7 +190,7 @@ class AdminController extends Controller
                 \Log::warning('Failed to dispatch WorkshopApprovedNotification: ' . $e->getMessage());
             }
 
-            return response()->json(['data' => ['id' => $id, 'approval_status' => 'approved', 'status' => 'published']]);
+            return response()->json(['data' => ['id' => $id, 'approval_status' => ApprovalStatus::APPROVED, 'status' => WorkshopStatus::PUBLISHED]]);
         }
 
         // send_observations
@@ -193,12 +199,12 @@ class AdminController extends Controller
         }
         DB::update(
             "UPDATE workshops
-             SET approval_status = 'changes_requested', admin_observations = ?,
+             SET approval_status = ?, admin_observations = ?,
                  reviewed_by = ?, reviewed_at = NOW(), updated_at = NOW()
              WHERE id = ?",
-            [$request->input('observations'), $adminID, $id]
+            [ApprovalStatus::CHANGES_REQUESTED, $request->input('observations'), $adminID, $id]
         );
-        return response()->json(['data' => ['id' => $id, 'approval_status' => 'changes_requested']]);
+        return response()->json(['data' => ['id' => $id, 'approval_status' => ApprovalStatus::CHANGES_REQUESTED]]);
     }
 
     // PUT /api/v1/admin/workshops/:id
@@ -217,7 +223,7 @@ class AdminController extends Controller
              SET title=?, description=?, modality=?,
                  price=?, currency=?, capacity=?, location=?,
                  online_url=?, category_id=?, updated_at=NOW()
-             WHERE id=? AND status != 'archived'",
+             WHERE id=? AND status != ?",
             [
                 $request->input('title'),
                 $request->input('description', ''),
@@ -229,6 +235,7 @@ class AdminController extends Controller
                 $request->input('online_url', ''),
                 $catID,
                 $id,
+                WorkshopStatus::ARCHIVED,
             ]
         );
 
@@ -239,11 +246,11 @@ class AdminController extends Controller
         // Notify students with confirmed bookings
         try {
             $workshop  = DB::selectOne("SELECT title, status FROM workshops WHERE id = ?", [$id]);
-            if (($workshop->status ?? '') === 'published') {
+            if (($workshop->status ?? '') === WorkshopStatus::PUBLISHED) {
                 $students = DB::select(
                     "SELECT DISTINCT b.student_id::text as student_id
-                     FROM bookings b WHERE b.workshop_id = ? AND b.status = 'confirmed'",
-                    [$id]
+                     FROM bookings b WHERE b.workshop_id = ? AND b.status = ?",
+                    [$id, BookingStatus::CONFIRMED]
                 );
                 foreach ($students as $s) {
                     $notifiable = new User();

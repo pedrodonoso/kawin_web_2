@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { api, type AuthResponse } from "@/lib/api";
 import { GraduationCap, Hammer } from "lucide-react";
+import { UserRole } from "@/lib/constants";
 
 type Role = "student" | "instructor";
 
@@ -53,7 +54,7 @@ export default function RegistroPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       toast.success("¡Cuenta creada exitosamente!");
-      if (role === "instructor") {
+      if (role === UserRole.INSTRUCTOR) {
         window.location.href = "/dashboard";
       } else {
         window.location.href = "/buscar";

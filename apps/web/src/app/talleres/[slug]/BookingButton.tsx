@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { BookingStatus, WorkshopType } from "@/lib/constants";
 
 interface Props {
   workshopId: string;
@@ -42,7 +43,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
       } catch { /* ignore */ }
     }
 
-    if (!token || workshopType === "class") {
+    if (!token || workshopType === WorkshopType.CLASS) {
       setCheckingStatus(false);
       return;
     }
@@ -50,7 +51,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
       .getList<{ workshop_id: string; status: string }>(`/api/v1/my-bookings?workshop_id=${workshopId}`)
       .then((bookings) => {
         const existing = bookings.find(
-          (b) => b.workshop_id === workshopId && b.status === "confirmed"
+          (b) => b.workshop_id === workshopId && b.status === BookingStatus.CONFIRMED
         );
         if (existing) setBooked(true);
       })
@@ -58,7 +59,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
       .finally(() => setCheckingStatus(false));
   }, [workshopId, workshopType, instructorId]);
 
-  if (workshopType === "class") {
+  if (workshopType === WorkshopType.CLASS) {
     return (
       <p className="text-sm text-muted-foreground text-center py-2">
         Elige una clase en el listado para reservar.

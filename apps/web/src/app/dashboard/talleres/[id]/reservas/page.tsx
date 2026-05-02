@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, discountApi, type Discount, type Session, type Workshop } from "@/lib/api";
+import { DiscountType } from "@/lib/constants";
 
 interface BookingSession {
   starts_at: string;
@@ -197,7 +198,7 @@ export default function WorkshopReservasPage() {
   }
 
   function formatDiscount(d: Discount) {
-    return d.type === "percent"
+    return d.type === DiscountType.PERCENT
       ? `${d.value}% de descuento`
       : `$${Math.round(d.value).toLocaleString("es-CL", { maximumFractionDigits: 0 })} de descuento`;
   }
@@ -418,7 +419,7 @@ export default function WorkshopReservasPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium">
-                          Valor * {form.type === "percent" ? "(0–100%)" : "(CLP)"}
+                          Valor * {form.type === DiscountType.PERCENT ? "(0–100%)" : "(CLP)"}
                         </label>
                         <input
                           type="number"

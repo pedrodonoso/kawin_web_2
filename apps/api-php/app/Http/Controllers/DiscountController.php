@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\DiscountType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,7 @@ class DiscountController extends Controller
         }
 
         $this->validate($request, [
-            'type'  => 'required|in:percent,flat',
+            'type'  => 'required|in:' . DiscountType::PERCENT . ',' . DiscountType::FLAT,
             'value' => 'required|numeric|min:0.01',
             'label' => 'required|string|max:255',
         ]);
@@ -141,7 +142,7 @@ class DiscountController extends Controller
     // GET /api/v1/workshops/{id}/active-discounts  (public — no auth)
     public function publicDiscounts(string $id): JsonResponse
     {
-        $now = now()->toIso8601String();
+        $now = \Carbon\Carbon::now()->toIso8601String();
         $discounts = DB::select(
             "SELECT id, workshop_id::text, session_id::text, type, value, label,
                     max_uses, uses_count, valid_from::text, valid_until::text
@@ -168,7 +169,7 @@ class DiscountController extends Controller
      */
     public static function bestActiveDiscount(string $id, ?string $sessionId): ?object
     {
-        $now      = now()->toIso8601String();
+        $now      = \Carbon\Carbon::now()->toIso8601String();
         $extraSql = '';
         $extra    = [];
 
@@ -200,7 +201,7 @@ class DiscountController extends Controller
         if (!$discount) {
             return [$originalPrice, 0.0];
         }
-        $discountAmount = $discount->type === 'percent'
+        $discountAmount = $discount->type === DiscountType::PERCENT
             ? $originalPrice * ((float)$discount->value / 100)
             : (float)$discount->value;
 

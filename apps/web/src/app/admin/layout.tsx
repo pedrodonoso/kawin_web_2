@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BarChart3, BookOpen, ShieldCheck } from "lucide-react";
+import { UserRole } from "@/lib/constants";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const raw = localStorage.getItem("user");
     if (!raw) { router.replace("/login"); return; }
     const user = JSON.parse(raw);
-    if (user.role !== "admin") { router.replace("/"); return; }
+    if (user.role !== UserRole.ADMIN) { router.replace("/"); return; }
     setChecking(false);
   }, [router]);
 

@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, adminApi, type Category } from "@/lib/api";
+import { Modality, WorkshopType } from "@/lib/constants";
 import { LocationPicker } from "@/components/map/LocationPicker";
 import { ArrowLeft, Plus, Send, X } from "lucide-react";
 import Link from "next/link";
@@ -142,7 +143,7 @@ export default function NuevoTallerPage() {
         lng: form.lng !== "" ? Number(form.lng) : null,
       };
 
-      if (form.type === "class") {
+      if (form.type === WorkshopType.CLASS) {
         const res = await api.post<{ data: { id: string } }>("/api/v1/workshops", {
           ...form,
           ...coordPayload,
@@ -297,7 +298,7 @@ export default function NuevoTallerPage() {
                 ))}
               </div>
 
-              {form.modality !== "online" && (
+              {form.modality !== Modality.ONLINE && (
                 <LocationPicker
                   location={form.location}
                   lat={form.lat}
@@ -306,7 +307,7 @@ export default function NuevoTallerPage() {
                   onCoordsChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
                 />
               )}
-              {(form.modality === "online" || form.modality === "hybrid") && (
+              {(form.modality === Modality.ONLINE || form.modality === Modality.HYBRID) && (
                 <div className="space-y-2">
                   <Label htmlFor="online_url">Link de la clase</Label>
                   <Input
@@ -373,7 +374,7 @@ export default function NuevoTallerPage() {
           </Card>
 
           {/* Schedule editor — only for type === "class" */}
-          {form.type === "class" && (
+          {form.type === WorkshopType.CLASS && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Horario recurrente</CardTitle>
@@ -471,7 +472,7 @@ export default function NuevoTallerPage() {
           )}
 
           {/* Manual sessions editor — for non-class types */}
-          {form.type !== "class" && (
+          {form.type !== WorkshopType.CLASS && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Sesiones</CardTitle>

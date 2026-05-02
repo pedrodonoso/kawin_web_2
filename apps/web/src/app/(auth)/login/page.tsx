@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { api, type AuthResponse } from "@/lib/api";
+import { UserRole } from "@/lib/constants";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(data.user));
       toast.success("¡Bienvenido de vuelta!");
       // Use full reload so the navbar re-mounts and reads the updated localStorage
-      if (data.user.role === "instructor" || data.user.role === "both") {
+      if (data.user.role === UserRole.INSTRUCTOR || data.user.role === UserRole.BOTH) {
         window.location.href = "/dashboard";
       } else {
         window.location.href = "/buscar";

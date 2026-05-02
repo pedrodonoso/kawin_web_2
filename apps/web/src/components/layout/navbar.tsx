@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { UserRole } from "@/lib/constants";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -56,12 +57,12 @@ export function Navbar() {
             <ScanLine className="h-4 w-4" />
             Escanear QR
           </Link>
-          {(user?.role === "instructor" || user?.role === "both") && (
+          {(user?.role === UserRole.INSTRUCTOR || user?.role === UserRole.BOTH) && (
             <Link href="/dashboard" className="text-foreground/60 hover:text-foreground transition-colors">
               Mi panel
             </Link>
           )}
-          {user?.role === "admin" && (
+          {user?.role === UserRole.ADMIN && (
             <Link href="/admin" className="text-foreground/60 hover:text-foreground transition-colors flex items-center gap-1">
               <ShieldCheck className="h-4 w-4" />
               Admin
@@ -89,14 +90,14 @@ export function Navbar() {
                     <User className="h-4 w-4" /> Mi perfil
                   </Link>
                 </DropdownMenuItem>
-                {(user.role === "instructor" || user.role === "both") && (
+                {(user.role === UserRole.INSTRUCTOR || user.role === UserRole.BOTH) && (
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard" className="flex items-center gap-2">
                       <LayoutDashboard className="h-4 w-4" /> Panel tallerista
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {user.role === "admin" && (
+                {user.role === UserRole.ADMIN && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin" className="flex items-center gap-2">
                       <ShieldCheck className="h-4 w-4" /> Panel admin

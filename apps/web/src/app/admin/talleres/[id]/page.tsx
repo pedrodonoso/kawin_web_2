@@ -19,6 +19,7 @@ import {
   ArrowLeft, CheckCircle2, MessageSquare, Pencil, Save, X,
 } from "lucide-react";
 import { adminApi, type AdminWorkshop, type Category, type PendingChanges, api } from "@/lib/api";
+import { ApprovalStatus, ModalityLabel, WorkshopStatusLabel, WorkshopTypeLabel } from "@/lib/constants";
 
 const APPROVAL_LABEL: Record<string, string> = {
   not_submitted: "Sin enviar",
@@ -182,16 +183,16 @@ export default function AdminWorkshopReviewPage() {
           <div className="flex gap-3 flex-wrap">
             <Button
               onClick={approve}
-              disabled={approving || approvalStatus === "approved"}
+              disabled={approving || approvalStatus === ApprovalStatus.APPROVED}
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              {approving ? "Aprobando..." : approvalStatus === "approved" ? "Ya aprobado" : "Aprobar y publicar"}
+              {approving ? "Aprobando..." : approvalStatus === ApprovalStatus.APPROVED ? "Ya aprobado" : "Aprobar y publicar"}
             </Button>
             <Button
               variant="outline"
               onClick={() => setShowObsForm((v) => !v)}
-              disabled={approvalStatus === "approved"}
+              disabled={approvalStatus === ApprovalStatus.APPROVED}
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               Enviar observaciones
@@ -309,21 +310,13 @@ export default function AdminWorkshopReviewPage() {
                 value={workshop.title}
                 proposed={workshop.pending_changes?.title}
               />
-              <Detail label="Tipo" value={
-                workshop.type === "workshop" ? "Taller" :
-                workshop.type === "course" ? "Curso" :
-                workshop.type === "class" ? "Clase" : "Evento"
-              } />
+              <Detail label="Tipo" value={WorkshopTypeLabel[workshop.type] ?? workshop.type} />
               <DiffDetail
                 label="Modalidad"
-                value={
-                  workshop.modality === "in-person" ? "Presencial" :
-                  workshop.modality === "online" ? "Online" : "Híbrido"
-                }
+                value={ModalityLabel[workshop.modality] ?? workshop.modality}
                 proposed={
                   workshop.pending_changes?.modality
-                    ? workshop.pending_changes.modality === "in-person" ? "Presencial"
-                      : workshop.pending_changes.modality === "online" ? "Online" : "Híbrido"
+                    ? ModalityLabel[workshop.pending_changes.modality] ?? workshop.pending_changes.modality
                     : undefined
                 }
               />
@@ -331,7 +324,7 @@ export default function AdminWorkshopReviewPage() {
               <Detail label="Categoría" value={workshop.category_name || "—"} />
               <Detail label="Ubicación" value={workshop.location || "—"} />
               <Detail label="URL online" value={workshop.online_url || "—"} />
-              <Detail label="Estado" value={workshop.status === "published" ? "Publicado" : workshop.status === "draft" ? "Borrador" : "Archivado"} />
+              <Detail label="Estado" value={WorkshopStatusLabel[workshop.status] ?? workshop.status} />
               <DiffDetail
                 label="Descripción"
                 value={workshop.description || "—"}

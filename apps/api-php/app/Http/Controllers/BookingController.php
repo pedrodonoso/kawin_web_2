@@ -6,6 +6,12 @@ use App\Notifications\BookingCancelledNotification;
 use App\Notifications\NewBookingNotification;
 use App\Services\PusherService;
 use App\Services\WebPushService;
+use App\Constants\Billing;
+use App\Constants\BookingStatus;
+use App\Constants\CancelReason;
+use App\Constants\PaymentStatus;
+use App\Constants\WorkshopStatus;
+use App\Constants\WorkshopType;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,8 +31,8 @@ class BookingController extends Controller
 
         $workshopInfo = DB::selectOne(
             "SELECT type, price, capacity, instructor_id::text as instructor_id
-             FROM workshops WHERE id = ? AND status = 'published'",
-            [$request->input('workshop_id')]
+             FROM workshops WHERE id = ? AND status = ?",
+            [$request->input('workshop_id'), WorkshopStatus::PUBLISHED]
         );
         if (!$workshopInfo) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
@@ -35,7 +41,7 @@ class BookingController extends Controller
         $price     = (float)$workshopInfo->price;
         $sessionID = null;
 
-        if ($workshopInfo->type === 'class') {
+        if ($workshopInfo->type === WorkshopType::CLASS_TYPE) {
             if (!$request->input('session_id')) {
                 return response()->json(['message' => 'session_id es requerido para talleres tipo class'], 400);
             }
@@ -59,14 +65,14 @@ class BookingController extends Controller
             // Apply best active discount (session-specific takes priority)
             $discount = DiscountController::bestActiveDiscount($request->input('workshop_id'), $sid);
             [$finalPrice, $discountAmount] = DiscountController::applyDiscount($price, $discount);
-            $commission = $finalPrice * 0.15;
+            $commission = $finalPrice * Billing::COMMISSION_RATE;
 
             DB::beginTransaction();
             try {
                 if ($workshopInfo->capacity !== null) {
                     $count = DB::selectOne(
-                        "SELECT COUNT(*) as cnt FROM bookings WHERE session_id = ? AND status != 'cancelled'",
-                        [$sid]
+                        "SELECT COUNT(*) as cnt FROM bookings WHERE session_id = ? AND status != ?",
+                        [$sid, BookingStatus::CANCELLED]
                     );
                     if ((int)($count->cnt ?? 0) >= (int)$workshopInfo->capacity) {
                         DB::rollBack();
@@ -76,9 +82,9 @@ class BookingController extends Controller
 
                 $booking = DB::selectOne(
                     "INSERT INTO bookings (student_id, workshop_id, session_id, status, payment_status, amount, commission)
-                     VALUES (?, ?, ?, 'confirmed', 'pending', ?, ?)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)
                      RETURNING id",
-                    [$studentID, $request->input('workshop_id'), $sid, $finalPrice, $commission]
+                    [$studentID, $request->input('workshop_id'), $sid, BookingStatus::CONFIRMED, PaymentStatus::PENDING, $finalPrice, $commission]
                 );
 
                 // Increment discount uses_count
@@ -99,13 +105,13 @@ class BookingController extends Controller
             // Apply best active discount (workshop-wide only for non-class types)
             $discount = DiscountController::bestActiveDiscount($request->input('workshop_id'), null);
             [$finalPrice, $discountAmount] = DiscountController::applyDiscount($price, $discount);
-            $commission = $finalPrice * 0.15;
+            $commission = $finalPrice * Billing::COMMISSION_RATE;
 
             $booking = DB::selectOne(
                 "INSERT INTO bookings (student_id, workshop_id, status, payment_status, amount, commission)
-                 VALUES (?, ?, 'confirmed', 'pending', ?, ?)
+                 VALUES (?, ?, ?, ?, ?, ?)
                  RETURNING id",
-                [$studentID, $request->input('workshop_id'), $finalPrice, $commission]
+                [$studentID, $request->input('workshop_id'), BookingStatus::CONFIRMED, PaymentStatus::PENDING, $finalPrice, $commission]
             );
 
             if ($discount) {
@@ -125,8 +131,8 @@ class BookingController extends Controller
             'id'              => $booking->id,
             'workshop_id'     => $request->input('workshop_id'),
             'session_id'      => $sessionID,
-            'status'          => 'confirmed',
-            'payment_status'  => 'pending',
+            'status'          => BookingStatus::CONFIRMED,
+            'payment_status'  => PaymentStatus::PENDING,
             'amount'          => $finalPrice,
             'original_amount' => $discountAmount > 0 ? $price : null,
             'discount_amount' => $discountAmount > 0 ? $discountAmount : null,
@@ -247,7 +253,7 @@ class BookingController extends Controller
             return response()->json(['message' => 'Reserva no encontrada'], 404);
         }
 
-        $error = $this->validateBookingTransition($bookingInfo->status, 'cancelled');
+        $error = $this->validateBookingTransition($bookingInfo->status, BookingStatus::CANCELLED);
         if ($error) {
             return response()->json(['message' => "No se puede cancelar esta reserva: {$error}"], 409);
         }
@@ -260,24 +266,24 @@ class BookingController extends Controller
         }
 
         $zone             = $this->commissionZone($sessionDate);
-        $newPaymentStatus = $bookingInfo->payment_status === 'paid' ? 'refunded' : $bookingInfo->payment_status;
+        $newPaymentStatus = $bookingInfo->payment_status === PaymentStatus::PAID ? PaymentStatus::REFUNDED : $bookingInfo->payment_status;
 
         DB::update(
             "UPDATE bookings
-             SET status = 'cancelled', payment_status = ?,
-                 cancelled_reason = 'student_request', commission_absorbed_by = ?
+             SET status = ?, payment_status = ?,
+                 cancelled_reason = ?, commission_absorbed_by = ?
              WHERE id = ?",
-            [$newPaymentStatus, $zone, $id]
+            [BookingStatus::CANCELLED, $newPaymentStatus, CancelReason::STUDENT_REQUEST, $zone, $id]
         );
 
-        $this->notifyCancellation($id, $bookingInfo->workshop_id, $studentID, $bookingInfo->starts_at_str, 'student_request');
+        $this->notifyCancellation($id, $bookingInfo->workshop_id, $studentID, $bookingInfo->starts_at_str, CancelReason::STUDENT_REQUEST);
 
         return response()->json(['data' => [
             'id'                     => $id,
             'workshop_id'            => $bookingInfo->workshop_id,
-            'status'                 => 'cancelled',
+            'status'                 => BookingStatus::CANCELLED,
             'payment_status'         => $newPaymentStatus,
-            'cancelled_reason'       => 'student_request',
+            'cancelled_reason'       => CancelReason::STUDENT_REQUEST,
             'commission_absorbed_by' => $zone,
         ]]);
     }
@@ -304,7 +310,7 @@ class BookingController extends Controller
             return response()->json(['message' => 'No tienes permiso para modificar esta reserva'], 403);
         }
 
-        $error = $this->validateBookingTransition($bookingInfo->status, 'confirmed');
+        $error = $this->validateBookingTransition($bookingInfo->status, BookingStatus::CONFIRMED);
         if ($error) {
             return response()->json(['message' => "No se puede migrar esta reserva: {$error}"], 409);
         }
@@ -329,8 +335,8 @@ class BookingController extends Controller
         );
         if ($capacity && $capacity->capacity !== null) {
             $count = DB::selectOne(
-                "SELECT COUNT(*) as cnt FROM bookings WHERE session_id = ? AND status != 'cancelled'",
-                [$request->input('target_session_id')]
+                "SELECT COUNT(*) as cnt FROM bookings WHERE session_id = ? AND status != ?",
+                [$request->input('target_session_id'), BookingStatus::CANCELLED]
             );
             if ((int)($count->cnt ?? 0) >= (int)$capacity->capacity) {
                 return response()->json(['message' => 'No hay cupos disponibles en la sesión destino'], 409);
@@ -338,15 +344,15 @@ class BookingController extends Controller
         }
 
         DB::update(
-            "UPDATE bookings SET session_id = ?, migrated_from_session_id = ?, status = 'confirmed' WHERE id = ?",
-            [$request->input('target_session_id'), $bookingInfo->old_session_id, $id]
+            "UPDATE bookings SET session_id = ?, migrated_from_session_id = ?, status = ? WHERE id = ?",
+            [$request->input('target_session_id'), $bookingInfo->old_session_id, BookingStatus::CONFIRMED, $id]
         );
 
         return response()->json(['data' => [
             'id'                       => $id,
             'session_id'               => $request->input('target_session_id'),
             'migrated_from_session_id' => $bookingInfo->old_session_id,
-            'status'                   => 'confirmed',
+            'status'                   => BookingStatus::CONFIRMED,
         ]]);
     }
 
@@ -372,7 +378,7 @@ class BookingController extends Controller
             return response()->json(['message' => 'No tienes permiso para modificar esta reserva'], 403);
         }
 
-        $error = $this->validateBookingTransition($bookingInfo->status, 'cancelled');
+        $error = $this->validateBookingTransition($bookingInfo->status, BookingStatus::CANCELLED);
         if ($error) {
             return response()->json(['message' => "No se puede reembolsar esta reserva: {$error}"], 409);
         }
@@ -388,20 +394,20 @@ class BookingController extends Controller
 
         DB::update(
             "UPDATE bookings
-             SET status = 'cancelled', payment_status = 'refunded',
-                 cancelled_reason = 'schedule_change', commission_absorbed_by = ?
+             SET status = ?, payment_status = ?,
+                 cancelled_reason = ?, commission_absorbed_by = ?
              WHERE id = ?",
-            [$zone, $id]
+            [BookingStatus::CANCELLED, PaymentStatus::REFUNDED, CancelReason::SCHEDULE_CHANGE, $zone, $id]
         );
 
-        $this->notifyCancellation($id, $bookingInfo->workshop_id, null, $bookingInfo->starts_at_str, 'schedule_change');
+        $this->notifyCancellation($id, $bookingInfo->workshop_id, null, $bookingInfo->starts_at_str, CancelReason::SCHEDULE_CHANGE);
 
         return response()->json(['data' => [
             'id'                     => $id,
             'workshop_id'            => $bookingInfo->workshop_id,
-            'status'                 => 'cancelled',
-            'payment_status'         => 'refunded',
-            'cancelled_reason'       => 'schedule_change',
+            'status'                 => BookingStatus::CANCELLED,
+            'payment_status'         => PaymentStatus::REFUNDED,
+            'cancelled_reason'       => CancelReason::SCHEDULE_CHANGE,
             'commission_absorbed_by' => $zone,
         ]]);
     }
@@ -413,9 +419,9 @@ class BookingController extends Controller
     protected function validateBookingTransition(string $from, string $to): ?string
     {
         $transitions = [
-            'pending'   => ['confirmed', 'cancelled'],
-            'confirmed' => ['cancelled'],
-            'cancelled' => [],
+            BookingStatus::PENDING   => [BookingStatus::CONFIRMED, BookingStatus::CANCELLED],
+            BookingStatus::CONFIRMED => [BookingStatus::CANCELLED],
+            BookingStatus::CANCELLED => [],
         ];
 
         if (!isset($transitions[$from])) {

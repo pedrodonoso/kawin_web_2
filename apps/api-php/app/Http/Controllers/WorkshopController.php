@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\BookingStatus;
+use App\Constants\WorkshopType;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -100,7 +102,7 @@ class WorkshopController extends Controller
         );
         $w->bookings_count = (int)($bc->cnt ?? 0);
 
-        if ($w->type === 'class') {
+        if ($w->type === WorkshopType::CLASS_TYPE) {
             $w->schedules = $this->loadScheduleRows($w->id);
 
             // Upcoming materialized sessions with booking count
@@ -270,9 +272,9 @@ class WorkshopController extends Controller
              FROM bookings
              WHERE workshop_id = ?
                AND session_id IS NOT NULL
-               AND status != 'cancelled'
+               AND status != ?
              GROUP BY session_id",
-            [$workshopID]
+            [$workshopID, BookingStatus::CANCELLED]
         );
 
         $counts = [];

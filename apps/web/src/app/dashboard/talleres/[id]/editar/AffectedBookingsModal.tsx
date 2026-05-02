@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { CommissionZone } from "@/lib/constants";
 
 export interface AffectedBooking {
   booking_id: string;
@@ -66,7 +67,7 @@ export default function AffectedBookingsModal({
           <span className="font-semibold text-foreground">{changeDate}</span>
         </p>
 
-        {affectedBookings.some((b) => b.commission_zone === "instructor") && (
+        {affectedBookings.some((b) => b.commission_zone === CommissionZone.INSTRUCTOR) && (
           <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
             <span>
@@ -106,7 +107,7 @@ export default function AffectedBookingsModal({
                     ${Math.round(b.amount).toLocaleString("es-CL", { maximumFractionDigits: 0 })}
                   </td>
                   <td className="py-2 text-right">
-                    {b.commission_zone === "instructor" ? (
+                    {b.commission_zone === CommissionZone.INSTRUCTOR ? (
                       <Badge variant="destructive" className="text-xs">
                         Comisión a tu cargo
                       </Badge>

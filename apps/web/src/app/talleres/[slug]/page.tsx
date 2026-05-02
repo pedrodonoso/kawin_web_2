@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import { DiscountType, Modality, WorkshopType } from "@/lib/constants";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
 import { MiniMapWrapper } from "./MiniMapWrapper";
@@ -138,7 +139,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           )}
 
           {/* Schedules como reglas de recurrencia — solo informativo */}
-          {workshop.type === "class" && workshop.schedules && workshop.schedules.length > 0 && (
+          {workshop.type === WorkshopType.CLASS && workshop.schedules && workshop.schedules.length > 0 && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold">Horario</h2>
               <div className="space-y-2">
@@ -153,7 +154,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           )}
 
           {/* Sesiones materializadas — type:class */}
-          {workshop.type === "class" && workshop.sessions && workshop.sessions.length > 0 && (
+          {workshop.type === WorkshopType.CLASS && workshop.sessions && workshop.sessions.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Próximas clases</h2>
               <UpcomingSessionsList
@@ -166,7 +167,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           )}
 
           {/* Estado vacío para clases sin sesiones disponibles */}
-          {workshop.type === "class" && (!workshop.sessions || workshop.sessions.length === 0) && (
+          {workshop.type === WorkshopType.CLASS && (!workshop.sessions || workshop.sessions.length === 0) && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Próximas clases</h2>
               <div className="p-6 border rounded-lg bg-secondary/50 text-center text-muted-foreground text-sm">
@@ -176,7 +177,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           )}
 
           {/* Manual sessions — workshop / course / event */}
-          {workshop.type !== "class" && workshop.sessions && workshop.sessions.length > 0 && (
+          {workshop.type !== WorkshopType.CLASS && workshop.sessions && workshop.sessions.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Fechas disponibles</h2>
               <div className="space-y-3">
@@ -292,7 +293,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                 // Accumulate all workshop-wide discounts
                 let finalPrice = originalPrice;
                 for (const d of workshopDiscounts) {
-                  const cut = d.type === "percent"
+                  const cut = d.type === DiscountType.PERCENT
                     ? finalPrice * d.value / 100
                     : Math.min(d.value, finalPrice);
                   finalPrice = Math.max(0, finalPrice - cut);
@@ -325,7 +326,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                         return `desde el ${fmt(d.valid_from!)}`;
                       })();
 
-                      const savingLabel = d.type === "percent"
+                      const savingLabel = d.type === DiscountType.PERCENT
                         ? `${d.value}% off`
                         : `-$${formatPrice(d.value)}`;
 
@@ -369,7 +370,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                     {workshop.location}
                   </div>
                 )}
-                {(workshop.modality === "online" || workshop.modality === "hybrid") && (
+                {(workshop.modality === Modality.ONLINE || workshop.modality === Modality.HYBRID) && (
                   <OnlineUrlDisplay
                     workshopId={workshop.id}
                     workshopOnlineUrl={workshop.online_url}

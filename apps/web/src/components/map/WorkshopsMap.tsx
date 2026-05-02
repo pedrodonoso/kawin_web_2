@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, X, Clock } from "lucide-react";
 import { type Workshop } from "@/lib/api";
+import { ModalityLabel } from "@/lib/constants";
 
 // ─── Brand colors (mirrors globals.css) ────────────────────────────────────
 const C = {
@@ -134,7 +135,7 @@ function createClusterIcon(cluster: any): L.DivIcon {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
-const MODALITY: Record<string, string> = { "in-person": "Presencial", online: "Online", hybrid: "Híbrido" };
+const MODALITY = ModalityLabel;
 const TYPE: Record<string, string>     = { workshop: "Taller", course: "Curso", class: "Clase", event: "Evento" };
 
 function MapClickOutside({ onClose }: { onClose: () => void }) {
@@ -157,8 +158,10 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
     <div className="relative w-full h-[520px] rounded-xl overflow-hidden border shadow-sm">
       <MapContainer center={center} zoom={zoom} scrollWheelZoom className="h-full w-full" style={{ zIndex: 0 }}>
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          subdomains="abcd"
+          maxZoom={20}
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         <MapClickOutside onClose={() => setSelected(null)} />
 

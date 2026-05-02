@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\BookingStatus;
+use App\Constants\CancelReason;
+use App\Constants\CommissionZone;
+use App\Constants\PaymentStatus;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -198,8 +202,8 @@ class SessionController extends Controller
         }
 
         $activeBookings = DB::selectOne(
-            "SELECT COUNT(*) as cnt FROM bookings WHERE session_id = ? AND status != 'cancelled'",
-            [$sessionID]
+            "SELECT COUNT(*) as cnt FROM bookings WHERE session_id = ? AND status != ?",
+            [$sessionID, BookingStatus::CANCELLED]
         );
         if ((int)($activeBookings->cnt ?? 0) > 0) {
             $count = (int)$activeBookings->cnt;
@@ -216,8 +220,8 @@ class SessionController extends Controller
             DB::update("UPDATE sessions SET cancelled = true WHERE id = ?", [$sessionID]);
 
             $bookingIDs = DB::select(
-                "SELECT id FROM bookings WHERE session_id = ? AND status != 'cancelled'",
-                [$sessionID]
+                "SELECT id FROM bookings WHERE session_id = ? AND status != ?",
+                [$sessionID, BookingStatus::CANCELLED]
             );
 
             $zone        = $this->commissionZone($sessionDate);
@@ -227,12 +231,12 @@ class SessionController extends Controller
             foreach ($bookingIDs as $b) {
                 DB::update(
                     "UPDATE bookings
-                     SET status = 'cancelled', payment_status = 'refunded',
-                         cancelled_reason = 'instructor_cancel', commission_absorbed_by = ?
+                     SET status = ?, payment_status = ?,
+                         cancelled_reason = ?, commission_absorbed_by = ?
                      WHERE id = ?",
-                    [$zone, $b->id]
+                    [BookingStatus::CANCELLED, PaymentStatus::REFUNDED, CancelReason::INSTRUCTOR_CANCEL, $zone, $b->id]
                 );
-                $zone === 'instructor' ? $byInstructor++ : $byPlatform++;
+                $zone === CommissionZone::INSTRUCTOR ? $byInstructor++ : $byPlatform++;
             }
 
             DB::commit();

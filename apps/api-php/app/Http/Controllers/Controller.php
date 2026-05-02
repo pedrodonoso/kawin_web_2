@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\BookingStatus;
+use App\Constants\CommissionZone;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Routing\Controller as BaseController;
@@ -58,7 +60,7 @@ abstract class Controller extends BaseController
                           ->startOfDay()
                           ->utc();
 
-        return Carbon::now('UTC')->lt($cutoff) ? 'platform' : 'instructor';
+        return Carbon::now('UTC')->lt($cutoff) ? CommissionZone::PLATFORM : CommissionZone::INSTRUCTOR;
     }
 
     // -----------------------------------------------------------------------
@@ -83,14 +85,14 @@ abstract class Controller extends BaseController
             "SELECT COUNT(*) as cnt FROM bookings b
              JOIN sessions s ON s.id = b.session_id
              WHERE b.workshop_id = ?
-               AND b.status = 'confirmed'
+               AND b.status = ?
                AND s.starts_at > (NOW() AT TIME ZONE 'America/Santiago')::timestamp",
-            [$workshopID]
+            [$workshopID, BookingStatus::CONFIRMED]
         );
         $directBookings = \DB::selectOne(
             "SELECT COUNT(*) as cnt FROM bookings
-             WHERE workshop_id = ? AND status = 'confirmed' AND session_id IS NULL",
-            [$workshopID]
+             WHERE workshop_id = ? AND status = ? AND session_id IS NULL",
+            [$workshopID, BookingStatus::CONFIRMED]
         );
 
         return (int)($sessionBookings->cnt ?? 0) + (int)($directBookings->cnt ?? 0);

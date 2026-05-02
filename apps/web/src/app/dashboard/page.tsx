@@ -12,6 +12,7 @@ import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle, Ale
 import { toast } from "sonner";
 import { api, type Workshop } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import { ApprovalStatus, BookingStatus, ModalityLabel, WorkshopStatus, WorkshopTypeLabel } from "@/lib/constants";
 
 interface InstructorBooking {
   booking_id: string;
@@ -121,13 +122,13 @@ export default function DashboardPage() {
     }
   }
 
-  const published = workshops?.filter((w) => w.status === "published").length;
+  const published = workshops?.filter((w) => w.status === WorkshopStatus.PUBLISHED).length;
   const now = new Date();
   const bookingsThisMonth = bookings?.filter((b) => {
     const d = new Date(b.created_at);
-    return b.status === "confirmed" && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    return b.status === BookingStatus.CONFIRMED && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   }).length ?? 0;
-  const totalRevenue = bookings?.filter((b) => b.status === "confirmed").reduce((acc, b) => acc + Number(b.amount), 0) ?? 0;
+  const totalRevenue = bookings?.filter((b) => b.status === BookingStatus.CONFIRMED).reduce((acc, b) => acc + Number(b.amount), 0) ?? 0;
 
   return (
     <main className="min-h-screen bg-background">
@@ -246,17 +247,17 @@ export default function DashboardPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[w.status]}`}>
                           {statusLabel[w.status]}
                         </span>
-                        {w.approval_status && w.approval_status !== "approved" && (
+                        {w.approval_status && w.approval_status !== ApprovalStatus.APPROVED && (
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${approvalStyle[w.approval_status]}`}>
-                            {w.approval_status === "pending_review" && <Clock className="h-3 w-3" />}
-                            {w.approval_status === "changes_requested" && <AlertCircle className="h-3 w-3" />}
+                            {w.approval_status === ApprovalStatus.PENDING_REVIEW && <Clock className="h-3 w-3" />}
+                            {w.approval_status === ApprovalStatus.CHANGES_REQUESTED && <AlertCircle className="h-3 w-3" />}
                             {approvalLabel[w.approval_status]}
                           </span>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {w.type === "workshop" ? "Taller" : w.type === "course" ? "Curso" : "Clase"} ·{" "}
-                        {w.modality === "in-person" ? "Presencial" : w.modality === "online" ? "Online" : "Híbrido"} ·{" "}
+                        {WorkshopTypeLabel[w.type] ?? w.type} ·{" "}
+                        {ModalityLabel[w.modality] ?? w.modality} ·{" "}
                         <span className="font-medium">${formatPrice(w.price)} {w.currency}</span>
                       </p>
                       {w.admin_observations && (
@@ -361,16 +362,16 @@ export default function DashboardPage() {
                         <td className="px-4 py-3">
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              b.status === "confirmed"
+                              b.status === BookingStatus.CONFIRMED
                                 ? "bg-green-100 text-green-700"
-                                : b.status === "pending"
+                                : b.status === BookingStatus.PENDING
                                 ? "bg-yellow-100 text-yellow-700"
                                 : "bg-red-100 text-red-600"
                             }`}
                           >
-                            {b.status === "confirmed"
+                            {b.status === BookingStatus.CONFIRMED
                               ? "Confirmada"
-                              : b.status === "pending"
+                              : b.status === BookingStatus.PENDING
                               ? "Pendiente"
                               : "Cancelada"}
                           </span>

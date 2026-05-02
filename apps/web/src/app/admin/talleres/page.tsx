@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, Eye, Pencil, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { adminApi, type AdminWorkshop } from "@/lib/api";
+import { ModalityLabel, WorkshopTypeLabel } from "@/lib/constants";
 
 const STATUS_LABEL: Record<string, string> = {
   published: "Publicado",
@@ -133,9 +134,9 @@ export default function AdminTalleresPage() {
                     <p className="text-sm text-muted-foreground">
                       <span className="font-medium">{w.instructor_name || w.instructor_email}</span>
                       {" · "}
-                      {w.type === "workshop" ? "Taller" : w.type === "course" ? "Curso" : w.type === "class" ? "Clase" : "Evento"}
+                      {WorkshopTypeLabel[w.type] ?? w.type}
                       {" · "}
-                      {w.modality === "in-person" ? "Presencial" : w.modality === "online" ? "Online" : "Híbrido"}
+                      {ModalityLabel[w.modality] ?? w.modality}
                       {" · "}
                       <span className="font-medium">${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} {w.currency}</span>
                     </p>
