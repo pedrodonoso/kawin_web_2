@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Plus, X,
-  Check, Pencil, CalendarDays, Users, Wifi, WifiOff, Trash2,
+  Check, Pencil, CalendarDays, Wifi, WifiOff, Trash2,
   LayoutGrid, CalendarRange, RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
@@ -203,8 +203,6 @@ function SlotCard({
   onCancelURL: () => void;
   onUrlDraftChange: (v: string) => void;
 }) {
-  const hasCap   = slot.spots_remaining != null;
-  const totalCap = hasCap ? (slot.booking_count ?? 0) + slot.spots_remaining! : null;
   const isEditing = editingURL === slot.session_id;
 
   return (
@@ -235,35 +233,6 @@ function SlotCard({
         {slot.duration_min} min{!dayView && ` · ${STATUS_LABEL[slot.status]}`}
       </div>
 
-      {/* Reservas / cupos */}
-      {slot.status !== "not_materialized" && slot.status !== "cancelled" && (
-        <div className="space-y-1">
-          {totalCap !== null ? (
-            <>
-              <div className={`flex items-center justify-between text-muted-foreground ${dayView ? "text-xs" : "text-[10px]"}`}>
-                <span className="flex items-center gap-1">
-                  <Users className={dayView ? "h-3 w-3" : "h-2.5 w-2.5"} />
-                  {slot.booking_count ?? 0}/{totalCap}
-                </span>
-                <span>{slot.spots_remaining} cupos libres</span>
-              </div>
-              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${slot.status === "full" ? "bg-amber-400" : "bg-emerald-400"}`}
-                  style={{ width: `${Math.min(((slot.booking_count ?? 0) / totalCap) * 100, 100)}%` }}
-                />
-              </div>
-            </>
-          ) : (slot.booking_count ?? 0) > 0 ? (
-            <span className={`flex items-center gap-1 text-muted-foreground ${dayView ? "text-xs" : "text-[10px]"}`}>
-              <Users className={dayView ? "h-3 w-3" : "h-2.5 w-2.5"} />
-              {slot.booking_count} reserva{slot.booking_count !== 1 ? "s" : ""}
-            </span>
-          ) : (
-            <span className={`text-muted-foreground ${dayView ? "text-xs" : "text-[10px]"}`}>Sin reservas</span>
-          )}
-        </div>
-      )}
 
       {/* Link online */}
       {slot.session_id && (

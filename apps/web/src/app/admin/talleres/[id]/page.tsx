@@ -328,7 +328,6 @@ export default function AdminWorkshopReviewPage() {
                 }
               />
               <Detail label="Precio" value={`$${Number(workshop.price).toLocaleString("es-CL")} ${workshop.currency}`} />
-              <Detail label="Capacidad" value={workshop.capacity?.toString() ?? "Sin límite"} />
               <Detail label="Categoría" value={workshop.category_name || "—"} />
               <Detail label="Ubicación" value={workshop.location || "—"} />
               <Detail label="URL online" value={workshop.online_url || "—"} />

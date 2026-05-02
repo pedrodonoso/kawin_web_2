@@ -258,24 +258,6 @@ export default function DashboardPage() {
                         {w.modality === "in-person" ? "Presencial" : w.modality === "online" ? "Online" : "Híbrido"} ·{" "}
                         <span className="font-medium">${w.price.toLocaleString("es-CL")} {w.currency}</span>
                       </p>
-                      {w.capacity != null && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex-1 max-w-[140px] bg-secondary rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className="h-1.5 rounded-full bg-primary transition-all"
-                              style={{ width: `${Math.min(((w.bookings_count ?? 0) / w.capacity) * 100, 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {w.bookings_count ?? 0}/{w.capacity} reservas
-                          </span>
-                        </div>
-                      )}
-                      {w.capacity == null && (w.bookings_count ?? 0) > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {w.bookings_count} reserva{(w.bookings_count ?? 0) !== 1 ? "s" : ""} confirmada{(w.bookings_count ?? 0) !== 1 ? "s" : ""}
-                        </p>
-                      )}
                       {w.admin_observations && (
                         <p className="text-xs text-orange-700 bg-orange-50 px-2 py-1.5 rounded border border-orange-200 mt-1">
                           <span className="font-medium">Observación del admin:</span> {w.admin_observations}

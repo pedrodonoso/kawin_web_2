@@ -65,6 +65,9 @@ export interface Workshop {
   approval_status?: "not_submitted" | "pending_review" | "approved" | "changes_requested";
   admin_observations?: string;
   category?: { id: string; name: string; slug: string };
+  category_id?: string;
+  category_name?: string;
+  category_slug?: string;
   instructor?: { name: string; avatar_url?: string; bio?: string };
   instructor_id?: string;
   instructor_name?: string;
@@ -74,9 +77,6 @@ export interface Workshop {
   instructor_whatsapp?: string;
   instructor_phone?: string;
   schedule?: string;
-  category_id?: string;
-  category_name?: string;
-  category_slug?: string;
   sessions?: Session[];
   schedules?: Schedule[];
   bookings_count?: number;

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Users, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag } from "lucide-react";
+import { MapPin, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
@@ -367,12 +367,6 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                     workshopId={workshop.id}
                     workshopOnlineUrl={workshop.online_url}
                   />
-                )}
-                {workshop.capacity && (
-                  <div className="flex items-center gap-2 text-foreground/60">
-                    <Users className="h-4 w-4 shrink-0" />
-                    {`Capacidad: ${workshop.capacity} personas`}
-                  </div>
                 )}
               </div>
 

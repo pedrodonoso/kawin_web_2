@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Search, MapPin, Clock, Users, LayoutGrid, Map } from "lucide-react";
+import { Search, MapPin, Clock, LayoutGrid, Map } from "lucide-react";
 import { api, type Workshop, type Category } from "@/lib/api";
 
 const WorkshopsMap = dynamic(
@@ -201,10 +201,6 @@ function WorkshopCard({ w }: { w: Workshop }) {
                   {w.location.split(",")[0]}
                 </span>
               ) : null}
-              <span className="flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {w.capacity ? `${w.capacity} cupos` : "Sin límite"}
-              </span>
             </div>
             <span className="font-bold text-foreground">
               {w.price === 0

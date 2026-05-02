@@ -49,13 +49,6 @@ export function UpcomingSessionCard({ session }: Props) {
             <Clock className="h-3 w-3" />
             <SessionTime isoStrStart={session.starts_at} isoStrEnd={session.ends_at} />
           </div>
-          {!isCancelled && spotsRemaining !== undefined && (
-            <p className="text-xs mt-1 text-muted-foreground">
-              {spotsRemaining === 0
-                ? "Sin cupos"
-                : `${spotsRemaining} cupo${spotsRemaining !== 1 ? "s" : ""} disponible${spotsRemaining !== 1 ? "s" : ""}`}
-            </p>
-          )}
           {session.notes && (
             <p className="text-xs text-muted-foreground/70 mt-1">{session.notes}</p>
           )}
