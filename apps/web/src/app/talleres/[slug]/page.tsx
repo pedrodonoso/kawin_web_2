@@ -214,7 +214,13 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{workshop.instructor.name}</p>
+                  {workshop.instructor_id ? (
+                    <Link href={`/talleristas/${workshop.instructor_id}`} className="font-semibold hover:underline">
+                      {workshop.instructor.name}
+                    </Link>
+                  ) : (
+                    <p className="font-semibold">{workshop.instructor.name}</p>
+                  )}
                   {workshop.instructor.bio && (
                     <p className="text-sm text-foreground/60 mt-1 leading-relaxed">
                       {workshop.instructor.bio}

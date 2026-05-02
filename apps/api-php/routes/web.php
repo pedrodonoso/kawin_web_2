@@ -20,6 +20,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     $router->post('/auth/register',   'AuthController@register');
     $router->post('/auth/login',      'AuthController@login');
 
+    // Public instructor profile
+    $router->get('/instructors/{id}/profile', 'ProfileController@publicShow');
+
     // Active discounts for a workshop (public — no auth needed)
     $router->get('/workshops/{id}/active-discounts', 'DiscountController@publicDiscounts');
 

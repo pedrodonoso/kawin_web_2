@@ -99,6 +99,20 @@ export interface Session {
  * Recurring schedule rule for workshops of type "class".
  * days_of_week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
  */
+export interface InstructorProfile {
+  id: string;
+  name: string;
+  bio: string;
+  avatar_url: string;
+  phone: string;
+  whatsapp: string;
+  instagram_url: string;
+  facebook_url: string;
+  city: string;
+  country: string;
+  workshops: Workshop[];
+}
+
 export interface Schedule {
   id: string;
   workshop_id: string;

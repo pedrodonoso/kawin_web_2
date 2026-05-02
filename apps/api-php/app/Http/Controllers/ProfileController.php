@@ -8,6 +8,51 @@ use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
+    // GET /api/v1/instructors/:id/profile  (public)
+    public function publicShow(string $id): JsonResponse
+    {
+        $profile = DB::selectOne(
+            "SELECT u.id::text as id,
+                    COALESCE(p.name,'') as name,
+                    COALESCE(p.bio,'') as bio,
+                    COALESCE(p.avatar_url,'') as avatar_url,
+                    COALESCE(p.phone,'') as phone,
+                    COALESCE(p.whatsapp,'') as whatsapp,
+                    COALESCE(p.instagram_url,'') as instagram_url,
+                    COALESCE(p.facebook_url,'') as facebook_url,
+                    COALESCE(p.city,'') as city,
+                    COALESCE(p.country,'Chile') as country
+             FROM profiles p
+             JOIN users u ON u.id = p.user_id
+             WHERE u.id::text = ? AND u.role IN ('instructor','both')",
+            [$id]
+        );
+
+        if (!$profile) {
+            return response()->json(['message' => 'Tallerista no encontrado'], 404);
+        }
+
+        $workshops = DB::select(
+            "SELECT w.id, w.title, w.slug,
+                    COALESCE(w.description,'') as description,
+                    w.type, w.modality, w.price, w.currency,
+                    COALESCE(w.location,'') as location,
+                    w.lat, w.lng,
+                    COALESCE(w.cover_image_url,'') as cover_image_url,
+                    COALESCE(c.name,'') as category_name,
+                    COALESCE(c.slug,'') as category_slug
+             FROM workshops w
+             LEFT JOIN categories c ON c.id = w.category_id
+             WHERE w.instructor_id = ? AND w.status = 'published'
+             ORDER BY w.created_at DESC",
+            [$id]
+        );
+
+        $profile->workshops = $workshops;
+
+        return response()->json(['data' => $profile]);
+    }
+
     // GET /api/v1/my-profile
     public function show(Request $request): JsonResponse
     {

@@ -209,7 +209,17 @@ function WorkshopCard({ w }: { w: Workshop }) {
             </span>
           </div>
           {w.instructor && (
-            <p className="text-xs text-muted-foreground/70">por {w.instructor.name}</p>
+            w.instructor_id ? (
+              <Link
+                href={`/talleristas/${w.instructor_id}`}
+                className="text-xs text-muted-foreground/70 hover:text-foreground hover:underline transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                por {w.instructor.name}
+              </Link>
+            ) : (
+              <p className="text-xs text-muted-foreground/70">por {w.instructor.name}</p>
+            )
           )}
         </CardContent>
       </Card>
