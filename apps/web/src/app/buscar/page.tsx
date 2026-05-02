@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Search, MapPin, Clock, LayoutGrid, Map } from "lucide-react";
 import { api, type Workshop, type Category } from "@/lib/api";
+import { Modality } from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
 
 const WorkshopsMap = dynamic(
@@ -194,7 +195,7 @@ function WorkshopCard({ w }: { w: Workshop }) {
             <span className="flex items-center gap-1 min-w-0">
               <MapPin className="h-3 w-3 shrink-0" />
               <span className="truncate">
-                {w.modality === "online" ? "Online" : w.location ?? "—"}
+                {w.modality === Modality.ONLINE ? "Online" : w.location ?? "—"}
               </span>
             </span>
             <Badge variant="outline" className="shrink-0 text-xs">
@@ -245,7 +246,7 @@ function WorkshopSkeleton() {
   );
 }
 
-export default function BuscarPage() {
+function BuscarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -388,7 +389,7 @@ export default function BuscarPage() {
         {/* Map view */}
         {view === "map" && !loading && (
           <WorkshopsMap
-            workshops={workshops.filter((w) => w.modality !== "online")}
+            workshops={workshops.filter((w) => w.modality !== Modality.ONLINE)}
           />
         )}
 
@@ -416,5 +417,13 @@ export default function BuscarPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function BuscarPage() {
+  return (
+    <Suspense>
+      <BuscarContent />
+    </Suspense>
   );
 }
