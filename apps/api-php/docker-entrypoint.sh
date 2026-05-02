@@ -49,9 +49,6 @@ VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
 VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:noreply@kawin.app}
 EOF
 
-php artisan config:cache
-php artisan route:cache
-
 echo "[entrypoint] Running migrations..."
 php artisan migrate --force
 
