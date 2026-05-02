@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { api, type InstructorProfile, type ApiResponse } from "@/lib/api";
+import { formatPrice } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -193,13 +194,13 @@ export default async function TalleristaPage({
                       {w.location && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <MapPin className="h-3 w-3 shrink-0" />
-                          {w.location.split(",")[0]}
+                          {w.location.split(",").map(s => s.trim()).find(p => !/^\d+$/.test(p)) ?? w.location.split(",")[0]}
                         </p>
                       )}
                       <p className="text-sm font-bold pt-1">
                         {Number(w.price) === 0
                           ? "Gratis"
-                          : `$${Number(w.price).toLocaleString("es-CL")} ${w.currency}`}
+                          : `$${formatPrice(Number(w.price))} ${w.currency}`}
                       </p>
                     </CardContent>
                   </Card>

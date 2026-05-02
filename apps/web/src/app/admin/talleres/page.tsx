@@ -137,7 +137,7 @@ export default function AdminTalleresPage() {
                       {" · "}
                       {w.modality === "in-person" ? "Presencial" : w.modality === "online" ? "Online" : "Híbrido"}
                       {" · "}
-                      <span className="font-medium">${w.price.toLocaleString("es-CL")} {w.currency}</span>
+                      <span className="font-medium">${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} {w.currency}</span>
                     </p>
 
                     {w.admin_observations && (

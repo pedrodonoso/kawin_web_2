@@ -199,7 +199,7 @@ export default function WorkshopReservasPage() {
   function formatDiscount(d: Discount) {
     return d.type === "percent"
       ? `${d.value}% de descuento`
-      : `$${d.value.toLocaleString("es-CL")} de descuento`;
+      : `$${Math.round(d.value).toLocaleString("es-CL", { maximumFractionDigits: 0 })} de descuento`;
   }
 
   // Session label for discount card (resolves from loaded sessions)
@@ -324,7 +324,7 @@ export default function WorkshopReservasPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 text-right font-medium">
-                              {idx === 0 ? `$${Number(b.amount).toLocaleString("es-CL")}` : (
+                              {idx === 0 ? `$${Math.round(Number(b.amount)).toLocaleString("es-CL", { maximumFractionDigits: 0 })}` : (
                                 <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </td>
@@ -348,7 +348,7 @@ export default function WorkshopReservasPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right font-medium">
-                            ${Number(b.amount).toLocaleString("es-CL")}
+                            ${Math.round(Number(b.amount)).toLocaleString("es-CL", { maximumFractionDigits: 0 })}
                           </td>
                           <td className="px-4 py-3 text-right text-muted-foreground text-xs">
                             {new Date(b.created_at).toLocaleDateString("es-CL")}

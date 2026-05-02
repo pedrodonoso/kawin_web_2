@@ -19,6 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Search, MapPin, Clock, LayoutGrid, Map } from "lucide-react";
 import { api, type Workshop, type Category } from "@/lib/api";
+import { formatPrice } from "@/lib/utils";
 
 const WorkshopsMap = dynamic(
   () => import("@/components/map/WorkshopsMap").then((m) => m.WorkshopsMap),
@@ -170,57 +171,60 @@ function WorkshopCard({ w }: { w: Workshop }) {
           )}
         </div>
         <CardContent className="p-4 space-y-3">
+          {/* Title | Type */}
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold leading-tight line-clamp-2">{w.title}</h3>
-            <Badge variant="outline" className="shrink-0 text-xs">
-              {modalityLabel[w.modality]}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeColor[w.type] ?? "bg-muted text-muted-foreground"}`}>
+            <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeColor[w.type] ?? "bg-muted text-muted-foreground"}`}>
               {typeLabel[w.type] ?? w.type}
             </span>
           </div>
+
           {w.category && (
             <Badge variant="secondary" className="text-xs">
               {w.category.name}
             </Badge>
           )}
+
           <p className="text-sm text-muted-foreground line-clamp-2">{w.description}</p>
+
           <Separator />
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-3 text-muted-foreground">
-              {w.modality === "online" ? (
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  Online
-                </span>
-              ) : w.location ? (
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {w.location.split(",")[0]}
-                </span>
-              ) : null}
-            </div>
-            <span className="font-bold text-foreground">
+
+          {/* Location | Modality */}
+          <div className="flex items-start justify-between gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 min-w-0">
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate">
+                {w.modality === "online" ? "Online" : w.location ?? "—"}
+              </span>
+            </span>
+            <Badge variant="outline" className="shrink-0 text-xs">
+              {modalityLabel[w.modality]}
+            </Badge>
+          </div>
+
+          <Separator />
+
+          {/* Price + instructor */}
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-sm text-foreground">
               {w.price === 0
                 ? "Gratis"
-                : `$${w.price.toLocaleString("es-CL")} ${w.currency}`}
+                : `$${formatPrice(w.price)} ${w.currency}`}
             </span>
+            {w.instructor && (
+              w.instructor_id ? (
+                <Link
+                  href={`/talleristas/${w.instructor_id}`}
+                  className="text-xs text-muted-foreground/70 hover:text-foreground hover:underline transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  por {w.instructor.name}
+                </Link>
+              ) : (
+                <p className="text-xs text-muted-foreground/70">por {w.instructor.name}</p>
+              )
+            )}
           </div>
-          {w.instructor && (
-            w.instructor_id ? (
-              <Link
-                href={`/talleristas/${w.instructor_id}`}
-                className="text-xs text-muted-foreground/70 hover:text-foreground hover:underline transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                por {w.instructor.name}
-              </Link>
-            ) : (
-              <p className="text-xs text-muted-foreground/70">por {w.instructor.name}</p>
-            )
-          )}
         </CardContent>
       </Card>
     </Link>

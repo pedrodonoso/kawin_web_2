@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
+import { formatPrice } from "@/lib/utils";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
 import { MiniMapWrapper } from "./MiniMapWrapper";
@@ -303,11 +304,11 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                     <div>
                       {hasDiscount && (
                         <p className="text-sm text-muted-foreground line-through">
-                          ${originalPrice.toLocaleString("es-CL")} {workshop.currency}
+                          ${formatPrice(originalPrice)} {workshop.currency}
                         </p>
                       )}
                       <CardTitle className="text-2xl">
-                        ${finalPrice.toLocaleString("es-CL")}
+                        ${formatPrice(finalPrice)}
                         <span className="text-base font-normal text-muted-foreground ml-1.5">{workshop.currency}</span>
                       </CardTitle>
                     </div>
@@ -326,7 +327,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
 
                       const savingLabel = d.type === "percent"
                         ? `${d.value}% off`
-                        : `-$${d.value.toLocaleString("es-CL")}`;
+                        : `-$${formatPrice(d.value)}`;
 
                       return (
                         <div key={d.id} className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 space-y-0.5">

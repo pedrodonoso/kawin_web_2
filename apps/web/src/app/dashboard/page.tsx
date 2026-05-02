@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle, AlertCircle, Clock, BarChart2, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
 import { api, type Workshop } from "@/lib/api";
+import { formatPrice } from "@/lib/utils";
 
 interface InstructorBooking {
   booking_id: string;
@@ -191,7 +192,7 @@ export default function DashboardPage() {
               <p className="text-3xl font-bold">
                 {loading ? "—" : (
                   <>
-                    ${totalRevenue.toLocaleString("es-CL")}
+                    ${formatPrice(totalRevenue)}
                     <span className="ml-1.5 text-base font-normal text-muted-foreground">CLP</span>
                   </>
                 )}
@@ -256,7 +257,7 @@ export default function DashboardPage() {
                       <p className="text-sm text-muted-foreground">
                         {w.type === "workshop" ? "Taller" : w.type === "course" ? "Curso" : "Clase"} ·{" "}
                         {w.modality === "in-person" ? "Presencial" : w.modality === "online" ? "Online" : "Híbrido"} ·{" "}
-                        <span className="font-medium">${w.price.toLocaleString("es-CL")} {w.currency}</span>
+                        <span className="font-medium">${formatPrice(w.price)} {w.currency}</span>
                       </p>
                       {w.admin_observations && (
                         <p className="text-xs text-orange-700 bg-orange-50 px-2 py-1.5 rounded border border-orange-200 mt-1">
@@ -375,7 +376,7 @@ export default function DashboardPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right font-medium">
-                          ${b.amount.toLocaleString("es-CL")}
+                          ${formatPrice(b.amount)}
                         </td>
                       </tr>
                     ))}

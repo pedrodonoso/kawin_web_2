@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, BarChart2, DollarSign, Users, CalendarCheck, TrendingUp } from "lucide-react";
 import { instructorApi, type InstructorStats } from "@/lib/api";
+import { formatPrice } from "@/lib/utils";
 
 function StatCard({ label, value, icon: Icon, sub }: {
   label: string;
@@ -105,7 +106,7 @@ export default function EstadisticasPage() {
               />
               <StatCard
                 label="Ingresos totales"
-                value={`$${stats.total_revenue.toLocaleString("es-CL")}`}
+                value={`$${formatPrice(stats.total_revenue)}`}
                 icon={DollarSign}
                 sub="CLP confirmado"
               />
@@ -113,7 +114,7 @@ export default function EstadisticasPage() {
                 label="Este mes"
                 value={stats.this_month_bookings}
                 icon={TrendingUp}
-                sub={`$${stats.this_month_revenue.toLocaleString("es-CL")} CLP`}
+                sub={`$${formatPrice(stats.this_month_revenue)} CLP`}
               />
               <StatCard
                 label="Estudiantes únicos"
@@ -136,7 +137,7 @@ export default function EstadisticasPage() {
                         <span className="w-16 text-muted-foreground shrink-0">{m.month}</span>
                         <MiniBar value={m.bookings} max={maxBookings} />
                         <span className="text-xs text-muted-foreground w-28 text-right shrink-0">
-                          ${m.revenue.toLocaleString("es-CL")}
+                          ${formatPrice(m.revenue)}
                         </span>
                       </div>
                     ))}
@@ -177,7 +178,7 @@ export default function EstadisticasPage() {
                             {w.cancelled}
                           </td>
                           <td className="py-2.5 text-right font-medium">
-                            ${w.revenue.toLocaleString("es-CL")}
+                            ${formatPrice(w.revenue)}
                           </td>
                         </tr>
                       ))}
@@ -220,7 +221,7 @@ export default function EstadisticasPage() {
                             </div>
                           </td>
                           <td className="py-2.5 text-right font-medium">
-                            ${s.total_spent.toLocaleString("es-CL")}
+                            ${formatPrice(s.total_spent)}
                           </td>
                         </tr>
                       ))}

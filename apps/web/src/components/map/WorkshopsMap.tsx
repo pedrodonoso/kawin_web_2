@@ -261,7 +261,7 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
 
           <div className="flex items-center justify-between pt-1">
             <span className="text-sm font-bold">
-              {selected.price === 0 ? "Gratis" : `$${Number(selected.price).toLocaleString("es-CL")} ${selected.currency}`}
+              {selected.price === 0 ? "Gratis" : `$${Math.round(Number(selected.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${selected.currency}`}
             </span>
             <Link
               href={`/talleres/${selected.slug}`}

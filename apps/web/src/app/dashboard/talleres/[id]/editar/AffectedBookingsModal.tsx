@@ -103,7 +103,7 @@ export default function AffectedBookingsModal({
                   <td className="py-2 pr-3 text-foreground/60">{b.session_date}</td>
                   <td className="py-2 pr-3 text-foreground/60">{b.session_time}</td>
                   <td className="py-2 pr-3 text-right text-foreground/70">
-                    {b.amount.toLocaleString()}
+                    ${Math.round(b.amount).toLocaleString("es-CL", { maximumFractionDigits: 0 })}
                   </td>
                   <td className="py-2 text-right">
                     {b.commission_zone === "instructor" ? (

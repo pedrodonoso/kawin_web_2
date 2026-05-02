@@ -48,8 +48,8 @@ export default function AdminPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const fmt = (n: number) => n.toLocaleString("es-CL");
-  const money = (n: number) => `$${n.toLocaleString("es-CL")}`;
+  const fmt = (n: number) => Math.round(n).toLocaleString("es-CL", { maximumFractionDigits: 0 });
+  const money = (n: number) => `$${Math.round(n).toLocaleString("es-CL", { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="space-y-8">

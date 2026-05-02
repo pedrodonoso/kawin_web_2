@@ -327,7 +327,7 @@ export default function AdminWorkshopReviewPage() {
                     : undefined
                 }
               />
-              <Detail label="Precio" value={`$${Number(workshop.price).toLocaleString("es-CL")} ${workshop.currency}`} />
+              <Detail label="Precio" value={`$${Math.round(Number(workshop.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${workshop.currency}`} />
               <Detail label="Categoría" value={workshop.category_name || "—"} />
               <Detail label="Ubicación" value={workshop.location || "—"} />
               <Detail label="URL online" value={workshop.online_url || "—"} />
