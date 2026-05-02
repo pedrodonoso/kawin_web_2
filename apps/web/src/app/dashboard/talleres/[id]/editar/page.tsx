@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, adminApi, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
-import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send, LocateFixed } from "lucide-react";
+import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send } from "lucide-react";
+import { LocationPicker } from "@/components/map/LocationPicker";
 import Link from "next/link";
 
 interface SessionDraft {
@@ -110,7 +111,6 @@ export default function EditarTallerPage() {
   // Snapshot de los campos "sensibles" al cargar — para detectar si requieren revisión
   const originalRef = useRef({ title: "", description: "", modality: "" });
 
-  const [geocoding, setGeocoding] = useState(false);
   const [form, setFormState] = useState({
     title: "",
     description: "",
@@ -188,27 +188,6 @@ export default function EditarTallerPage() {
 
   function setField(field: string, value: string) {
     setFormState((f) => ({ ...f, [field]: value }));
-  }
-
-  async function geocode() {
-    if (!form.location) return;
-    setGeocoding(true);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(form.location)}&format=json&limit=1`,
-        { headers: { "Accept-Language": "es" } }
-      );
-      const data = await res.json();
-      if (data[0]) {
-        setFormState((f) => ({ ...f, lat: data[0].lat, lng: data[0].lon }));
-      } else {
-        toast.error("No se encontró la ubicación. Intenta con una dirección más específica.");
-      }
-    } catch {
-      toast.error("Error al geocodificar la dirección.");
-    } finally {
-      setGeocoding(false);
-    }
   }
 
   // ---- Session helpers ----
@@ -562,50 +541,13 @@ export default function EditarTallerPage() {
               </div>
 
               {form.modality !== "online" && (
-                <div className="space-y-2">
-                  <Label htmlFor="location">Ubicación</Label>
-                  <Input
-                    id="location"
-                    placeholder="Ej: Barrio Italia, Santiago"
-                    value={form.location}
-                    onChange={(e) => setField("location", e.target.value)}
-                  />
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Latitud</Label>
-                      <Input
-                        placeholder="-33.4489"
-                        value={form.lat}
-                        onChange={(e) => setField("lat", e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Longitud</Label>
-                      <Input
-                        placeholder="-70.6693"
-                        value={form.lng}
-                        onChange={(e) => setField("lng", e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={geocode}
-                      disabled={geocoding || !form.location}
-                      className="shrink-0"
-                      title="Obtener coordenadas desde la dirección"
-                    >
-                      <LocateFixed className="h-4 w-4" />
-                      {geocoding ? "..." : "Geocodificar"}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground/70">
-                    Escribe la ubicación y presiona Geocodificar, o ingresa las coordenadas manualmente. Necesario para aparecer en el mapa.
-                  </p>
-                </div>
+                <LocationPicker
+                  location={form.location}
+                  lat={form.lat}
+                  lng={form.lng}
+                  onLocationChange={(v) => setField("location", v)}
+                  onCoordsChange={(lat, lng) => setFormState((f) => ({ ...f, lat, lng }))}
+                />
               )}
               {(form.modality === "online" || form.modality === "hybrid") && (
                 <div className="space-y-2">
