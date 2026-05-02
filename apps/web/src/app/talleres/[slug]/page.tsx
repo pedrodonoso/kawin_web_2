@@ -5,8 +5,14 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Users, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
+import dynamic from "next/dynamic";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
+
+const MiniMap = dynamic(
+  () => import("@/components/map/MiniMap").then((m) => m.MiniMap),
+  { ssr: false }
+);
 import { DescriptionSection } from "./DescriptionSection";
 import { ShareButtons } from "./ShareButtons";
 import Link from "next/link";
@@ -374,6 +380,10 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                   </div>
                 )}
               </div>
+
+              {workshop.lat != null && workshop.lng != null && (
+                <MiniMap lat={workshop.lat} lng={workshop.lng} label={workshop.location} />
+              )}
 
               <Separator />
             </CardContent>

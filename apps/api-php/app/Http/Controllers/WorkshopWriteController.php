@@ -23,6 +23,7 @@ class WorkshopWriteController extends Controller
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
                     w.type, w.modality, w.price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
+                    w.lat, w.lng,
                     COALESCE(w.online_url,'') as online_url,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, w.approval_status,
@@ -54,6 +55,7 @@ class WorkshopWriteController extends Controller
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
                     w.type, w.modality, w.price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
+                    w.lat, w.lng,
                     COALESCE(w.online_url,'') as online_url,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, w.approval_status,
@@ -131,8 +133,8 @@ class WorkshopWriteController extends Controller
         $row = DB::selectOne(
             "INSERT INTO workshops
                 (instructor_id, category_id, title, slug, description, type, modality,
-                 price, currency, capacity, location, online_url, status, approval_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 'not_submitted')
+                 price, currency, capacity, location, lat, lng, online_url, status, approval_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 'not_submitted')
              RETURNING id",
             [
                 $userID,
@@ -146,6 +148,8 @@ class WorkshopWriteController extends Controller
                 $currency,
                 $request->input('capacity'),
                 $request->input('location', ''),
+                $request->input('lat') !== null ? (float)$request->input('lat') : null,
+                $request->input('lng') !== null ? (float)$request->input('lng') : null,
                 $request->input('online_url', ''),
             ]
         );
@@ -245,9 +249,13 @@ class WorkshopWriteController extends Controller
             if ($newDesc     !== $current->description) $proposed['description'] = $newDesc;
             if ($newModality !== $current->modality)    $proposed['modality']    = $newModality;
 
+            $newLat = $request->input('lat') !== null ? (float)$request->input('lat') : null;
+            $newLng = $request->input('lng') !== null ? (float)$request->input('lng') : null;
+
             $affected = DB::update(
                 "UPDATE workshops
-                 SET price=?, currency=?, capacity=?, location=?, online_url=?, category_id=?,
+                 SET price=?, currency=?, capacity=?, location=?, lat=?, lng=?,
+                     online_url=?, category_id=?,
                      pending_changes=?::jsonb, approval_status='pending_review',
                      updated_at=NOW()
                  WHERE id=? AND instructor_id=?",
@@ -256,6 +264,8 @@ class WorkshopWriteController extends Controller
                     $currency,
                     $capacity,
                     $request->input('location', ''),
+                    $newLat,
+                    $newLng,
                     $request->input('online_url', ''),
                     $catID,
                     json_encode($proposed),
@@ -264,10 +274,13 @@ class WorkshopWriteController extends Controller
                 ]
             );
         } else {
+            $newLat = $request->input('lat') !== null ? (float)$request->input('lat') : null;
+            $newLng = $request->input('lng') !== null ? (float)$request->input('lng') : null;
+
             $affected = DB::update(
                 "UPDATE workshops
                  SET title=?, description=?, type=?, modality=?,
-                     price=?, currency=?, capacity=?, location=?,
+                     price=?, currency=?, capacity=?, location=?, lat=?, lng=?,
                      online_url=?, category_id=?, status=?, updated_at=NOW()
                  WHERE id=? AND instructor_id=?",
                 [
@@ -279,6 +292,8 @@ class WorkshopWriteController extends Controller
                     $currency,
                     $capacity,
                     $request->input('location', ''),
+                    $newLat,
+                    $newLng,
                     $request->input('online_url', ''),
                     $catID,
                     $newStatus,

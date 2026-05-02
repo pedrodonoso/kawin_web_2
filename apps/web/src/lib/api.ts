@@ -57,6 +57,8 @@ export interface Workshop {
   currency: string;
   capacity?: number;
   location?: string;
+  lat?: number | null;
+  lng?: number | null;
   online_url?: string;
   cover_image_url?: string;
   status: "draft" | "published" | "archived";

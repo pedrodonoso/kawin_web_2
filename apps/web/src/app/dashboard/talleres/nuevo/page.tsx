@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, adminApi, type Category } from "@/lib/api";
-import { ArrowLeft, Plus, Send, X } from "lucide-react";
+import { ArrowLeft, Plus, Send, X, LocateFixed } from "lucide-react";
 import Link from "next/link";
 
 interface SessionDraft {
@@ -52,6 +52,7 @@ export default function NuevoTallerPage() {
   const router = useRouter();
   const submitModeRef = useRef<"draft" | "review">("draft");
   const [loading, setLoading] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
   const [schedules, setSchedules] = useState<ScheduleDraft[]>([emptySchedule()]);
@@ -65,6 +66,8 @@ export default function NuevoTallerPage() {
     currency: "CLP",
     capacity: "",
     location: "",
+    lat: "",
+    lng: "",
     online_url: "",
     category_id: "",
     status: "draft",
@@ -78,6 +81,27 @@ export default function NuevoTallerPage() {
 
   function set(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  async function geocode() {
+    if (!form.location) return;
+    setGeocoding(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(form.location)}&format=json&limit=1`,
+        { headers: { "Accept-Language": "es" } }
+      );
+      const data = await res.json();
+      if (data[0]) {
+        setForm((f) => ({ ...f, lat: data[0].lat, lng: data[0].lon }));
+      } else {
+        toast.error("No se encontró la ubicación. Intenta con una dirección más específica.");
+      }
+    } catch {
+      toast.error("Error al geocodificar la dirección.");
+    } finally {
+      setGeocoding(false);
+    }
   }
 
   // --- Session helpers ---
@@ -134,9 +158,15 @@ export default function NuevoTallerPage() {
 
       let workshopId: string | undefined;
 
+      const coordPayload = {
+        lat: form.lat !== "" ? Number(form.lat) : null,
+        lng: form.lng !== "" ? Number(form.lng) : null,
+      };
+
       if (form.type === "class") {
         const res = await api.post<{ data: { id: string } }>("/api/v1/workshops", {
           ...form,
+          ...coordPayload,
           status: "draft",
           price: Number(form.price),
           capacity: form.capacity ? Number(form.capacity) : undefined,
@@ -158,6 +188,7 @@ export default function NuevoTallerPage() {
       } else {
         const res = await api.post<{ data: { id: string } }>("/api/v1/workshops", {
           ...form,
+          ...coordPayload,
           status: "draft",
           price: Number(form.price),
           capacity: form.capacity ? Number(form.capacity) : undefined,
@@ -296,6 +327,42 @@ export default function NuevoTallerPage() {
                     value={form.location}
                     onChange={(e) => set("location", e.target.value)}
                   />
+                  {/* Coordenadas para el mapa */}
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Latitud</Label>
+                      <Input
+                        placeholder="-33.4489"
+                        value={form.lat}
+                        onChange={(e) => set("lat", e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Longitud</Label>
+                      <Input
+                        placeholder="-70.6693"
+                        value={form.lng}
+                        onChange={(e) => set("lng", e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={geocode}
+                      disabled={geocoding || !form.location}
+                      className="shrink-0"
+                      title="Obtener coordenadas desde la dirección"
+                    >
+                      <LocateFixed className="h-4 w-4" />
+                      {geocoding ? "..." : "Geocodificar"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground/70">
+                    Escribe la ubicación y presiona Geocodificar, o ingresa las coordenadas manualmente. Necesario para aparecer en el mapa.
+                  </p>
                 </div>
               )}
               {(form.modality === "online" || form.modality === "hybrid") && (

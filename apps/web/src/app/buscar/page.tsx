@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Search, MapPin, Clock, Users } from "lucide-react";
+import { Search, MapPin, Clock, Users, LayoutGrid, Map } from "lucide-react";
 import { api, type Workshop, type Category } from "@/lib/api";
+
+const WorkshopsMap = dynamic(
+  () => import("@/components/map/WorkshopsMap").then((m) => m.WorkshopsMap),
+  { ssr: false, loading: () => <div className="h-[520px] bg-secondary rounded-xl animate-pulse" /> }
+);
 
 const MODALITIES = [
   { value: "all", label: "Todas" },
@@ -239,6 +245,7 @@ export default function BuscarPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"list" | "map">("list");
 
   useEffect(() => {
     api
@@ -295,7 +302,8 @@ export default function BuscarPage() {
             <Button type="submit">Buscar</Button>
           </form>
 
-          {/* Filters */}
+          {/* Filters + view toggle */}
+          <div className="flex flex-wrap gap-3 items-center justify-between">
           <div className="flex flex-wrap gap-3">
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="w-44">
@@ -337,6 +345,27 @@ export default function BuscarPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* List / Map toggle */}
+          <div className="flex items-center gap-1 border rounded-lg p-1 bg-background">
+            <button
+              onClick={() => setView("list")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                view === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> Lista
+            </button>
+            <button
+              onClick={() => setView("map")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                view === "map" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Map className="h-3.5 w-3.5" /> Mapa
+            </button>
+          </div>
+          </div>
         </div>
       </div>
 
@@ -346,11 +375,21 @@ export default function BuscarPage() {
           {loading ? "Buscando..." : `${workshops?.length ?? 0} resultado${(workshops?.length ?? 0) !== 1 ? "s" : ""}`}
         </p>
 
+        {/* Map view */}
+        {view === "map" && !loading && (
+          <WorkshopsMap
+            workshops={workshops.filter((w) => w.modality !== "online")}
+          />
+        )}
+
+        {/* List view */}
+        {view === "list" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading
             ? Array.from({ length: 6 }).map((_, i) => <WorkshopSkeleton key={i} />)
             : workshops.map((w) => <WorkshopCard key={w.id} w={w} />)}
         </div>
+        )}
 
         {!loading && !workshops?.length && (
           <div className="text-center py-20 text-muted-foreground">
