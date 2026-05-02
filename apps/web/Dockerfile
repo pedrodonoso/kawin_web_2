@@ -14,6 +14,8 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG API_INTERNAL_URL=http://api:8080
+ENV API_INTERNAL_URL=${API_INTERNAL_URL}
 RUN npm run build
 
 # Production stage
