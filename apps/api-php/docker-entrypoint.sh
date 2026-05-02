@@ -4,7 +4,7 @@ set -e
 # Generate APP_KEY if not provided (Railway env var takes precedence)
 if [ -z "$APP_KEY" ]; then
   echo "[entrypoint] WARNING: APP_KEY not set — generating ephemeral key"
-  APP_KEY=$(php artisan key:generate --show)
+  APP_KEY="base64:$(openssl rand -base64 32)"
   export APP_KEY
 fi
 
