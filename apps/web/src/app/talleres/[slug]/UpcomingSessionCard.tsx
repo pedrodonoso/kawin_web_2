@@ -1,13 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Globe } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { api, type Session } from "@/lib/api";
+import { type Session } from "@/lib/api";
 
 import dynamic from 'next/dynamic'
 
@@ -17,7 +12,6 @@ const SessionTime = dynamic(
   loading: () => <p>Loading...</p>,
 })
 
-/** Formatea "2026-04-21T19:00:00Z" → "Lun 21 abr" */
 function formatSessionDate(isoStr: string) {
   return new Date(isoStr).toLocaleDateString("es-CL", {
     weekday: "short",
@@ -27,100 +21,17 @@ function formatSessionDate(isoStr: string) {
   });
 }
 
-/**
- * Determina la zona de comisión según el lunes de la semana de la sesión.
- * "instructor" si la semana ya comenzó (no penalizamos en la UI, solo informamos).
- */
-function getCommissionZone(isoStr: string): "instructor" | "platform" {
-  const sessionDate = new Date(isoStr);
-  const weekday = sessionDate.getDay();
-  const daysFromMonday = (weekday + 6) % 7;
-  const cutoffMonday = new Date(sessionDate);
-  cutoffMonday.setDate(sessionDate.getDate() - daysFromMonday);
-  cutoffMonday.setHours(0, 0, 0, 0);
-  return new Date() >= cutoffMonday ? "instructor" : "platform";
-}
-
 interface Props {
   session: Session;
   workshopId: string;
   instructorId?: string;
-  /** Pre-calculado por el padre (UpcomingSessionsList). undefined = cargando. */
   alreadyBooked?: boolean;
 }
 
-export function UpcomingSessionCard({ session, workshopId, instructorId, alreadyBooked: alreadyBookedProp }: Props) {
-  const router = useRouter();
-  const [booking, setBooking] = useState(false);
-  const [alreadyBooked, setAlreadyBooked] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [isInstructor, setIsInstructor] = useState(false);
-
-  useEffect(() => {
-    if (alreadyBookedProp !== undefined) setAlreadyBooked(alreadyBookedProp);
-  }, [alreadyBookedProp]);
-
-  useEffect(() => {
-    if (!instructorId) return;
-    try {
-      const user = JSON.parse(localStorage.getItem("user") ?? "{}");
-      setIsInstructor(user?.id === instructorId);
-    } catch { /* ignore */ }
-  }, [instructorId]);
-
-  const checkingBooking = alreadyBookedProp === undefined;
+export function UpcomingSessionCard({ session }: Props) {
   const isCancelled = !!session.cancelled;
-
-  // Derivar estado de la sesión
   const spotsRemaining = session.spots_remaining;
-  const isFull = spotsRemaining !== undefined && spotsRemaining <= 0;
-  const isAvailable = !isCancelled && !isFull;
-
   const dateLabel = formatSessionDate(session.starts_at);
-
-  async function handleBook() {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    setBooking(true);
-    try {
-      await api.post("/api/v1/bookings", {
-        workshop_id: workshopId,
-        session_id: session.id,
-      });
-      toast.success("¡Reserva confirmada!");
-      setAlreadyBooked(true);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al reservar");
-    } finally {
-      setBooking(false);
-    }
-  }
-
-  async function handleCancel() {
-    const zone = getCommissionZone(session.starts_at);
-    const message =
-      zone === "instructor"
-        ? `¿Cancelar la clase del ${dateLabel}? La comisión será descontada de tu próximo pago.`
-        : `¿Cancelar la clase del ${dateLabel}? No se aplicará cargo.`;
-
-    if (!window.confirm(message)) return;
-
-    setCancelling(true);
-    try {
-      await api.post("/api/v1/sessions/cancel", {
-        session_id: session.id,
-      });
-      toast.success("Clase cancelada");
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al cancelar");
-    } finally {
-      setCancelling(false);
-    }
-  }
 
   return (
     <div
@@ -136,13 +47,11 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
           </p>
           <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
             <Clock className="h-3 w-3" />
-            <SessionTime isoStrStart={session.starts_at} isoStrEnd={session.ends_at}/>
+            <SessionTime isoStrStart={session.starts_at} isoStrEnd={session.ends_at} />
           </div>
-          {!isCancelled && (
+          {!isCancelled && spotsRemaining !== undefined && (
             <p className="text-xs mt-1 text-muted-foreground">
-              {spotsRemaining === undefined
-                ? "Cupos disponibles"
-                : spotsRemaining === 0
+              {spotsRemaining === 0
                 ? "Sin cupos"
                 : `${spotsRemaining} cupo${spotsRemaining !== 1 ? "s" : ""} disponible${spotsRemaining !== 1 ? "s" : ""}`}
             </p>
@@ -159,57 +68,17 @@ export function UpcomingSessionCard({ session, workshopId, instructorId, already
             Cancelada
           </Badge>
         )}
-
-        {/* "Reservado" tiene prioridad sobre "Sin cupos": si el usuario ya reservó se muestra
-            aunque los cupos estén agotados por sus compañeros. */}
-        {!isCancelled && checkingBooking && (
-          <Skeleton className="h-8 w-32 rounded-md" />
-        )}
-        {!isCancelled && !checkingBooking && alreadyBooked && (
-          <div className="flex flex-col items-end gap-1">
-            <Badge className="bg-positive/15 text-positive text-xs px-2 py-1">
-              ✓ Reservado
-            </Badge>
-            {session.online_url && (
-              <a
-                href={session.online_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md
-                  bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
-              >
-                <Globe className="h-3 w-3" />
-                Unirse a la clase
-              </a>
-            )}
-          </div>
-        )}
-        {!isCancelled && !checkingBooking && !alreadyBooked && isFull && (
-          <Badge variant="secondary" className="text-xs text-muted-foreground">
-            Sin cupos
-          </Badge>
-        )}
-        {isAvailable && !checkingBooking && !alreadyBooked && !isInstructor && (
-          <Button size="sm" onClick={handleBook} disabled={booking || cancelling}>
-            {booking ? "Reservando..." : "Reservar esta clase"}
-          </Button>
-        )}
-        {isAvailable && isInstructor && (
-          session.booking_count && session.booking_count > 0 ? (
-            <Badge variant="secondary" className="text-xs text-muted-foreground">
-              {session.booking_count} reserva{session.booking_count !== 1 ? "s" : ""}
-            </Badge>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-600 border-red-200 hover:bg-red-50"
-              onClick={handleCancel}
-              disabled={cancelling || booking}
-            >
-              {cancelling ? "Cancelando..." : "Cancelar esta clase"}
-            </Button>
-          )
+        {!isCancelled && session.online_url && (
+          <a
+            href={session.online_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md
+              bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+          >
+            <Globe className="h-3 w-3" />
+            Unirse a la clase
+          </a>
         )}
       </div>
     </div>

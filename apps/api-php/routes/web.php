@@ -46,8 +46,9 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
         $router->get('/workshops/{id}/schedules',          'ScheduleController@index');
         $router->put('/schedules/{id}',                    'ScheduleController@update');
         $router->delete('/schedules/{id}',                 'ScheduleController@destroy');
-        $router->get('/schedules/{id}/affected-bookings',  'ScheduleController@affectedBookings');
-        $router->post('/schedules/{id}/bulk-action',       'ScheduleController@bulkAction');
+        // community: affected-bookings and bulk-action disabled (no bookings in this version)
+        // $router->get('/schedules/{id}/affected-bookings',  'ScheduleController@affectedBookings');
+        // $router->post('/schedules/{id}/bulk-action',       'ScheduleController@bulkAction');
 
         // Sessions
         $router->get('/workshops/{id}/available-slots', 'WorkshopController@availableSlots');
@@ -56,13 +57,13 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
         $router->post('/sessions/{id}/reactivate',      'SessionController@reactivate');
         $router->patch('/sessions/{id}/url',            'SessionController@updateUrl');
 
-        // Bookings
-        $router->post('/bookings',                  'BookingController@store');
-        $router->get('/my-bookings',                'BookingController@myBookings');
-        $router->post('/bookings/{id}/cancel',      'BookingController@cancel');
-        $router->post('/bookings/{id}/migrate',     'BookingController@migrate');
-        $router->post('/bookings/{id}/refund',      'BookingController@refund');
-        $router->get('/instructor-bookings',        'BookingController@instructorBookings');
+        // Bookings — disabled in community version
+        // $router->post('/bookings',                  'BookingController@store');
+        // $router->get('/my-bookings',                'BookingController@myBookings');
+        // $router->post('/bookings/{id}/cancel',      'BookingController@cancel');
+        // $router->post('/bookings/{id}/migrate',     'BookingController@migrate');
+        // $router->post('/bookings/{id}/refund',      'BookingController@refund');
+        // $router->get('/instructor-bookings',        'BookingController@instructorBookings');
 
         // Discounts
         $router->get('/workshops/{id}/discounts',  'DiscountController@index');

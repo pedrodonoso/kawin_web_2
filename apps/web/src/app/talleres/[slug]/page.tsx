@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MapPin, Users, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
-import { BookingButton } from "./BookingButton";
 import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
 import { DescriptionSection } from "./DescriptionSection";
 import { ShareButtons } from "./ShareButtons";
@@ -179,38 +178,26 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Fechas disponibles</h2>
               <div className="space-y-3">
-                {(() => {
-                  const spotsLeft = workshop.capacity != null
-                    ? workshop.capacity - (workshop.bookings_count ?? 0)
-                    : null;
-                  return workshop.sessions!.map((s) => (
-                    <div key={s.id} className={`flex items-start gap-3 p-4 border rounded-lg bg-card ${s.cancelled ? "opacity-60" : ""}`}>
-                      <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                      <div>
-                        <p className={`font-medium capitalize ${s.cancelled ? "line-through text-muted-foreground/70" : ""}`}>
-                          {formatDate(s.starts_at)}
+                {workshop.sessions!.map((s) => (
+                  <div key={s.id} className={`flex items-start gap-3 p-4 border rounded-lg bg-card ${s.cancelled ? "opacity-60" : ""}`}>
+                    <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <p className={`font-medium capitalize ${s.cancelled ? "line-through text-muted-foreground/70" : ""}`}>
+                        {formatDate(s.starts_at)}
+                      </p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Clock className="h-3 w-3" />
+                        {formatTime(s.starts_at, s.ends_at)}
+                      </p>
+                      {s.notes && (
+                        <p className="text-xs text-muted-foreground/70 mt-1 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                          {s.notes}
                         </p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <Clock className="h-3 w-3" />
-                          {formatTime(s.starts_at, s.ends_at)}
-                        </p>
-                        {!s.cancelled && spotsLeft !== null && (
-                          <p className="text-xs mt-1 text-muted-foreground">
-                            {spotsLeft <= 0
-                              ? "Sin cupos disponibles"
-                              : `${spotsLeft} cupo${spotsLeft !== 1 ? "s" : ""} disponible${spotsLeft !== 1 ? "s" : ""}`}
-                          </p>
-                        )}
-                        {s.notes && (
-                          <p className="text-xs text-muted-foreground/70 mt-1 flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3 text-green-500" />
-                            {s.notes}
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  ));
-                })()}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -383,22 +370,12 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                 {workshop.capacity && (
                   <div className="flex items-center gap-2 text-foreground/60">
                     <Users className="h-4 w-4 shrink-0" />
-                    {workshop.capacity - (workshop.bookings_count ?? 0) > 0
-                      ? `${workshop.capacity - (workshop.bookings_count ?? 0)} de ${workshop.capacity} cupos disponibles`
-                      : "Sin cupos disponibles"}
+                    {`Capacidad: ${workshop.capacity} personas`}
                   </div>
                 )}
               </div>
 
               <Separator />
-
-              <BookingButton
-                workshopId={workshop.id}
-                workshopType={workshop.type}
-                capacity={workshop.capacity ?? null}
-                bookingsCount={workshop.bookings_count ?? 0}
-                instructorId={workshop.instructor_id}
-              />
             </CardContent>
           </Card>
 
