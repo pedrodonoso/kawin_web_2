@@ -86,7 +86,7 @@ export function NotificationBell() {
       enabledTransports: ["ws"],
       disableStats:      true,
       authorizer: (channel) => ({
-        authorize: (socketId: string, callback: (err: Error | null, data: unknown) => void) => {
+        authorize: (socketId: string, callback: import("pusher-js").AuthorizerCallback) => {
           const t = localStorage.getItem("token");
           fetch("/api/v1/broadcasting/auth", {
             method: "POST",
