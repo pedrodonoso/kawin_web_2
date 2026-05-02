@@ -103,6 +103,12 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuSeparator className="md:hidden" />
+                <DropdownMenuItem asChild className="md:hidden">
+                  <Link href="/escanear" className="flex items-center gap-2">
+                    <ScanLine className="h-4 w-4" /> Escanear QR
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="text-red-600 flex items-center gap-2">
                   <LogOut className="h-4 w-4" /> Cerrar sesión
@@ -111,6 +117,11 @@ export function Navbar() {
             </DropdownMenu>
           ) : (
             <>
+              <Button variant="ghost" size="sm" asChild className="md:hidden px-2">
+                <Link href="/escanear" aria-label="Escanear QR">
+                  <ScanLine className="h-5 w-5" />
+                </Link>
+              </Button>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/login">Iniciar sesión</Link>
               </Button>
