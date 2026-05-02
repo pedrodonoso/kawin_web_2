@@ -41,3 +41,6 @@ redis_data/
 .vscode/
 .idea/
 *.swp
+
+
+.claude
