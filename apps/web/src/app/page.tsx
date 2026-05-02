@@ -5,18 +5,25 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, Users, Star } from "lucide-react";
+import {
+  Search, MapPin, Users, Star,
+  Palette, ChefHat, Music, Heart, Code, Globe, Activity,
+  Briefcase, Camera, Scissors,
+  type LucideIcon,
+} from "lucide-react";
 import InstallAppSection from "./InstallAppSection";
 
-const categories = [
-  { name: "Arte y Creatividad", icon: "🎨", slug: "arte-creatividad" },
-  { name: "Cocina y Gastronomía", icon: "🍳", slug: "cocina-gastronomia" },
-  { name: "Música y Danza", icon: "🎵", slug: "musica-danza" },
-  { name: "Bienestar y Salud", icon: "🧘", slug: "bienestar-salud" },
-  { name: "Tecnología", icon: "💻", slug: "tecnologia" },
-  { name: "Idiomas", icon: "🌎", slug: "idiomas" },
-  { name: "Deportes", icon: "⚽", slug: "deportes" },
-  { name: "Artesanía", icon: "✂️", slug: "artesania" },
+const categories: { name: string; Icon: LucideIcon; slug: string }[] = [
+  { name: "Arte y Creatividad",   Icon: Palette,  slug: "arte-creatividad" },
+  { name: "Cocina y Gastronomía", Icon: ChefHat,  slug: "cocina-gastronomia" },
+  { name: "Música y Danza",       Icon: Music,    slug: "musica-danza" },
+  { name: "Bienestar y Salud",    Icon: Heart,    slug: "bienestar-salud" },
+  { name: "Tecnología",           Icon: Code,     slug: "tecnologia" },
+  { name: "Idiomas",              Icon: Globe,    slug: "idiomas" },
+  { name: "Deportes",             Icon: Activity, slug: "deportes" },
+  { name: "Negocios",             Icon: Briefcase,slug: "negocios" },
+  { name: "Fotografía",           Icon: Camera,   slug: "fotografia" },
+  { name: "Artesanía",            Icon: Scissors, slug: "artesania" },
 ];
 
 export default function Home() {
@@ -65,15 +72,15 @@ export default function Home() {
       <section className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl font-bold mb-8">Explorar por categoría</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {categories.map((cat) => (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            {categories.map(({ name, Icon, slug }) => (
               <Link
-                key={cat.slug}
-                href={`/buscar?categoria=${cat.slug}`}
+                key={slug}
+                href={`/buscar?categoria=${slug}`}
                 className="flex flex-col items-center gap-2 p-6 border rounded-xl hover:border-primary hover:shadow-sm transition-all text-center"
               >
-                <span className="text-3xl">{cat.icon}</span>
-                <span className="text-sm font-medium">{cat.name}</span>
+                <Icon className="h-8 w-8 text-primary" />
+                <span className="text-sm font-medium">{name}</span>
               </Link>
             ))}
           </div>
@@ -87,22 +94,22 @@ export default function Home() {
             <div className="flex justify-center mb-2">
               <Users className="h-8 w-8 text-accent" />
             </div>
-            <p className="text-3xl font-bold">+500</p>
-            <p className="text-muted-foreground mt-1">Talleristas activos</p>
+            <p className="text-3xl font-bold">10</p>
+            <p className="text-muted-foreground mt-1">Categorías disponibles</p>
           </div>
           <div>
             <div className="flex justify-center mb-2">
               <Star className="h-8 w-8 text-accent" />
             </div>
-            <p className="text-3xl font-bold">+1.200</p>
-            <p className="text-muted-foreground mt-1">Talleres disponibles</p>
+            <p className="text-3xl font-bold">0% comisión</p>
+            <p className="text-muted-foreground mt-1">Durante el lanzamiento</p>
           </div>
           <div>
             <div className="flex justify-center mb-2">
               <MapPin className="h-8 w-8 text-accent" />
             </div>
-            <p className="text-3xl font-bold">5 países</p>
-            <p className="text-muted-foreground mt-1">América Latina</p>
+            <p className="text-3xl font-bold">Chile</p>
+            <p className="text-muted-foreground mt-1">Disponible en todo el territorio</p>
           </div>
         </div>
       </section>
