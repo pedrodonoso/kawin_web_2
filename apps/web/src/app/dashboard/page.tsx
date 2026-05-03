@@ -273,12 +273,7 @@ export default function DashboardPage() {
                           Ver
                         </Link>
                       </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/dashboard/talleres/${w.id}/reservas`}>
-                          <CalendarCheck className="h-3.5 w-3.5 mr-1" />
-                          Reservas
-                        </Link>
-                      </Button>
+
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/dashboard/talleres/${w.id}/editar`}>
                           <Pencil className="h-3.5 w-3.5 mr-1" />
