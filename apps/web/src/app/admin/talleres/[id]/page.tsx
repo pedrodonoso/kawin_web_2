@@ -16,10 +16,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  ArrowLeft, CheckCircle2, MessageSquare, Pencil, Save, X,
+  ArrowLeft, CheckCircle2, MessageSquare, Pencil, Save, UserCircle, X,
 } from "lucide-react";
 import { adminApi, type AdminWorkshop, type Category, type PendingChanges, api } from "@/lib/api";
 import { ApprovalStatus, ModalityLabel, WorkshopStatusLabel, WorkshopTypeLabel } from "@/lib/constants";
+import { AdminContactCard } from "@/components/AdminContactCard";
 import dynamic from "next/dynamic";
 
 const MiniMapWrapper = dynamic(
@@ -62,6 +63,7 @@ export default function AdminWorkshopReviewPage() {
   const [sendingObs, setSendingObs] = useState(false);
   const [approving, setApproving] = useState(false);
   const [showObsForm, setShowObsForm] = useState(false);
+  const [editingContact, setEditingContact] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -217,6 +219,13 @@ export default function AdminWorkshopReviewPage() {
               <Pencil className="h-4 w-4 mr-2" />
               {editing ? "Cancelar edición" : "Editar taller"}
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setEditingContact((v) => !v)}
+            >
+              <UserCircle className="h-4 w-4 mr-2" />
+              Contacto
+            </Button>
           </div>
 
           {showObsForm && (
@@ -238,8 +247,21 @@ export default function AdminWorkshopReviewPage() {
               </div>
             </div>
           )}
+
         </CardContent>
       </Card>
+
+      <AdminContactCard
+        entityId={id}
+        entityType="workshop"
+        currentContactId={workshop.guest_contact_id}
+        useGuestContact={workshop.use_guest_contact ?? true}
+        realInstructorName={workshop.instructor_name || ""}
+        realInstructorEmail={workshop.instructor_email}
+        editing={editingContact}
+        onEditingChange={setEditingContact}
+        onSaved={(cId, useG) => setWorkshop((prev) => prev ? { ...prev, guest_contact_id: cId, use_guest_contact: useG } : prev)}
+      />
 
       {/* Datos del taller */}
       <Card>

@@ -12,7 +12,7 @@ import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle, Ale
 import { toast } from "sonner";
 import { api, type Workshop } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
-import { ApprovalStatus, BookingStatus, ModalityLabel, WorkshopStatus, WorkshopTypeLabel } from "@/lib/constants";
+import { ApprovalStatus, BookingStatus, ModalityLabel, UserRole, WorkshopStatus, WorkshopTypeLabel } from "@/lib/constants";
 
 interface InstructorBooking {
   booking_id: string;
@@ -86,6 +86,7 @@ export default function DashboardPage() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [bookings, setBookings] = useState<InstructorBooking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
 
@@ -97,6 +98,7 @@ export default function DashboardPage() {
     }
     const u = JSON.parse(raw);
     setUserName(u.email?.split("@")[0] ?? "tallerista");
+    setIsAdmin(u.role === UserRole.ADMIN);
 
     api
       .getList<Workshop>("/api/v1/my-workshops")
@@ -296,7 +298,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <Separator />
+        {isAdmin && <Separator />}
 
         {/* Recent bookings */}
         <div className="space-y-4">
@@ -381,7 +383,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           )}
-        </div>
+        </div>}
       </div>
     </main>
   );

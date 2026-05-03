@@ -12,6 +12,7 @@ return [
             'username' => env('DB_USERNAME', 'kawin'),
             'password' => env('DB_PASSWORD', 'kawin'),
             'charset'  => 'utf8',
+            'encoding' => 'UTF8',
             'prefix'   => '',
             'schema'   => 'public',
             'sslmode'  => 'prefer',

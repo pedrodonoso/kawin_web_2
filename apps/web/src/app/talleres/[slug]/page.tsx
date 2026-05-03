@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { FreeBadge } from "@/components/ui/free-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -287,7 +288,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
               {(() => {
                 const originalPrice = Number(workshop.price);
                 if (originalPrice === 0) {
-                  return <CardTitle className="text-2xl">Gratis</CardTitle>;
+                  return <FreeBadge />;
                 }
 
                 // Accumulate all workshop-wide discounts
@@ -302,6 +303,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
 
                 return (
                   <div className="space-y-3">
+
                     <div>
                       {hasDiscount && (
                         <p className="text-sm text-muted-foreground line-through">
@@ -327,17 +329,14 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                       })();
 
                       const savingLabel = d.type === DiscountType.PERCENT
-                        ? `${d.value}% off`
-                        : `-$${formatPrice(d.value)}`;
+                        ? `${d.value}% de descuento`
+                        : `-$${formatPrice(d.value)} ${workshop.currency}`;
 
                       return (
                         <div key={d.id} className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 space-y-0.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-1.5 text-sm font-medium text-green-800">
-                              <Tag className="h-3.5 w-3.5 shrink-0" />
-                              {d.label}
-                            </span>
-                            <span className="text-sm font-bold text-green-700 shrink-0">{savingLabel}</span>
+                          <div className="flex items-center gap-1.5">
+                            <Tag className="h-3.5 w-3.5 shrink-0 text-green-700" />
+                            <span className="text-sm font-bold text-green-700">{savingLabel}</span>
                           </div>
                           {dateRange && (
                             <p className="text-xs text-green-700/70 pl-5">{dateRange}</p>

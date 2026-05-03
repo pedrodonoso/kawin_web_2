@@ -95,9 +95,10 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
 
         $router->group(['prefix' => 'admin', 'middleware' => 'admin'], function () use ($router) {
             $router->get('/stats',                  'AdminController@stats');
-            $router->get('/workshops',              'AdminController@workshops');
-            $router->put('/workshops/{id}',         'AdminController@updateWorkshop');
-            $router->post('/workshops/{id}/review', 'AdminController@review');
+            $router->get('/workshops',                          'AdminController@workshops');
+            $router->put('/workshops/{id}',                     'AdminController@updateWorkshop');
+            $router->post('/workshops/{id}/review',             'AdminController@review');
+            $router->patch('/workshops/{id}/guest-contact',     'AdminController@setWorkshopGuestContact');
 
             $router->get('/guest-contacts',             'GuestContactController@index');
             $router->get('/guest-contacts/{id}',        'GuestContactController@show');

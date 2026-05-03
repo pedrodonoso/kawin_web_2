@@ -281,4 +281,32 @@ class AdminController extends Controller
 
         return response()->json(['data' => ['id' => $id]]);
     }
+
+    // PATCH /api/v1/admin/workshops/:id/guest-contact
+    public function setWorkshopGuestContact(Request $request, string $id): JsonResponse
+    {
+        $contactId       = $request->input('guest_contact_id');
+        $useGuestContact = $request->input('use_guest_contact', true);
+
+        DB::update(
+            "UPDATE workshops SET guest_contact_id = ?, use_guest_contact = ?, updated_at = NOW() WHERE id = ?",
+            [$contactId ?: null, (bool)$useGuestContact, $id]
+        );
+
+        return response()->json(['data' => ['id' => $id]]);
+    }
+
+    // PATCH /api/v1/admin/routes/:id/guest-contact
+    public function setRouteGuestContact(Request $request, string $id): JsonResponse
+    {
+        $contactId       = $request->input('guest_contact_id');
+        $useGuestContact = $request->input('use_guest_contact', true);
+
+        DB::update(
+            "UPDATE routes SET guest_contact_id = ?, use_guest_contact = ?, updated_at = NOW() WHERE id = ?",
+            [$contactId ?: null, (bool)$useGuestContact, $id]
+        );
+
+        return response()->json(['data' => ['id' => $id]]);
+    }
 }

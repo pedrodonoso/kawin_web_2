@@ -81,12 +81,13 @@ class WorkshopController extends Controller
                     COALESCE(c.slug,'') as category_slug,
                     w.instructor_id::text as instructor_id,
                     gc.id::text as guest_contact_id,
-                    COALESCE(gc.name, p.name, '') as instructor_name,
-                    COALESCE(gc.bio, p.bio, '') as instructor_bio,
-                    COALESCE(gc.instagram, p.instagram_url, '') as instructor_instagram,
-                    COALESCE(gc.website, p.facebook_url, '') as instructor_facebook,
-                    COALESCE(gc.whatsapp, p.whatsapp, '') as instructor_whatsapp,
-                    COALESCE(gc.phone, p.phone, '') as instructor_phone
+                    w.use_guest_contact,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.name,   p.name,          '') ELSE COALESCE(p.name,          '') END as instructor_name,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.bio,    p.bio,           '') ELSE COALESCE(p.bio,           '') END as instructor_bio,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.instagram, p.instagram_url,'') ELSE COALESCE(p.instagram_url,'') END as instructor_instagram,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.website, p.facebook_url, '') ELSE COALESCE(p.facebook_url, '') END as instructor_facebook,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.whatsapp, p.whatsapp,    '') ELSE COALESCE(p.whatsapp,    '') END as instructor_whatsapp,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.phone,  p.phone,         '') ELSE COALESCE(p.phone,        '') END as instructor_phone
              FROM workshops w
              LEFT JOIN categories c ON c.id = w.category_id
              LEFT JOIN profiles p ON p.user_id = w.instructor_id
