@@ -20,6 +20,17 @@ import {
 } from "lucide-react";
 import { adminApi, type AdminWorkshop, type Category, type PendingChanges, api } from "@/lib/api";
 import { ApprovalStatus, ModalityLabel, WorkshopStatusLabel, WorkshopTypeLabel } from "@/lib/constants";
+import dynamic from "next/dynamic";
+
+const MiniMapWrapper = dynamic(
+  () => import("@/app/talleres/[slug]/MiniMapWrapper").then((m) => m.MiniMapWrapper),
+  { ssr: false, loading: () => <div className="h-48 rounded-lg bg-secondary animate-pulse" /> }
+);
+
+const LocationPicker = dynamic(
+  () => import("@/components/map/LocationPicker").then((m) => m.LocationPicker),
+  { ssr: false, loading: () => <div className="h-64 rounded-lg bg-secondary animate-pulse" /> }
+);
 
 const APPROVAL_LABEL: Record<string, string> = {
   not_submitted: "Sin enviar",
@@ -77,6 +88,8 @@ export default function AdminWorkshopReviewPage() {
         currency: form.currency,
         capacity: form.capacity,
         location: form.location,
+        lat: form.lat,
+        lng: form.lng,
         online_url: form.online_url,
         category_id: form.category_id,
       });
@@ -293,9 +306,14 @@ export default function AdminWorkshopReviewPage() {
                     onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value ? Number(e.target.value) : undefined }))}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label>Ubicación</Label>
-                  <Input value={form.location ?? ""} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
+                <div className="sm:col-span-2 space-y-1">
+                  <LocationPicker
+                    location={form.location ?? ""}
+                    lat={form.lat != null ? String(form.lat) : ""}
+                    lng={form.lng != null ? String(form.lng) : ""}
+                    onLocationChange={(v) => setForm((f) => ({ ...f, location: v }))}
+                    onCoordsChange={(lat, lng) => setForm((f) => ({ ...f, lat: parseFloat(lat), lng: parseFloat(lng) }))}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>URL online</Label>
@@ -323,6 +341,9 @@ export default function AdminWorkshopReviewPage() {
               <Detail label="Precio" value={`$${Math.round(Number(workshop.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${workshop.currency}`} />
               <Detail label="Categoría" value={workshop.category_name || "—"} />
               <Detail label="Ubicación" value={workshop.location || "—"} />
+              {workshop.lat != null && workshop.lng != null && (
+                <MiniMapWrapper lat={workshop.lat} lng={workshop.lng} label={workshop.location} />
+              )}
               <Detail label="URL online" value={workshop.online_url || "—"} />
               <Detail label="Estado" value={WorkshopStatusLabel[workshop.status] ?? workshop.status} />
               <DiffDetail
