@@ -218,10 +218,13 @@ class AdminController extends Controller
         $currency = $request->input('currency', 'CLP') ?: 'CLP';
         $catID    = $request->input('category_id') ?: null;
 
+        $lat = $request->input('lat') !== null ? (float)$request->input('lat') : null;
+        $lng = $request->input('lng') !== null ? (float)$request->input('lng') : null;
+
         $affected = DB::update(
             "UPDATE workshops
              SET title=?, description=?, modality=?,
-                 price=?, currency=?, capacity=?, location=?,
+                 price=?, currency=?, capacity=?, location=?, lat=?, lng=?,
                  online_url=?, category_id=?, updated_at=NOW()
              WHERE id=? AND status != ?",
             [
@@ -232,6 +235,8 @@ class AdminController extends Controller
                 $currency,
                 $request->input('capacity'),
                 $request->input('location', ''),
+                $lat,
+                $lng,
                 $request->input('online_url', ''),
                 $catID,
                 $id,
