@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   BookOpen, Users, DollarSign, ClipboardCheck,
-  AlertCircle, CheckCircle2, Clock, XCircle, ArrowRight,
+  AlertCircle, CheckCircle2, Clock, XCircle, ArrowRight, LayoutDashboard,
 } from "lucide-react";
 import { adminApi, type AdminStats } from "@/lib/api";
 
@@ -156,6 +156,12 @@ export default function AdminPage() {
         <Button variant="outline" asChild>
           <Link href="/admin/talleres" className="flex items-center gap-2">
             <BookOpen className="h-4 w-4" /> Ver todos los talleres
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
+        <Button asChild>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <LayoutDashboard className="h-4 w-4" /> Ir al dashboard
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </Button>
