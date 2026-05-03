@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://kwin-latam.cl"),
   title: {
     default: "kwin — Talleres y Cursos en América Latina",
     template: "%s | kwin",
