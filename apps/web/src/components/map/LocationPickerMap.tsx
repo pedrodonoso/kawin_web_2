@@ -70,11 +70,11 @@ export function LocationPickerMap({ lat, lng, onDrag }: Props) {
       center={[lat, lng]}
       zoom={15}
       scrollWheelZoom={false}
+      attributionControl={false}
       className="h-52 w-full rounded-lg z-0"
       style={{ zIndex: 0 }}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         subdomains="abcd"
         maxZoom={20}
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"

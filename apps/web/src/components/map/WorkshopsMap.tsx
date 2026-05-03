@@ -156,9 +156,8 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
 
   return (
     <div className="relative w-full h-[520px] rounded-xl overflow-hidden border shadow-sm">
-      <MapContainer center={center} zoom={zoom} scrollWheelZoom className="h-full w-full" style={{ zIndex: 0 }}>
+      <MapContainer center={center} zoom={zoom} scrollWheelZoom attributionControl={false} className="h-full w-full" style={{ zIndex: 0 }}>
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           subdomains="abcd"
           maxZoom={20}
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
