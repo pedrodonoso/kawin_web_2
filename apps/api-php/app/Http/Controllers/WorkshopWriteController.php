@@ -135,6 +135,10 @@ class WorkshopWriteController extends Controller
 
         $catID = $request->input('category_id') ?: null;
 
+        $isAdmin        = $this->userRole($request) === UserRole::ADMIN;
+        $initialStatus  = $isAdmin ? WorkshopStatus::PUBLISHED : WorkshopStatus::DRAFT;
+        $initialApproval = $isAdmin ? ApprovalStatus::APPROVED : ApprovalStatus::NOT_SUBMITTED;
+
         $row = DB::selectOne(
             "INSERT INTO workshops
                 (instructor_id, category_id, title, slug, description, type, modality,
@@ -156,10 +160,14 @@ class WorkshopWriteController extends Controller
                 $request->input('lat') !== null ? (float)$request->input('lat') : null,
                 $request->input('lng') !== null ? (float)$request->input('lng') : null,
                 $request->input('online_url', ''),
-                WorkshopStatus::DRAFT,
-                ApprovalStatus::NOT_SUBMITTED,
+                $initialStatus,
+                $initialApproval,
             ]
         );
+
+        if (!$row) {
+            return response()->json(['message' => 'Error al crear el taller'], 500);
+        }
 
         $workshopID = $row->id;
 
@@ -197,11 +205,13 @@ class WorkshopWriteController extends Controller
             return response()->json(['message' => 'Taller no encontrado o sin permisos'], 404);
         }
 
+        $isAdmin   = $this->userRole($request) === UserRole::ADMIN;
         $newStatus = $request->input('status', WorkshopStatus::DRAFT) ?: WorkshopStatus::DRAFT;
 
         // Un taller ya publicado puede guardarse libremente.
         // Solo se bloquea intentar PUBLICAR un taller que aún no ha sido aprobado.
-        if ($newStatus === WorkshopStatus::PUBLISHED
+        if (!$isAdmin
+            && $newStatus === WorkshopStatus::PUBLISHED
             && $current->status !== WorkshopStatus::PUBLISHED
             && $current->approval_status !== ApprovalStatus::APPROVED
         ) {
@@ -242,8 +252,9 @@ class WorkshopWriteController extends Controller
 
         // Si el taller ya está publicado y el instructor modifica campos sensibles,
         // los cambios NO se aplican de inmediato: se guardan en pending_changes para revisión.
+        // Los admins aplican los cambios directamente sin revisión.
         $isPublished = $current->status === WorkshopStatus::PUBLISHED;
-        $sensitiveChanged = $isPublished && (
+        $sensitiveChanged = !$isAdmin && $isPublished && (
             $newTitle    !== $current->title ||
             $newDesc     !== $current->description ||
             $newModality !== $current->modality
