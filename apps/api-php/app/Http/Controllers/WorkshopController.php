@@ -29,11 +29,13 @@ class WorkshopController extends Controller
                        COALESCE(c.id::text,'') as category_id,
                        COALESCE(c.name,'') as category_name,
                        COALESCE(c.slug,'') as category_slug,
-                       COALESCE(p.name,'') as instructor_name,
-                       w.instructor_id::text as instructor_id
+                       COALESCE(gc.name, p.name, '') as instructor_name,
+                       w.instructor_id::text as instructor_id,
+                       gc.id::text as guest_contact_id
                 FROM workshops w
                 LEFT JOIN categories c ON c.id = w.category_id
                 LEFT JOIN profiles p ON p.user_id = w.instructor_id
+                LEFT JOIN guest_contacts gc ON gc.id = w.guest_contact_id
                 WHERE w.status = 'published'";
 
         $bindings = [];
@@ -78,15 +80,17 @@ class WorkshopController extends Controller
                     COALESCE(c.name,'') as category_name,
                     COALESCE(c.slug,'') as category_slug,
                     w.instructor_id::text as instructor_id,
-                    COALESCE(p.name,'') as instructor_name,
-                    COALESCE(p.bio,'') as instructor_bio,
-                    COALESCE(p.instagram_url,'') as instructor_instagram,
-                    COALESCE(p.facebook_url,'') as instructor_facebook,
-                    COALESCE(p.whatsapp,'') as instructor_whatsapp,
-                    COALESCE(p.phone,'') as instructor_phone
+                    gc.id::text as guest_contact_id,
+                    COALESCE(gc.name, p.name, '') as instructor_name,
+                    COALESCE(gc.bio, p.bio, '') as instructor_bio,
+                    COALESCE(gc.instagram, p.instagram_url, '') as instructor_instagram,
+                    COALESCE(gc.website, p.facebook_url, '') as instructor_facebook,
+                    COALESCE(gc.whatsapp, p.whatsapp, '') as instructor_whatsapp,
+                    COALESCE(gc.phone, p.phone, '') as instructor_phone
              FROM workshops w
              LEFT JOIN categories c ON c.id = w.category_id
              LEFT JOIN profiles p ON p.user_id = w.instructor_id
+             LEFT JOIN guest_contacts gc ON gc.id = w.guest_contact_id
              WHERE (w.id::text = ? OR w.slug = ?)",
             [$id, $id]
         );

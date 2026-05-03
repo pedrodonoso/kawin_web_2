@@ -298,3 +298,39 @@ export const adminApi = {
       previous_values: previousValues ?? null,
     }),
 };
+
+
+// ---------------------------------------------------------------------------
+// Guest contacts
+// ---------------------------------------------------------------------------
+
+export interface GuestContact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  whatsapp: string;
+  bio: string;
+  instagram: string;
+  website: string;
+  created_by?: string;
+  created_by_name?: string;
+  workshops_count?: number;
+  routes_count?: number;
+  created_at: string;
+}
+
+export type GuestContactInput = Omit<GuestContact, "id" | "created_by" | "created_by_name" | "workshops_count" | "routes_count" | "created_at">;
+
+export const guestContactsApi = {
+  list: () =>
+    api.get<{ data: GuestContact[] }>("/api/v1/admin/guest-contacts").then((r) => r.data),
+  get: (id: string) =>
+    api.get<{ data: GuestContact }>(`/api/v1/admin/guest-contacts/${id}`).then((r) => r.data),
+  create: (body: GuestContactInput) =>
+    api.post<{ data: { id: string } }>("/api/v1/admin/guest-contacts", body).then((r) => r.data),
+  update: (id: string, body: GuestContactInput) =>
+    api.put<{ data: { id: string } }>(`/api/v1/admin/guest-contacts/${id}`, body).then((r) => r.data),
+  delete: (id: string) =>
+    api.delete<{ data: { id: string } }>(`/api/v1/admin/guest-contacts/${id}`).then((r) => r.data),
+};

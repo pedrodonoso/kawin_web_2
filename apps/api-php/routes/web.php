@@ -98,6 +98,12 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
             $router->get('/workshops',              'AdminController@workshops');
             $router->put('/workshops/{id}',         'AdminController@updateWorkshop');
             $router->post('/workshops/{id}/review', 'AdminController@review');
+
+            $router->get('/guest-contacts',             'GuestContactController@index');
+            $router->get('/guest-contacts/{id}',        'GuestContactController@show');
+            $router->post('/guest-contacts',            'GuestContactController@store');
+            $router->put('/guest-contacts/{id}',        'GuestContactController@update');
+            $router->delete('/guest-contacts/{id}',     'GuestContactController@destroy');
         });
     });
 });
