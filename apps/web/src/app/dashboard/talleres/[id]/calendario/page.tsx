@@ -341,7 +341,9 @@ export default function CalendarioTallerPage() {
   const workshopId = Array.isArray(params?.id) ? params.id[0] : (params?.id ?? "");
 
   // Vista
-  const [viewMode, setViewMode]       = useState<ViewMode>("week");
+  const [viewMode, setViewMode]       = useState<ViewMode>(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "day" : "week"
+  );
   const [selectedDay, setSelectedDay] = useState(() => new Date());
 
   // Calendario
