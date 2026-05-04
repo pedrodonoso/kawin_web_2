@@ -297,6 +297,11 @@ export const adminApi = {
     api.post<{ data: { id: string; approval_status: string } }>(`/api/v1/my-workshops/${id}/submit-review`, {
       previous_values: previousValues ?? null,
     }),
+  setWorkshopGuestContact: (workshopId: string, guestContactId: string | null, useGuest: boolean) =>
+    api.patch<{ data: { id: string } }>(`/api/v1/admin/workshops/${workshopId}/guest-contact`, {
+      guest_contact_id: guestContactId,
+      use_guest_contact: useGuest,
+    }),
 };
 
 
