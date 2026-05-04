@@ -52,8 +52,9 @@ function emptySchedule(): ScheduleDraft {
 
 export default function NuevoTallerPage() {
   const router = useRouter();
-  const submitModeRef = useRef<"draft" | "review">("draft");
+  const submitModeRef = useRef<"draft" | "review" | "publish">("draft");
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
   const [schedules, setSchedules] = useState<ScheduleDraft[]>([emptySchedule()]);
@@ -77,6 +78,10 @@ export default function NuevoTallerPage() {
   useEffect(() => {
     const raw = localStorage.getItem("user");
     if (!raw) { router.push("/login"); return; }
+    try {
+      const user = JSON.parse(raw);
+      if (user?.role === "admin") setIsAdmin(true);
+    } catch { /* ignore */ }
     api.getList<Category>("/api/v1/categories").then(setCategories).catch(() => {});
   }, [router]);
 
@@ -177,7 +182,10 @@ export default function NuevoTallerPage() {
         workshopId = res?.data?.id;
       }
 
-      if (mode === "review" && workshopId) {
+      if (mode === "publish" && workshopId) {
+        await adminApi.reviewWorkshop(workshopId, "approve");
+        toast.success("¡Taller publicado!");
+      } else if (mode === "review" && workshopId) {
         await adminApi.submitForReview(workshopId);
         toast.success("¡Taller enviado a revisión!");
       } else {
@@ -534,22 +542,35 @@ export default function NuevoTallerPage() {
 
           {/* Actions */}
           <div className="flex justify-end gap-3">
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={loading}
-              onClick={() => { submitModeRef.current = "draft"; }}
-            >
-              Guardar borrador
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              onClick={() => { submitModeRef.current = "review"; }}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              {loading ? "Enviando..." : "Enviar a revisión"}
-            </Button>
+            {isAdmin ? (
+              <Button
+                type="submit"
+                disabled={loading}
+                onClick={() => { submitModeRef.current = "publish"; }}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {loading ? "Publicando..." : "Publicar"}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={() => { submitModeRef.current = "draft"; }}
+                >
+                  Guardar borrador
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  onClick={() => { submitModeRef.current = "review"; }}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {loading ? "Enviando..." : "Enviar a revisión"}
+                </Button>
+              </>
+            )}
           </div>
         </form>
       </div>
