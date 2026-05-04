@@ -61,7 +61,7 @@ function fmtTime(start: string, end?: string) {
 export default function WorkshopReservasPage() {
   const params     = useParams<{ id: string }>();
   const router     = useRouter();
-  const workshopId = params.id;
+  const workshopId = params?.id ?? "";
 
   const [tab, setTab]               = useState<Tab>("reservas");
   const [workshop, setWorkshop]     = useState<Workshop | null>(null);

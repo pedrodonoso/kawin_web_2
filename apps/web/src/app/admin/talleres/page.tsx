@@ -54,7 +54,7 @@ const STATUS_FILTERS = [
 
 export default function AdminTalleresPage() {
   const searchParams = useSearchParams();
-  const [activeFilter, setActiveFilter] = useState(searchParams.get("status") ?? "");
+  const [activeFilter, setActiveFilter] = useState(() => searchParams?.get("status") ?? "");
   const [workshops, setWorkshops] = useState<AdminWorkshop[]>([]);
   const [loading, setLoading] = useState(true);
 

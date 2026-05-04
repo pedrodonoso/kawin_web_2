@@ -249,10 +249,10 @@ function WorkshopSkeleton() {
 function BuscarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [query, setQuery] = useState(() => searchParams?.get("q") ?? "");
   const [modality, setModality] = useState("all");
   const [type, setType] = useState("all");
-  const [category, setCategory] = useState(searchParams.get("categoria") ?? "all");
+  const [category, setCategory] = useState(() => searchParams?.get("categoria") ?? "all");
   const [categories, setCategories] = useState<Category[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);

@@ -48,7 +48,8 @@ const APPROVAL_STYLE: Record<string, string> = {
 };
 
 export default function AdminWorkshopReviewPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const id = params?.id ?? "";
   const router = useRouter();
 
   const [workshop, setWorkshop] = useState<AdminWorkshop | null>(null);
