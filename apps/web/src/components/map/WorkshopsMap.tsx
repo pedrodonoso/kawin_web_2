@@ -81,7 +81,7 @@ function makePinSvg(iconPath: string, size: number, selected: boolean) {
   const cy = size / 2 - 4 - iconSize / 2;
 
   return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}">
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size}">
       <!-- drop shadow -->
       <ellipse cx="${size / 2}" cy="${size + 5}" rx="${size * 0.3}" ry="3" fill="${C.primary}" opacity="0.18"/>
       <!-- pin body -->

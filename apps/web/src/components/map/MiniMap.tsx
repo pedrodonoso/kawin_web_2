@@ -15,7 +15,7 @@ const iconSize = PIN_SIZE * 0.42;
 const cx = PIN_SIZE / 2 - iconSize / 2;
 const cy = PIN_SIZE / 2 - 4 - iconSize / 2;
 const pinSvg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE + 8}" viewBox="0 0 ${PIN_SIZE} ${PIN_SIZE + 8}">
+  <svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE + 8}" viewBox="0 0 ${PIN_SIZE} ${PIN_SIZE}">
     <ellipse cx="${PIN_SIZE / 2}" cy="${PIN_SIZE + 5}" rx="${PIN_SIZE * 0.3}" ry="3" fill="${C.primary}" opacity="0.18"/>
     <circle cx="${PIN_SIZE / 2}" cy="${PIN_SIZE / 2 - 4}" r="${PIN_SIZE / 2 - 1}" fill="${C.accent}"/>
     <polygon points="${PIN_SIZE / 2 - 5},${PIN_SIZE - 9} ${PIN_SIZE / 2 + 5},${PIN_SIZE - 9} ${PIN_SIZE / 2},${PIN_SIZE + 2}" fill="${C.accent}"/>
