@@ -168,9 +168,11 @@ export interface PendingChanges {
 }
 
 export interface AdminWorkshop extends Workshop {
-  instructor_id:   string;
+  instructor_id:    string;
   instructor_email: string;
   pending_changes?: PendingChanges | null;
+  guest_contact_id?: string | null;
+  use_guest_contact?: boolean;
 }
 
 export interface AdminStats {
