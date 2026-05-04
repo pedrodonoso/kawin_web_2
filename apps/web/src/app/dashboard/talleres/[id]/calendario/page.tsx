@@ -188,7 +188,7 @@ function ScheduleForm({
 
 function SlotCard({
   slot, busy, dayView,
-  editingURL, urlDraft,
+  editingURL, urlDraft, showOnlineUrl,
   onMaterialize, onCancel, onReactivate, onEditURL, onSaveURL, onCancelURL, onUrlDraftChange,
 }: {
   slot: AvailableSlot;
@@ -196,6 +196,7 @@ function SlotCard({
   dayView: boolean;
   editingURL: string | null;
   urlDraft: string;
+  showOnlineUrl: boolean;
   onMaterialize: () => void;
   onCancel: () => void;
   onReactivate: () => void;
@@ -236,7 +237,7 @@ function SlotCard({
 
 
       {/* Link online */}
-      {slot.session_id && (
+      {showOnlineUrl && slot.session_id && (
         isEditing ? (
           <div className="flex gap-1.5">
             <input
@@ -351,6 +352,7 @@ export default function CalendarioTallerPage() {
   const [weekStart, setWeekStart]         = useState(() => startOfWeek(new Date()));
   const [slots, setSlots]                 = useState<AvailableSlot[]>([]);
   const [workshopTitle, setWorkshopTitle] = useState("");
+  const [workshopModality, setWorkshopModality] = useState("");
   const [operating, setOperating]         = useState<string | null>(null);
   const [editingURL, setEditingURL]       = useState<string | null>(null);
   const [urlDraft, setUrlDraft]           = useState("");
@@ -391,8 +393,11 @@ export default function CalendarioTallerPage() {
     const raw = localStorage.getItem("user");
     if (!raw) { router.push("/login"); return; }
     if (!workshopId) return;
-    api.get<ApiResponse<{ title: string }>>(`/api/v1/my-workshops/${workshopId}`)
-      .then((r) => setWorkshopTitle(r.data?.title ?? ""))
+    api.get<ApiResponse<{ title: string; modality: string }>>(`/api/v1/my-workshops/${workshopId}`)
+      .then((r) => {
+        setWorkshopTitle(r.data?.title ?? "");
+        setWorkshopModality(r.data?.modality ?? "");
+      })
       .catch(() => {});
     loadSlots();
     loadSchedules();
@@ -560,6 +565,7 @@ export default function CalendarioTallerPage() {
         dayView={dayView}
         editingURL={editingURL}
         urlDraft={urlDraft}
+        showOnlineUrl={workshopModality !== "in-person"}
         onMaterialize={() => handleMaterialize(slot)}
         onCancel={() => handleCancel(slot)}
         onReactivate={() => handleReactivate(slot)}
