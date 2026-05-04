@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Eye, Pencil, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { BookOpen, Eye, Pencil, Clock, CheckCircle2, XCircle, AlertCircle, Plus } from "lucide-react";
 import { adminApi, type AdminWorkshop } from "@/lib/api";
 import { ModalityLabel, WorkshopTypeLabel } from "@/lib/constants";
 
@@ -68,9 +68,16 @@ export default function AdminTalleresPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Gestión de talleres</h1>
-        <p className="text-muted-foreground mt-1">Revisa y aprueba talleres enviados por instructores</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Gestión de talleres</h1>
+          <p className="text-muted-foreground mt-1">Revisa y aprueba talleres enviados por instructores</p>
+        </div>
+        <Button asChild>
+          <Link href="/dashboard/talleres/nuevo">
+            <Plus className="h-4 w-4 mr-1" /> Crear taller
+          </Link>
+        </Button>
       </div>
 
       {/* Filtros */}
