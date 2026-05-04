@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle, AlertCircle, Clock, BarChart2, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
-import { api, type Workshop } from "@/lib/api";
+import { api, type Workshop, type Profile } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { ApprovalStatus, BookingStatus, ModalityLabel, UserRole, WorkshopStatus, WorkshopTypeLabel } from "@/lib/constants";
 
@@ -97,8 +97,12 @@ export default function DashboardPage() {
       return;
     }
     const u = JSON.parse(raw);
-    setUserName(u.email?.split("@")[0] ?? "tallerista");
     setIsAdmin(u.role === UserRole.ADMIN);
+
+    api
+      .get<{ data: Profile }>("/api/v1/my-profile")
+      .then((r) => setUserName(r.data.name || u.email?.split("@")[0] || ""))
+      .catch(() => setUserName(u.email?.split("@")[0] ?? ""));
 
     api
       .getList<Workshop>("/api/v1/my-workshops")
