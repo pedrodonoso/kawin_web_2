@@ -575,7 +575,7 @@ export default function EditarTallerPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="price">Precio *</Label>
                   <div className="flex gap-2">
@@ -632,17 +632,15 @@ export default function EditarTallerPage() {
           {/* Horario recurrente (solo clases) */}
           {form.type === WorkshopType.CLASS && (
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Reglas de horario</CardTitle>
-                  <p className="text-xs text-muted-foreground/70 mt-1">
-                    Define cuándo se ofrecen clases. Las sesiones se materializan desde el{" "}
-                    <Link href={`/dashboard/talleres/${id}/calendario`} className="underline text-foreground/60 hover:text-foreground">
-                      calendario
-                    </Link>.
-                  </p>
-                </div>
-                <div className="flex gap-2 shrink-0">
+              <CardHeader>
+                <CardTitle className="text-base">Reglas de horario</CardTitle>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Define cuándo se ofrecen clases. Las sesiones se materializan desde el{" "}
+                  <Link href={`/dashboard/talleres/${id}/calendario`} className="underline text-foreground/60 hover:text-foreground">
+                    calendario
+                  </Link>.
+                </p>
+                <div className="flex gap-2 flex-wrap pt-1">
                   <Button
                     type="button"
                     variant="outline"
