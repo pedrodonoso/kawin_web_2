@@ -304,6 +304,11 @@ export const adminApi = {
       guest_contact_id: guestContactId,
       use_guest_contact: useGuest,
     }),
+  setRouteGuestContact: (routeId: string, guestContactId: string | null, useGuest: boolean) =>
+    api.patch<{ data: { id: string } }>(`/api/v1/admin/routes/${routeId}/guest-contact`, {
+      guest_contact_id: guestContactId,
+      use_guest_contact: useGuest,
+    }),
 };
 
 
