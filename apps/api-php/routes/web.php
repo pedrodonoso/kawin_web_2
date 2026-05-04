@@ -66,7 +66,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
         // $router->post('/bookings/{id}/cancel',      'BookingController@cancel');
         // $router->post('/bookings/{id}/migrate',     'BookingController@migrate');
         // $router->post('/bookings/{id}/refund',      'BookingController@refund');
-        // $router->get('/instructor-bookings',        'BookingController@instructorBookings');
+        $router->get('/instructor-bookings',        'BookingController@instructorBookings');
 
         // Discounts
         $router->get('/workshops/{id}/discounts',  'DiscountController@index');
