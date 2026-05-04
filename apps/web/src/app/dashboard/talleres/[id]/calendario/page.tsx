@@ -793,17 +793,14 @@ export default function CalendarioTallerPage() {
                     saving={savingSchedule}
                   />
                 ) : (
-                  <div className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3">
-                    <div className="space-y-0.5 min-w-0">
-                      <p className="text-sm font-medium">
-                        {formatDays(sch.days_of_week)}
-                        <span className="text-muted-foreground font-normal"> · {sch.time_start} · {sch.duration_min} min</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Desde {sch.valid_from}{sch.valid_until ? ` hasta ${sch.valid_until}` : " (sin fin)"}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
+                  <div className="rounded-xl border px-4 py-3 space-y-1.5">
+                    <p className="text-sm font-medium">
+                      {formatDays(sch.days_of_week)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {sch.time_start} · {sch.duration_min} min · Desde {sch.valid_from}{sch.valid_until ? ` hasta ${sch.valid_until}` : " (sin fin)"}
+                    </p>
+                    <div className="flex gap-2 justify-end">
                       <Button type="button" variant="outline" size="sm"
                         onClick={() => setChangeForm({
                           scheduleId:   sch.id,
