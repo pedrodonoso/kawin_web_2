@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag } from "lucide-react";
+import { MapPin, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag, Users } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { DiscountType, Modality, WorkshopType } from "@/lib/constants";
@@ -121,6 +121,12 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             {workshop.instructor && (
               <p className="text-muted-foreground mt-2">por {workshop.instructor.name}</p>
             )}
+            <div className="flex items-center gap-1.5 mt-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4 shrink-0" />
+              {workshop.capacity
+                ? `Máx. ${workshop.capacity} personas`
+                : "Sin límite de cupos"}
+            </div>
           </div>
 
           <Separator />
