@@ -53,10 +53,6 @@ export function Navbar() {
           <Link href="/buscar" className="text-foreground/60 hover:text-foreground transition-colors">
             Explorar
           </Link>
-          <Link href="/escanear" className="text-foreground/60 hover:text-foreground transition-colors flex items-center gap-1">
-            <ScanLine className="h-4 w-4" />
-            Escanear QR
-          </Link>
           {(user?.role === UserRole.INSTRUCTOR || user?.role === UserRole.BOTH) && (
             <Link href="/dashboard" className="text-foreground/60 hover:text-foreground transition-colors">
               Mi panel
@@ -104,8 +100,8 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator className="md:hidden" />
-                <DropdownMenuItem asChild className="md:hidden">
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
                   <Link href="/escanear" className="flex items-center gap-2">
                     <ScanLine className="h-4 w-4" /> Escanear QR
                   </Link>
@@ -118,7 +114,7 @@ export function Navbar() {
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild className="md:hidden px-2">
+              <Button variant="ghost" size="sm" asChild className="px-2">
                 <Link href="/escanear" aria-label="Escanear QR">
                   <ScanLine className="h-5 w-5" />
                 </Link>
