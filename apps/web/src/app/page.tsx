@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin, Users, Star } from "lucide-react";
+import { ContactSection } from "@/components/contact-section";
 
 const categories = [
   { name: "Arte y Creatividad", icon: "🎨", slug: "arte-creatividad" },
@@ -120,6 +121,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Contact */}
+      <ContactSection />
+
       {/* Footer */}
       <footer className="border-t py-8 px-4">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-zinc-500">
@@ -127,7 +131,7 @@ export default function Home() {
           <div className="flex gap-6">
             <a href="#" className="hover:text-zinc-900">Términos</a>
             <a href="#" className="hover:text-zinc-900">Privacidad</a>
-            <a href="#" className="hover:text-zinc-900">Contacto</a>
+            <a href="#contacto" className="hover:text-zinc-900">Contacto</a>
           </div>
         </div>
       </footer>
