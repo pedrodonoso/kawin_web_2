@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, LayoutDashboard, User, ScanLine, ShieldCheck } from "lucide-react";
+import { LogOut, LayoutDashboard, User, ScanLine, ShieldCheck, Search } from "lucide-react";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 
 interface AuthUser {
@@ -81,6 +81,12 @@ export function Navbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link href="/buscar" className="flex items-center gap-2">
+                    <Search className="h-4 w-4" /> Explorar
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/perfil" className="flex items-center gap-2">
                     <User className="h-4 w-4" /> Mi perfil
