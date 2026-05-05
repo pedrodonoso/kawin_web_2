@@ -48,11 +48,22 @@ export default function PerfilPage() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  function normalizeInstagram(value: string): string {
+    if (!value) return value;
+    const trimmed = value.trim();
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+    const username = trimmed.replace(/^@/, "");
+    return `https://instagram.com/${username}`;
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put("/api/v1/my-profile", form);
+      await api.put("/api/v1/my-profile", {
+        ...form,
+        instagram_url: normalizeInstagram(form.instagram_url),
+      });
       toast.success("Perfil actualizado");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al guardar");
@@ -144,8 +155,7 @@ export default function PerfilPage() {
                 <Label htmlFor="instagram_url">Instagram</Label>
                 <Input
                   id="instagram_url"
-                  type="url"
-                  placeholder="https://instagram.com/tu_usuario"
+                  placeholder="@tu_usuario o https://instagram.com/tu_usuario"
                   value={form.instagram_url}
                   onChange={(e) => set("instagram_url", e.target.value)}
                 />
