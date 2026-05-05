@@ -35,7 +35,9 @@ export function NotificationBell() {
   const [unread, setUnread]               = useState(0);
   const containerRef                      = useRef<HTMLDivElement>(null);
 
-  // ── Polling + focus reload (single effect, runs once) ──────────────────
+  // ── Carga inicial (una sola vez al montar) ────────────────────────────
+  // El WebSocket mantiene el estado actualizado en tiempo real;
+  // el fetch solo es necesario para hidratar el historial inicial.
   useEffect(() => {
     let cancelled = false;
 
@@ -52,11 +54,9 @@ export function NotificationBell() {
     }
 
     load();
-    window.addEventListener("focus", load);
 
     return () => {
       cancelled = true;
-      window.removeEventListener("focus", load);
     };
   }, []); // runs once on mount
 
@@ -78,12 +78,14 @@ export function NotificationBell() {
 
     const user = JSON.parse(raw) as { id: string };
 
+    const pusherPort = Number(process.env.NEXT_PUBLIC_PUSHER_PORT ?? 6001);
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY ?? "kawin-key", {
       wsHost:            process.env.NEXT_PUBLIC_PUSHER_HOST ?? "localhost",
-      wsPort:            Number(process.env.NEXT_PUBLIC_PUSHER_PORT ?? 6001),
+      wsPort:            pusherPort,
+      wssPort:           pusherPort,
       cluster:           "mt1", // requerido por pusher-js, ignorado cuando wsHost está definido
-      forceTLS:          false,
-      enabledTransports: ["ws"],
+      forceTLS:          pusherPort === 443,
+      enabledTransports: pusherPort === 443 ? ["wss"] : ["ws"],
       disableStats:      true,
       authorizer: (channel) => ({
         authorize: (socketId: string, callback: import("pusher-js").AuthorizerCallback) => {
