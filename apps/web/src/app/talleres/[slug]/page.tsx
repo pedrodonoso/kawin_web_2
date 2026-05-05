@@ -387,7 +387,6 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                 <MiniMapWrapper lat={workshop.lat} lng={workshop.lng} label={workshop.location} />
               )}
 
-              <Separator />
             </CardContent>
           </Card>
 
