@@ -7,11 +7,7 @@ use App\Constants\BookingStatus;
 use App\Constants\UserRole;
 use App\Constants\WorkshopStatus;
 use App\Constants\WorkshopType;
-use App\Models\User;
-use App\Notifications\WorkshopSubmittedNotification;
-use App\Notifications\WorkshopUpdatedNotification;
-use App\Services\PusherService;
-use App\Services\WebPushService;
+use App\Models\Workshop;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -135,8 +131,8 @@ class WorkshopWriteController extends Controller
 
         $catID = $request->input('category_id') ?: null;
 
-        $isAdmin        = $this->userRole($request) === UserRole::ADMIN;
-        $initialStatus  = $isAdmin ? WorkshopStatus::PUBLISHED : WorkshopStatus::DRAFT;
+        $isAdmin         = $this->userRole($request) === UserRole::ADMIN;
+        $initialStatus   = $isAdmin ? WorkshopStatus::PUBLISHED : WorkshopStatus::DRAFT;
         $initialApproval = $isAdmin ? ApprovalStatus::APPROVED : ApprovalStatus::NOT_SUBMITTED;
 
         $row = DB::selectOne(
@@ -187,7 +183,8 @@ class WorkshopWriteController extends Controller
     // PUT /api/v1/workshops/:id
     public function update(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === UserRole::ADMIN;
 
         $this->validate($request, [
             'title'    => 'required|string',
@@ -195,25 +192,18 @@ class WorkshopWriteController extends Controller
             'modality' => 'required|string',
         ]);
 
-        $current = DB::selectOne(
-            "SELECT type, status, approval_status, price, capacity,
-                    title, COALESCE(description,'') as description, modality
-             FROM workshops WHERE id = ? AND instructor_id = ?",
-            [$id, $userID]
-        );
-        if (!$current) {
+        $workshop = Workshop::where('id', $id)->where('instructor_id', $userID)->first();
+        if (!$workshop) {
             return response()->json(['message' => 'Taller no encontrado o sin permisos'], 404);
         }
 
-        $isAdmin   = $this->userRole($request) === UserRole::ADMIN;
-        $newStatus = $request->input('status', WorkshopStatus::DRAFT) ?: WorkshopStatus::DRAFT;
+        $newStatus   = $request->input('status', WorkshopStatus::DRAFT) ?: WorkshopStatus::DRAFT;
+        $wasPublished = $workshop->status === WorkshopStatus::PUBLISHED;
 
-        // Un taller ya publicado puede guardarse libremente.
-        // Solo se bloquea intentar PUBLICAR un taller que aún no ha sido aprobado.
         if (!$isAdmin
             && $newStatus === WorkshopStatus::PUBLISHED
-            && $current->status !== WorkshopStatus::PUBLISHED
-            && $current->approval_status !== ApprovalStatus::APPROVED
+            && !$wasPublished
+            && $workshop->approval_status !== ApprovalStatus::APPROVED
         ) {
             return response()->json([
                 'message' => 'El taller debe ser aprobado por un administrador antes de publicarse',
@@ -226,10 +216,10 @@ class WorkshopWriteController extends Controller
         );
         $confirmedBookings = (int)($bc->cnt ?? 0);
 
-        $price    = $confirmedBookings > 0 ? $current->price    : (float)$request->input('price', 0);
-        $capacity = $confirmedBookings > 0 ? $current->capacity : $request->input('capacity');
+        $price    = $confirmedBookings > 0 ? $workshop->price    : (float)$request->input('price', 0);
+        $capacity = $confirmedBookings > 0 ? $workshop->capacity : $request->input('capacity');
 
-        if ($newStatus === WorkshopStatus::DRAFT && $current->status === WorkshopStatus::PUBLISHED) {
+        if ($newStatus === WorkshopStatus::DRAFT && $wasPublished) {
             if ($this->activeBookingsCount($id) > 0) {
                 $count = $this->activeBookingsCount($id);
                 return response()->json([
@@ -239,92 +229,67 @@ class WorkshopWriteController extends Controller
             }
         }
 
-        if ($request->input('type') !== $current->type) {
+        if ($request->input('type') !== $workshop->type) {
             return response()->json(['message' => 'El tipo de taller no puede modificarse después de creado'], 400);
         }
 
-        $catID    = $request->input('category_id') ?: null;
-        $currency = $request->input('currency', 'CLP') ?: 'CLP';
-
+        $catID       = $request->input('category_id') ?: null;
+        $currency    = $request->input('currency', 'CLP') ?: 'CLP';
         $newTitle    = $request->input('title');
         $newDesc     = $request->input('description', '');
         $newModality = $request->input('modality');
+        $newLat      = $request->input('lat') !== null ? (float)$request->input('lat') : null;
+        $newLng      = $request->input('lng') !== null ? (float)$request->input('lng') : null;
 
-        // Si el taller ya está publicado y el instructor modifica campos sensibles,
-        // los cambios NO se aplican de inmediato: se guardan en pending_changes para revisión.
-        // Los admins aplican los cambios directamente sin revisión.
-        $isPublished = $current->status === WorkshopStatus::PUBLISHED;
-        $sensitiveChanged = !$isAdmin && $isPublished && (
-            $newTitle    !== $current->title ||
-            $newDesc     !== $current->description ||
-            $newModality !== $current->modality
+        $sensitiveChanged = !$isAdmin && $wasPublished && (
+            $newTitle    !== $workshop->title ||
+            $newDesc     !== $workshop->description ||
+            $newModality !== $workshop->modality
         );
 
         if ($sensitiveChanged) {
-            // Acumular sólo los campos que realmente cambiaron
             $proposed = [];
-            if ($newTitle    !== $current->title)       $proposed['title']       = $newTitle;
-            if ($newDesc     !== $current->description) $proposed['description'] = $newDesc;
-            if ($newModality !== $current->modality)    $proposed['modality']    = $newModality;
+            if ($newTitle    !== $workshop->title)       $proposed['title']       = $newTitle;
+            if ($newDesc     !== $workshop->description) $proposed['description'] = $newDesc;
+            if ($newModality !== $workshop->modality)    $proposed['modality']    = $newModality;
 
-            $newLat = $request->input('lat') !== null ? (float)$request->input('lat') : null;
-            $newLng = $request->input('lng') !== null ? (float)$request->input('lng') : null;
-
-            $affected = DB::update(
-                "UPDATE workshops
-                 SET price=?, currency=?, capacity=?, location=?, lat=?, lng=?,
-                     online_url=?, category_id=?,
-                     pending_changes=?::jsonb, approval_status=?,
-                     updated_at=NOW()
-                 WHERE id=? AND instructor_id=?",
-                [
-                    $price,
-                    $currency,
-                    $capacity,
-                    $request->input('location', ''),
-                    $newLat,
-                    $newLng,
-                    $request->input('online_url', ''),
-                    $catID,
-                    json_encode($proposed),
-                    ApprovalStatus::PENDING_REVIEW,
-                    $id,
-                    $userID,
-                ]
-            );
+            $workshop->fill([
+                'price'           => $price,
+                'currency'        => $currency,
+                'capacity'        => $capacity,
+                'location'        => $request->input('location', ''),
+                'lat'             => $newLat,
+                'lng'             => $newLng,
+                'online_url'      => $request->input('online_url', ''),
+                'category_id'     => $catID,
+                'pending_changes' => $proposed,
+                'approval_status' => ApprovalStatus::PENDING_REVIEW,
+            ]);
         } else {
-            $newLat = $request->input('lat') !== null ? (float)$request->input('lat') : null;
-            $newLng = $request->input('lng') !== null ? (float)$request->input('lng') : null;
-
-            $affected = DB::update(
-                "UPDATE workshops
-                 SET title=?, description=?, type=?, modality=?,
-                     price=?, currency=?, capacity=?, location=?, lat=?, lng=?,
-                     online_url=?, category_id=?, status=?, updated_at=NOW()
-                 WHERE id=? AND instructor_id=?",
-                [
-                    $newTitle,
-                    $newDesc,
-                    $current->type,
-                    $newModality,
-                    $price,
-                    $currency,
-                    $capacity,
-                    $request->input('location', ''),
-                    $newLat,
-                    $newLng,
-                    $request->input('online_url', ''),
-                    $catID,
-                    $newStatus,
-                    $id,
-                    $userID,
-                ]
-            );
+            $workshop->fill([
+                'title'       => $newTitle,
+                'description' => $newDesc,
+                'type'        => $workshop->type,
+                'modality'    => $newModality,
+                'price'       => $price,
+                'currency'    => $currency,
+                'capacity'    => $capacity,
+                'location'    => $request->input('location', ''),
+                'lat'         => $newLat,
+                'lng'         => $newLng,
+                'online_url'  => $request->input('online_url', ''),
+                'category_id' => $catID,
+                'status'      => $newStatus,
+            ]);
         }
 
-        if ($affected === 0) {
-            return response()->json(['message' => 'Taller no encontrado o sin permisos'], 404);
-        }
+        $workshop->notifyContext = [
+            'action'            => 'update',
+            'was_published'     => $wasPublished,
+            'is_admin'          => $isAdmin,
+            'sensitive_changed' => $sensitiveChanged,
+        ];
+        $workshop->save();
 
         if ($confirmedBookings === 0) {
             DB::delete("DELETE FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL", [$id]);
@@ -339,43 +304,9 @@ class WorkshopWriteController extends Controller
             }
         }
 
-        // Notify students with confirmed bookings when the published workshop changes
-        if ($current->status === WorkshopStatus::PUBLISHED && $confirmedBookings > 0) {
-            try {
-                $students = DB::select(
-                    "SELECT DISTINCT b.student_id::text as student_id
-                     FROM bookings b
-                     WHERE b.workshop_id = ? AND b.status = ?",
-                    [$id, BookingStatus::CONFIRMED]
-                );
-                $workshop = DB::selectOne("SELECT title FROM workshops WHERE id = ?", [$id]);
-                $title    = $workshop?->title ?? $current->title;
-
-                foreach ($students as $s) {
-                    $notifiable = new User();
-                    $notifiable->id = $s->student_id;
-                    $notif = new WorkshopUpdatedNotification(
-                        workshopId:    $id,
-                        workshopTitle: $title,
-                        pendingReview: $sensitiveChanged,
-                    );
-                    Notification::send($notifiable, $notif);
-                    $payload = $notif->toDatabase($notifiable);
-                    app(PusherService::class)->notifyUser($s->student_id, $payload);
-                    try {
-                        app(WebPushService::class)->notifyUser($s->student_id, WebPushService::buildPayload($payload));
-                    } catch (\Throwable $e) {
-                        \Log::warning('WebPush failed for student ' . $s->student_id . ': ' . $e->getMessage());
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('Failed to dispatch WorkshopUpdatedNotification: ' . $e->getMessage());
-            }
-        }
-
         return response()->json(['data' => [
             'id'              => $id,
-            'approval_status' => $sensitiveChanged ? ApprovalStatus::PENDING_REVIEW : ($current->approval_status ?? ApprovalStatus::NOT_SUBMITTED),
+            'approval_status' => $sensitiveChanged ? ApprovalStatus::PENDING_REVIEW : ($workshop->approval_status ?? ApprovalStatus::NOT_SUBMITTED),
         ]]);
     }
 
@@ -413,60 +344,38 @@ class WorkshopWriteController extends Controller
     {
         $userID = $this->userId($request);
 
-        $current = DB::selectOne(
-            "SELECT approval_status FROM workshops
-             WHERE id = ? AND instructor_id = ? AND status != ?",
-            [$id, $userID, WorkshopStatus::ARCHIVED]
-        );
-        if (!$current) {
+        $workshop = Workshop::where('id', $id)
+            ->where('instructor_id', $userID)
+            ->where('status', '!=', WorkshopStatus::ARCHIVED)
+            ->first();
+
+        if (!$workshop) {
             return response()->json(['message' => 'Taller no encontrado o sin permisos'], 404);
         }
-        if ($current->approval_status === ApprovalStatus::PENDING_REVIEW) {
+        if ($workshop->approval_status === ApprovalStatus::PENDING_REVIEW) {
             return response()->json(['message' => 'El taller ya está en revisión'], 409);
         }
 
-        // Guardar snapshot de valores anteriores para que el admin vea qué cambió
         $previousValues = $request->input('previous_values');
-        $pendingChanges = $previousValues ? json_encode($previousValues) : null;
 
-        DB::update(
-            "UPDATE workshops
-             SET approval_status = ?, admin_observations = NULL,
-                 pending_changes = ?::jsonb, updated_at = NOW()
-             WHERE id = ? AND instructor_id = ?",
-            [ApprovalStatus::PENDING_REVIEW, $pendingChanges, $id, $userID]
+        $instructor = DB::selectOne(
+            "SELECT COALESCE(p.name, u.email) as name
+             FROM users u LEFT JOIN profiles p ON p.user_id = u.id
+             WHERE u.id = ?",
+            [$userID]
         );
+        $instructorName = $instructor?->name ?? '';
 
-        // Notify all admins
-        try {
-            $workshop = DB::selectOne("SELECT title FROM workshops WHERE id = ?", [$id]);
-            $instructor = DB::selectOne(
-                "SELECT COALESCE(p.name, u.email) as name
-                 FROM users u LEFT JOIN profiles p ON p.user_id = u.id
-                 WHERE u.id = ?",
-                [$userID]
-            );
-            $admins = DB::select("SELECT id FROM users WHERE role = ?", [UserRole::ADMIN]);
-            foreach ($admins as $admin) {
-                $notifiable = new User();
-                $notifiable->id = $admin->id;
-                $notif = new WorkshopSubmittedNotification(
-                    workshopId:      $id,
-                    workshopTitle:   $workshop?->title ?? '',
-                    instructorName:  $instructor?->name ?? '',
-                );
-                $payload = $notif->toDatabase($notifiable);
-                Notification::send($notifiable, $notif);
-                app(PusherService::class)->notifyUser($admin->id, $payload);
-                try {
-                    app(WebPushService::class)->notifyUser($admin->id, WebPushService::buildPayload($payload));
-                } catch (\Throwable $e) {
-                    \Log::warning('WebPush (submit) failed: ' . $e->getMessage());
-                }
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('Failed to dispatch WorkshopSubmittedNotification: ' . $e->getMessage());
-        }
+        $workshop->fill([
+            'approval_status'    => ApprovalStatus::PENDING_REVIEW,
+            'admin_observations' => null,
+            'pending_changes'    => $previousValues ?: null,
+        ]);
+        $workshop->notifyContext = [
+            'action'           => 'submit_review',
+            'instructor_name'  => $instructorName,
+        ];
+        $workshop->save();
 
         return response()->json(['data' => ['id' => $id, 'approval_status' => ApprovalStatus::PENDING_REVIEW]]);
     }

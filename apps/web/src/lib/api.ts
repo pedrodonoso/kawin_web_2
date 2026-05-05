@@ -197,6 +197,7 @@ export interface AppNotification {
     type: string;
     message: string;
     workshop_id?: string;
+    workshop_slug?: string;
     workshop_title?: string;
     booking_id?: string;
     student_name?: string;

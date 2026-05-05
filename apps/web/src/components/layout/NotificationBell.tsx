@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Pusher from "pusher-js";
 import { Bell } from "lucide-react";
 import { notificationsApi, type AppNotification } from "@/lib/api";
@@ -20,6 +21,7 @@ function timeAgo(iso: string): string {
 function NotifIcon({ type }: { type: string }) {
   const icons: Record<string, string> = {
     new_booking:        "🎉",
+    booking_confirmed:  "🎉",
     booking_cancelled:  "❌",
     class_reminder:     "📅",
     workshop_submitted: "📋",
@@ -30,6 +32,7 @@ function NotifIcon({ type }: { type: string }) {
 }
 
 export function NotificationBell() {
+  const router                            = useRouter();
   const [open, setOpen]                   = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unread, setUnread]               = useState(0);
@@ -159,6 +162,11 @@ export function NotificationBell() {
       if (!n.id.startsWith("ws-")) {
         await notificationsApi.markRead(n.id).catch(() => {});
       }
+    }
+    const slug = n.data?.workshop_slug;
+    if (slug) {
+      setOpen(false);
+      router.push(`/talleres/${slug}`);
     }
   }
 

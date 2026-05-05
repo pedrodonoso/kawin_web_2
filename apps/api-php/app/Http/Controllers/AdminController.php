@@ -7,14 +7,10 @@ use App\Constants\ApprovalStatus;
 use App\Constants\BookingStatus;
 use App\Constants\UserRole;
 use App\Constants\WorkshopStatus;
-use App\Models\User;
-use App\Notifications\WorkshopApprovedNotification;
-use App\Services\PusherService;
-use App\Services\WebPushService;
+use App\Models\Workshop;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 
 class AdminController extends Controller
 {
@@ -96,99 +92,32 @@ class AdminController extends Controller
             'observations' => 'sometimes|string',
         ]);
 
-        $exists = DB::selectOne(
-            "SELECT true as ok FROM workshops WHERE id = ? AND status != ?",
-            [$id, WorkshopStatus::ARCHIVED]
-        );
-        if (!$exists) {
+        $workshop = Workshop::where('id', $id)->where('status', '!=', WorkshopStatus::ARCHIVED)->first();
+        if (!$workshop) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
 
         $action = $request->input('action');
 
         if ($action === AdminAction::APPROVE) {
-            // Fetch pending_changes before the update so we can apply proposed sensitive values
-            $workshopBefore = DB::selectOne(
-                "SELECT instructor_id::text as instructor_id, pending_changes FROM workshops WHERE id = ?",
-                [$id]
-            );
-            $pending      = $workshopBefore->pending_changes ? json_decode($workshopBefore->pending_changes, true) : [];
+            $pending      = $workshop->pending_changes ?? [];
             $propTitle    = $pending['title']       ?? null;
             $propDesc     = $pending['description'] ?? null;
             $propModality = $pending['modality']    ?? null;
 
-            DB::update(
-                "UPDATE workshops
-                 SET approval_status = ?, status = ?,
-                     admin_observations = NULL, pending_changes = NULL,
-                     title       = COALESCE(?, title),
-                     description = COALESCE(?, description),
-                     modality    = COALESCE(?, modality),
-                     reviewed_by = ?, reviewed_at = NOW(), updated_at = NOW()
-                 WHERE id = ?",
-                [ApprovalStatus::APPROVED, WorkshopStatus::PUBLISHED, $propTitle, $propDesc, $propModality, $adminID, $id]
-            );
-
-            // Notify instructor + students with confirmed bookings
-            try {
-                $workshop = DB::selectOne(
-                    "SELECT title, instructor_id::text as instructor_id FROM workshops WHERE id = ?",
-                    [$id]
-                );
-                $instructor = DB::selectOne(
-                    "SELECT COALESCE(p.name, u.email) as name
-                     FROM users u LEFT JOIN profiles p ON p.user_id = u.id
-                     WHERE u.id = ?",
-                    [$workshop->instructor_id]
-                );
-                $instructorName = $instructor?->name ?? '';
-
-                // Notify the instructor
-                $notifiable = new User();
-                $notifiable->id = $workshop->instructor_id;
-                $instrNotif = new WorkshopApprovedNotification(
-                    workshopId:      $id,
-                    workshopTitle:   $workshop->title ?? '',
-                    instructorName:  $instructorName,
-                    recipientRole:   'instructor',
-                );
-                $instrPayload = $instrNotif->toDatabase($notifiable);
-                Notification::send($notifiable, $instrNotif);
-                app(PusherService::class)->notifyUser($workshop->instructor_id, $instrPayload);
-                try {
-                    app(WebPushService::class)->notifyUser($workshop->instructor_id, WebPushService::buildPayload($instrPayload));
-                } catch (\Throwable $e) {
-                    \Log::warning('WebPush (approve/instructor) failed: ' . $e->getMessage());
-                }
-
-                // Notify all students with confirmed bookings
-                $students = DB::select(
-                    "SELECT DISTINCT b.student_id::text as student_id
-                     FROM bookings b
-                     WHERE b.workshop_id = ? AND b.status = ?",
-                    [$id, BookingStatus::CONFIRMED]
-                );
-                foreach ($students as $s) {
-                    $studentNotifiable = new User();
-                    $studentNotifiable->id = $s->student_id;
-                    $studentNotif = new WorkshopApprovedNotification(
-                        workshopId:      $id,
-                        workshopTitle:   $workshop->title ?? '',
-                        instructorName:  $instructorName,
-                        recipientRole:   'student',
-                    );
-                    $studentPayload = $studentNotif->toDatabase($studentNotifiable);
-                    Notification::send($studentNotifiable, $studentNotif);
-                    app(PusherService::class)->notifyUser($s->student_id, $studentPayload);
-                    try {
-                        app(WebPushService::class)->notifyUser($s->student_id, WebPushService::buildPayload($studentPayload));
-                    } catch (\Throwable $e) {
-                        \Log::warning('WebPush (approve/student) failed: ' . $e->getMessage());
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('Failed to dispatch WorkshopApprovedNotification: ' . $e->getMessage());
-            }
+            $workshop->fill([
+                'approval_status'    => ApprovalStatus::APPROVED,
+                'status'             => WorkshopStatus::PUBLISHED,
+                'admin_observations' => null,
+                'pending_changes'    => null,
+                'title'              => $propTitle    ?? $workshop->title,
+                'description'        => $propDesc     ?? $workshop->description,
+                'modality'           => $propModality ?? $workshop->modality,
+                'reviewed_by'        => $adminID,
+                'reviewed_at'        => \Carbon\Carbon::now(),
+            ]);
+            $workshop->notifyContext = ['action' => 'approve'];
+            $workshop->save();
 
             return response()->json(['data' => ['id' => $id, 'approval_status' => ApprovalStatus::APPROVED, 'status' => WorkshopStatus::PUBLISHED]]);
         }
@@ -221,63 +150,28 @@ class AdminController extends Controller
         $lat = $request->input('lat') !== null ? (float)$request->input('lat') : null;
         $lng = $request->input('lng') !== null ? (float)$request->input('lng') : null;
 
-        $affected = DB::update(
-            "UPDATE workshops
-             SET title=?, description=?, modality=?,
-                 price=?, currency=?, capacity=?, location=?, lat=?, lng=?,
-                 online_url=?, category_id=?, updated_at=NOW()
-             WHERE id=? AND status != ?",
-            [
-                $request->input('title'),
-                $request->input('description', ''),
-                $request->input('modality'),
-                (float)$request->input('price', 0),
-                $currency,
-                $request->input('capacity'),
-                $request->input('location', ''),
-                $lat,
-                $lng,
-                $request->input('online_url', ''),
-                $catID,
-                $id,
-                WorkshopStatus::ARCHIVED,
-            ]
-        );
-
-        if ($affected === 0) {
+        $workshop = Workshop::where('id', $id)->where('status', '!=', WorkshopStatus::ARCHIVED)->first();
+        if (!$workshop) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
 
-        // Notify students with confirmed bookings
-        try {
-            $workshop  = DB::selectOne("SELECT title, status FROM workshops WHERE id = ?", [$id]);
-            if (($workshop->status ?? '') === WorkshopStatus::PUBLISHED) {
-                $students = DB::select(
-                    "SELECT DISTINCT b.student_id::text as student_id
-                     FROM bookings b WHERE b.workshop_id = ? AND b.status = ?",
-                    [$id, BookingStatus::CONFIRMED]
-                );
-                foreach ($students as $s) {
-                    $notifiable = new User();
-                    $notifiable->id = $s->student_id;
-                    $notif = new \App\Notifications\WorkshopUpdatedNotification(
-                        workshopId:    $id,
-                        workshopTitle: $workshop->title ?? '',
-                        pendingReview: false,
-                    );
-                    \Illuminate\Support\Facades\Notification::send($notifiable, $notif);
-                    $payload = $notif->toDatabase($notifiable);
-                    app(PusherService::class)->notifyUser($s->student_id, $payload);
-                    try {
-                        app(WebPushService::class)->notifyUser($s->student_id, WebPushService::buildPayload($payload));
-                    } catch (\Throwable $e) {
-                        \Log::warning('WebPush (admin update) failed: ' . $e->getMessage());
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('Failed to dispatch admin WorkshopUpdatedNotification: ' . $e->getMessage());
-        }
+        $wasPublished = $workshop->status === WorkshopStatus::PUBLISHED;
+
+        $workshop->fill([
+            'title'       => $request->input('title'),
+            'description' => $request->input('description', ''),
+            'modality'    => $request->input('modality'),
+            'price'       => (float)$request->input('price', 0),
+            'currency'    => $currency,
+            'capacity'    => $request->input('capacity'),
+            'location'    => $request->input('location', ''),
+            'lat'         => $lat,
+            'lng'         => $lng,
+            'online_url'  => $request->input('online_url', ''),
+            'category_id' => $catID,
+        ]);
+        $workshop->notifyContext = ['action' => 'admin_update', 'was_published' => $wasPublished];
+        $workshop->save();
 
         return response()->json(['data' => ['id' => $id]]);
     }

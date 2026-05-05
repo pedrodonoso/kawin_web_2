@@ -6,7 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
-class BookingCancelledNotification extends Notification implements ShouldQueue
+class NewBookingStudentNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -15,10 +15,8 @@ class BookingCancelledNotification extends Notification implements ShouldQueue
         public readonly string  $workshopId,
         public readonly string  $workshopTitle,
         public readonly string  $workshopSlug,
-        public readonly string  $studentName,
         public readonly ?string $sessionDate,
         public readonly float   $amount,
-        public readonly string  $reason,   // 'student_request' | 'schedule_change'
     ) {
         $this->onQueue('notifications');
     }
@@ -30,21 +28,17 @@ class BookingCancelledNotification extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        $message = $this->reason === 'schedule_change'
-            ? "{$this->studentName} recibió un reembolso en \"{$this->workshopTitle}\" por cambio de horario"
-            : "{$this->studentName} canceló su reserva en \"{$this->workshopTitle}\"" .
-              ($this->sessionDate ? " (sesión del {$this->sessionDate})" : '');
+        $message = "Tu reserva en \"{$this->workshopTitle}\" fue confirmada" .
+                   ($this->sessionDate ? " para el {$this->sessionDate}" : '');
 
         return [
-            'type'           => 'booking_cancelled',
+            'type'           => 'booking_confirmed',
             'booking_id'     => $this->bookingId,
             'workshop_id'    => $this->workshopId,
             'workshop_slug'  => $this->workshopSlug,
             'workshop_title' => $this->workshopTitle,
-            'student_name'   => $this->studentName,
             'session_date'   => $this->sessionDate,
             'amount'         => $this->amount,
-            'reason'         => $this->reason,
             'message'        => $message,
         ];
     }

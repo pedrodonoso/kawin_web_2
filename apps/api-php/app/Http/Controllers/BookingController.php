@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use App\Notifications\BookingCancelledNotification;
-use App\Notifications\NewBookingNotification;
 use App\Services\PusherService;
 use App\Services\WebPushService;
 use App\Constants\Billing;
@@ -80,12 +80,15 @@ class BookingController extends Controller
                     }
                 }
 
-                $booking = DB::selectOne(
-                    "INSERT INTO bookings (student_id, workshop_id, session_id, status, payment_status, amount, commission)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                     RETURNING id",
-                    [$studentID, $request->input('workshop_id'), $sid, BookingStatus::CONFIRMED, PaymentStatus::PENDING, $finalPrice, $commission]
-                );
+                $booking = Booking::create([
+                    'student_id'     => $studentID,
+                    'workshop_id'    => $request->input('workshop_id'),
+                    'session_id'     => $sid,
+                    'status'         => BookingStatus::CONFIRMED,
+                    'payment_status' => PaymentStatus::PENDING,
+                    'amount'         => $finalPrice,
+                    'commission'     => $commission,
+                ]);
 
                 // Increment discount uses_count
                 if ($discount) {
@@ -107,12 +110,14 @@ class BookingController extends Controller
             [$finalPrice, $discountAmount] = DiscountController::applyDiscount($price, $discount);
             $commission = $finalPrice * Billing::COMMISSION_RATE;
 
-            $booking = DB::selectOne(
-                "INSERT INTO bookings (student_id, workshop_id, status, payment_status, amount, commission)
-                 VALUES (?, ?, ?, ?, ?, ?)
-                 RETURNING id",
-                [$studentID, $request->input('workshop_id'), BookingStatus::CONFIRMED, PaymentStatus::PENDING, $finalPrice, $commission]
-            );
+            $booking = Booking::create([
+                'student_id'     => $studentID,
+                'workshop_id'    => $request->input('workshop_id'),
+                'status'         => BookingStatus::CONFIRMED,
+                'payment_status' => PaymentStatus::PENDING,
+                'amount'         => $finalPrice,
+                'commission'     => $commission,
+            ]);
 
             if ($discount) {
                 DB::update(
@@ -121,11 +126,6 @@ class BookingController extends Controller
                 );
             }
         }
-
-        // ----------------------------------------------------------------
-        // Notify instructor (queued via Redis)
-        // ----------------------------------------------------------------
-        $this->notifyInstructor($booking->id, $workshopInfo->instructor_id, $request->input('workshop_id'), $sessionID, $studentID, $finalPrice);
 
         return response()->json(['data' => [
             'id'              => $booking->id,
@@ -447,7 +447,7 @@ class BookingController extends Controller
     ): void {
         try {
             $workshop = DB::selectOne(
-                "SELECT title, instructor_id::text as instructor_id FROM workshops WHERE id = ?",
+                "SELECT title, slug, instructor_id::text as instructor_id FROM workshops WHERE id = ?",
                 [$workshopId]
             );
             $student = $studentId ? DB::selectOne(
@@ -457,26 +457,24 @@ class BookingController extends Controller
                 [$studentId]
             ) : null;
 
-            $booking = DB::selectOne(
-                "SELECT amount FROM bookings WHERE id = ?",
-                [$bookingId]
-            );
+            $booking = DB::selectOne("SELECT amount FROM bookings WHERE id = ?", [$bookingId]);
 
-            $instructor = new \App\Models\User();
+            $instructor     = new \App\Models\User();
             $instructor->id = $workshop->instructor_id;
 
             $notification = new BookingCancelledNotification(
-                bookingId:      $bookingId,
-                workshopTitle:  $workshop?->title ?? '',
-                studentName:    $student?->name ?? '',
-                sessionDate:    $startsAtStr ?: null,
-                amount:         (float)($booking?->amount ?? 0),
-                reason:         $reason,
+                bookingId:     $bookingId,
+                workshopId:    $workshopId,
+                workshopTitle: $workshop?->title ?? '',
+                workshopSlug:  $workshop?->slug ?? '',
+                studentName:   $student?->name ?? '',
+                sessionDate:   $startsAtStr ?: null,
+                amount:        (float)($booking?->amount ?? 0),
+                reason:        $reason,
             );
 
-            Notification::send($instructor, $notification);
+            \Illuminate\Support\Facades\Notification::send($instructor, $notification);
 
-            // Push real-time event to instructor via WebSocket + mobile push
             $payload = $notification->toDatabase($instructor);
             app(PusherService::class)->notifyUser($workshop->instructor_id, $payload);
             try {
@@ -486,60 +484,6 @@ class BookingController extends Controller
             }
         } catch (\Throwable $e) {
             \Log::warning('Failed to dispatch BookingCancelledNotification: ' . $e->getMessage());
-        }
-    }
-
-    private function notifyInstructor(
-        string $bookingId,
-        string $instructorId,
-        string $workshopId,
-        ?string $sessionId,
-        string $studentId,
-        float $amount
-    ): void {
-        try {
-            // Gather data for the notification
-            $workshop = DB::selectOne("SELECT title FROM workshops WHERE id = ?", [$workshopId]);
-            $student  = DB::selectOne(
-                "SELECT COALESCE(p.name, u.email) as name
-                 FROM users u LEFT JOIN profiles p ON p.user_id = u.id
-                 WHERE u.id = ?",
-                [$studentId]
-            );
-            $sessionDate = null;
-            if ($sessionId) {
-                $sess = DB::selectOne(
-                    "SELECT starts_at::text as starts_at FROM sessions WHERE id = ?",
-                    [$sessionId]
-                );
-                $sessionDate = $sess?->starts_at;
-            }
-
-            // Use Notification facade with a plain notifiable wrapper
-            $instructor = new \App\Models\User();
-            $instructor->id = $instructorId;
-
-            $notification = new NewBookingNotification(
-                bookingId: $bookingId,
-                workshopTitle: $workshop?->title ?? '',
-                studentName: $student?->name ?? '',
-                sessionDate: $sessionDate,
-                amount: $amount,
-            );
-
-            Notification::send($instructor, $notification);
-
-            // Push real-time event to instructor via WebSocket + mobile push
-            $payload = $notification->toDatabase($instructor);
-            app(PusherService::class)->notifyUser($instructorId, $payload);
-            try {
-                app(WebPushService::class)->notifyUser($instructorId, WebPushService::buildPayload($payload));
-            } catch (\Throwable $e) {
-                \Log::warning('WebPush (new booking) failed: ' . $e->getMessage());
-            }
-        } catch (\Throwable $e) {
-            // Notification failures must never break booking creation
-            \Log::warning('Failed to dispatch NewBookingNotification: ' . $e->getMessage());
         }
     }
 }
