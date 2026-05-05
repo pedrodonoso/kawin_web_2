@@ -135,9 +135,8 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
           <span>© 2025 kwin. Todos los derechos reservados.</span>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-foreground">Términos</a>
-            <a href="#" className="hover:text-foreground">Privacidad</a>
-            <a href="#" className="hover:text-foreground">Contacto</a>
+            <Link href="/privacidad" className="hover:text-foreground">Privacidad</Link>
+            <Link href="/contacto" className="hover:text-foreground">Contacto</Link>
           </div>
         </div>
       </footer>
