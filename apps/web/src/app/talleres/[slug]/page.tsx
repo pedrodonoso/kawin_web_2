@@ -67,7 +67,7 @@ function formatDate(iso: string) {
 function formatTime(start: string, end: string) {
   const fmt = (s: string) =>
     new Date(s).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-  return `${fmt(start)} – ${fmt(end)}`;
+  return `${fmt(start)} - ${fmt(end)}`;
 }
 
 
@@ -212,6 +212,14 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             </div>
           )}
 
+          {/* Map & location */}
+          {workshop.lat != null && workshop.lng != null && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">Ubicación</h2>
+              <MiniMapWrapper lat={workshop.lat} lng={workshop.lng} label={workshop.location} />
+            </div>
+          )}
+
           {/* Instructor */}
           {workshop.instructor && (
             <div className="space-y-4">
@@ -329,7 +337,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                         const fmt = (s: string) =>
                           new Date(s).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
                         if (d.valid_from && d.valid_until)
-                          return `${fmt(d.valid_from)} – ${fmt(d.valid_until)}`;
+                          return `${fmt(d.valid_from)} - ${fmt(d.valid_until)}`;
                         if (d.valid_until) return `hasta el ${fmt(d.valid_until)}`;
                         return `desde el ${fmt(d.valid_from!)}`;
                       })();
@@ -382,10 +390,6 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                   />
                 )}
               </div>
-
-              {workshop.lat != null && workshop.lng != null && (
-                <MiniMapWrapper lat={workshop.lat} lng={workshop.lng} label={workshop.location} />
-              )}
 
             </CardContent>
           </Card>

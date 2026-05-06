@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, X, Clock } from "lucide-react";
+import { MapPin, X, Clock, Maximize2, Minimize2 } from "lucide-react";
 import { type Workshop } from "@/lib/api";
 import { ModalityLabel } from "@/lib/constants";
 
@@ -152,10 +153,25 @@ interface Props {
 
 export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }: Props) {
   const [selected, setSelected] = useState<Workshop | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const mapped = workshops.filter((w) => w.lat != null && w.lng != null);
 
-  return (
-    <div className="relative w-full h-[520px] rounded-xl overflow-hidden border shadow-sm">
+  const exitFullscreen = useCallback(() => setFullscreen(false), []);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") exitFullscreen(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [fullscreen, exitFullscreen]);
+
+  useEffect(() => {
+    document.body.style.overflow = fullscreen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [fullscreen]);
+
+  const mapContent = (
+    <div className={fullscreen ? "relative w-full h-full" : "relative w-full h-[520px] rounded-xl overflow-hidden border shadow-sm"}>
       <MapContainer center={center} zoom={zoom} scrollWheelZoom attributionControl={false} className="h-full w-full" style={{ zIndex: 0 }}>
         <TileLayer
           subdomains="abcd"
@@ -282,6 +298,46 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
       <div className="absolute bottom-3 left-3 z-[1000] bg-background/90 backdrop-blur-sm border rounded-full px-3 py-1 text-xs text-muted-foreground">
         {mapped.length} {mapped.length !== 1 ? "talleres" : "taller"} en el mapa
       </div>
+      {!fullscreen && (
+        <button
+          type="button"
+          onClick={() => setFullscreen((v) => !v)}
+          title={fullscreen ? "Salir de pantalla completa (Esc)" : "Ver en pantalla completa"}
+          className="absolute bottom-3 right-3 z-[1000] flex items-center gap-1 rounded-md bg-background/90 backdrop-blur-sm border border-border px-2 py-1 text-xs text-foreground shadow-sm hover:text-muted-foreground transition-colors"
+        >
+          {fullscreen
+            ? <><Minimize2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Salir</span></>
+            : <><Maximize2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Ampliar</span></>
+          }
+        </button>
+      )}
     </div>
   );
+
+  if (fullscreen && typeof document !== "undefined") {
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
+        <div className="flex items-center justify-between px-4 py-2 border-b bg-background/95 backdrop-blur-sm shrink-0">
+          <span className="text-sm font-medium text-muted-foreground">
+            {mapped.length} {mapped.length !== 1 ? "talleres" : "taller"} en el mapa
+          </span>
+          <button
+            type="button"
+            onClick={exitFullscreen}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-primary hover:accent/10  transition-colors"
+          >
+            <Minimize2 className="h-4 w-4" />
+            Cerrar
+            <kbd className="ml-1 hidden sm:inline-flex items-center rounded border border-border px-1 text-[10px] font-mono text-muted-foreground">Esc</kbd>
+          </button>
+        </div>
+        <div className="flex-1 relative [&_.leaflet-container]:!h-full [&_.leaflet-container]:rounded-none">
+          {mapContent}
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  return mapContent;
 }

@@ -49,7 +49,7 @@ export function FullscreenMapWrapper({ children, className = "", lat, lng }: Pro
               target="_blank"
               rel="noopener noreferrer"
               title="Abrir en Google Maps"
-              className="flex items-center gap-1 rounded-md bg-background/90 backdrop-blur-sm border border-border px-2 py-1 text-xs text-foreground shadow-sm hover:bg-accent/10 transition-colors"
+              className="flex items-center gap-1 rounded-md bg-background/90 backdrop-blur-sm border border-border px-2 py-1 text-xs text-muted-foreground shadow-sm hover:text-foreground transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Google Maps</span>
@@ -59,7 +59,7 @@ export function FullscreenMapWrapper({ children, className = "", lat, lng }: Pro
             type="button"
             onClick={toggle}
             title="Ver en pantalla completa"
-            className="flex items-center gap-1 rounded-md bg-background/90 backdrop-blur-sm border border-border px-2 py-1 text-xs text-foreground shadow-sm hover:bg-accent/10 transition-colors"
+            className="flex items-center gap-1 rounded-md bg-background/90 backdrop-blur-sm border border-border px-2 py-1 text-xs text-muted-foreground shadow-sm hover:text-foreground transition-colors"
           >
             <Maximize2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Ampliar</span>
@@ -80,7 +80,7 @@ export function FullscreenMapWrapper({ children, className = "", lat, lng }: Pro
                   href={googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-colors"
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Google Maps
@@ -90,7 +90,7 @@ export function FullscreenMapWrapper({ children, className = "", lat, lng }: Pro
                 type="button"
                 onClick={exit}
                 title="Cerrar (Esc)"
-                className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-colors"
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Minimize2 className="h-4 w-4" />
                 Cerrar
