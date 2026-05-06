@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { FullscreenMapWrapper } from "./FullscreenMapWrapper";
 
 const icon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -36,6 +37,10 @@ function DraggableMarker({
 }) {
   const markerRef = useRef<L.Marker | null>(null);
 
+  useEffect(() => {
+    markerRef.current?.setLatLng([lat, lng]);
+  }, [lat, lng]);
+
   useMapEvents({
     click(e) {
       onDrag(e.latlng.lat, e.latlng.lng);
@@ -66,21 +71,25 @@ interface Props {
 
 export function LocationPickerMap({ lat, lng, onDrag }: Props) {
   return (
-    <MapContainer
-      center={[lat, lng]}
-      zoom={15}
-      scrollWheelZoom={false}
-      attributionControl={false}
-      className="h-52 w-full rounded-lg z-0"
-      style={{ zIndex: 0 }}
-    >
-      <TileLayer
-        subdomains="abcd"
-        maxZoom={20}
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      />
-      <DraggableMarker lat={lat} lng={lng} onDrag={onDrag} />
-      <MapController lat={lat} lng={lng} />
-    </MapContainer>
+    <FullscreenMapWrapper className="h-52 w-full rounded-lg overflow-hidden" lat={lat} lng={lng}>
+      {(fullscreen) => (
+        <MapContainer
+          center={[lat, lng]}
+          zoom={15}
+          scrollWheelZoom={fullscreen}
+          attributionControl={false}
+          className="h-full w-full z-0"
+          style={{ zIndex: 0 }}
+        >
+          <TileLayer
+            subdomains="abcd"
+            maxZoom={20}
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          />
+          <DraggableMarker lat={lat} lng={lng} onDrag={onDrag} />
+          <MapController lat={lat} lng={lng} />
+        </MapContainer>
+      )}
+    </FullscreenMapWrapper>
   );
 }

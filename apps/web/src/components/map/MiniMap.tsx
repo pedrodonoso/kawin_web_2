@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { FullscreenMapWrapper } from "./FullscreenMapWrapper";
 
 const C = { accent: "#b54a2c", bg: "#f4efe6", primary: "#1a1916" };
 const PIN_SIZE = 38;
@@ -46,23 +47,27 @@ interface Props {
 
 export function MiniMap({ lat, lng, label }: Props) {
   return (
-    <MapContainer
-      center={[lat, lng]}
-      zoom={15}
-      scrollWheelZoom={false}
-      attributionControl={false}
-      className="h-48 w-full rounded-lg z-0"
-      style={{ zIndex: 0 }}
-    >
-      <TileLayer
-        subdomains="abcd"
-        maxZoom={20}
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      />
-      <Marker position={[lat, lng]} icon={icon}>
-        {label && <Popup>{label}</Popup>}
-      </Marker>
-      <Recenter lat={lat} lng={lng} />
-    </MapContainer>
+    <FullscreenMapWrapper className="h-48 w-full rounded-lg overflow-hidden" lat={lat} lng={lng}>
+      {(fullscreen) => (
+        <MapContainer
+          center={[lat, lng]}
+          zoom={15}
+          scrollWheelZoom={fullscreen}
+          attributionControl={false}
+          className="h-full w-full z-0"
+          style={{ zIndex: 0 }}
+        >
+          <TileLayer
+            subdomains="abcd"
+            maxZoom={20}
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          />
+          <Marker position={[lat, lng]} icon={icon}>
+            {label && <Popup>{label}</Popup>}
+          </Marker>
+          <Recenter lat={lat} lng={lng} />
+        </MapContainer>
+      )}
+    </FullscreenMapWrapper>
   );
 }

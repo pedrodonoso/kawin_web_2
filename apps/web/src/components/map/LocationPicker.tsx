@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, Loader2, LocateFixed } from "lucide-react";
 
 const LocationPickerMap = dynamic(
   () => import("./LocationPickerMap").then((m) => m.LocationPickerMap),
@@ -33,6 +34,7 @@ export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsC
   const [query, setQuery] = useState(location);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [searching, setSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +84,19 @@ export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsC
     onCoordsChange(String(newLat), String(newLng));
   }
 
+  function useMyLocation() {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        onCoordsChange(String(pos.coords.latitude), String(pos.coords.longitude));
+        setLocating(false);
+      },
+      () => { setLocating(false); },
+      { timeout: 10000, maximumAge: 60000 }
+    );
+  }
+
   // Close dropdown on outside click
   useEffect(() => {
     function onOutside(e: MouseEvent) {
@@ -96,7 +111,20 @@ export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsC
   return (
     <div className="space-y-3">
       <div className="space-y-1.5" ref={containerRef}>
-        <Label htmlFor="location">Ubicación</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="location">Ubicación</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-foreground gap-1"
+            onClick={useMyLocation}
+            disabled={locating}
+          >
+            {locating ? <Loader2 className="h-3 w-3 animate-spin" /> : <LocateFixed className="h-3 w-3" />}
+            Usar mi ubicación
+          </Button>
+        </div>
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
