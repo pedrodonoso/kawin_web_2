@@ -84,10 +84,10 @@ class WorkshopController extends Controller
                     w.use_guest_contact,
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.name,   p.name,          '') ELSE COALESCE(p.name,          '') END as instructor_name,
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.bio,    p.bio,           '') ELSE COALESCE(p.bio,           '') END as instructor_bio,
-                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.instagram, p.instagram_url,'') ELSE COALESCE(p.instagram_url,'') END as instructor_instagram,
-                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.website, p.facebook_url, '') ELSE COALESCE(p.facebook_url, '') END as instructor_facebook,
-                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.whatsapp, p.whatsapp,    '') ELSE COALESCE(p.whatsapp,    '') END as instructor_whatsapp,
-                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.phone,  p.phone,         '') ELSE COALESCE(p.phone,        '') END as instructor_phone
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.instagram, p.instagram_url,'') WHEN COALESCE(p.show_instagram,TRUE) THEN COALESCE(p.instagram_url,'') ELSE '' END as instructor_instagram,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.website, p.facebook_url, '') WHEN COALESCE(p.show_facebook,TRUE)  THEN COALESCE(p.facebook_url, '') ELSE '' END as instructor_facebook,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.whatsapp, p.whatsapp,   '') WHEN COALESCE(p.show_whatsapp,TRUE)  THEN COALESCE(p.whatsapp,    '') ELSE '' END as instructor_whatsapp,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.phone,  p.phone,        '') WHEN COALESCE(p.show_phone,TRUE)     THEN COALESCE(p.phone,       '') ELSE '' END as instructor_phone
              FROM workshops w
              LEFT JOIN categories c ON c.id = w.category_id
              LEFT JOIN profiles p ON p.user_id = w.instructor_id

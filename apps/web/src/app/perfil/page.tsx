@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { api, type Profile } from "@/lib/api";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 export default function PerfilPage() {
   const router = useRouter();
@@ -22,6 +23,10 @@ export default function PerfilPage() {
     whatsapp: "",
     instagram_url: "",
     facebook_url: "",
+    show_phone: true,
+    show_whatsapp: true,
+    show_instagram: true,
+    show_facebook: true,
   });
 
   useEffect(() => {
@@ -39,12 +44,16 @@ export default function PerfilPage() {
         whatsapp: res.data.whatsapp ?? "",
         instagram_url: res.data.instagram_url ?? "",
         facebook_url: res.data.facebook_url ?? "",
+        show_phone: res.data.show_phone ?? true,
+        show_whatsapp: res.data.show_whatsapp ?? true,
+        show_instagram: res.data.show_instagram ?? true,
+        show_facebook: res.data.show_facebook ?? true,
       }))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [router]);
 
-  function set(field: keyof Profile, value: string) {
+  function set(field: keyof Profile, value: string | boolean) {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
@@ -124,24 +133,24 @@ export default function PerfilPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input
-                    id="phone"
-                    placeholder="+56 9 XXXX XXXX"
-                    value={form.phone}
-                    onChange={(e) => set("phone", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp">WhatsApp</Label>
-                  <Input
-                    id="whatsapp"
-                    placeholder="+56 9 XXXX XXXX"
-                    value={form.whatsapp}
-                    onChange={(e) => set("whatsapp", e.target.value)}
-                  />
-                </div>
+                <VisibilityField
+                  id="phone"
+                  label="Teléfono"
+                  placeholder="+56 9 XXXX XXXX"
+                  value={form.phone}
+                  visible={form.show_phone}
+                  onValueChange={(v) => set("phone", v)}
+                  onVisibilityChange={(v) => set("show_phone", v)}
+                />
+                <VisibilityField
+                  id="whatsapp"
+                  label="WhatsApp"
+                  placeholder="+56 9 XXXX XXXX"
+                  value={form.whatsapp}
+                  visible={form.show_whatsapp}
+                  onValueChange={(v) => set("whatsapp", v)}
+                  onVisibilityChange={(v) => set("show_whatsapp", v)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -151,25 +160,25 @@ export default function PerfilPage() {
               <CardTitle className="text-base">Redes sociales</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="instagram_url">Instagram</Label>
-                <Input
-                  id="instagram_url"
-                  placeholder="@tu_usuario o https://instagram.com/tu_usuario"
-                  value={form.instagram_url}
-                  onChange={(e) => set("instagram_url", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="facebook_url">Facebook</Label>
-                <Input
-                  id="facebook_url"
-                  type="url"
-                  placeholder="https://facebook.com/tu_pagina"
-                  value={form.facebook_url}
-                  onChange={(e) => set("facebook_url", e.target.value)}
-                />
-              </div>
+              <VisibilityField
+                id="instagram_url"
+                label="Instagram"
+                placeholder="@tu_usuario o https://instagram.com/tu_usuario"
+                value={form.instagram_url}
+                visible={form.show_instagram}
+                onValueChange={(v) => set("instagram_url", v)}
+                onVisibilityChange={(v) => set("show_instagram", v)}
+              />
+              <VisibilityField
+                id="facebook_url"
+                label="Facebook"
+                type="url"
+                placeholder="https://facebook.com/tu_pagina"
+                value={form.facebook_url}
+                visible={form.show_facebook}
+                onValueChange={(v) => set("facebook_url", v)}
+                onVisibilityChange={(v) => set("show_facebook", v)}
+              />
             </CardContent>
           </Card>
 
@@ -178,8 +187,62 @@ export default function PerfilPage() {
               {saving ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>
+
+          <p className="mt-4 text-xs text-muted-foreground text-center leading-relaxed">
+            Tu información de contacto podría ser usada exclusivamente por Kawin para comunicarnos contigo
+            en caso de necesitar consultar tu experiencia en el sitio, recibir sugerencias o
+            atender reclamos. Nunca será compartida con terceros sin tu consentimiento.
+            Recuerda que si decides mostrar tu teléfono o redes sociales, esta información sí será visible para otros usuarios en tu perfil público.
+          </p>
         </form>
       </div>
     </main>
+  );
+}
+
+interface VisibilityFieldProps {
+  id: string;
+  label: string;
+  placeholder?: string;
+  type?: string;
+  value: string;
+  visible: boolean;
+  onValueChange: (v: string) => void;
+  onVisibilityChange: (v: boolean) => void;
+}
+
+function VisibilityField({
+  id, label, placeholder, type = "text",
+  value, visible, onValueChange, onVisibilityChange,
+}: VisibilityFieldProps) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label htmlFor={id}>{label}</Label>
+        <div className="flex items-center gap-1.5">
+          {visible
+            ? <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+            : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+          }
+          <Switch
+            id={`${id}_visible`}
+            checked={visible}
+            onCheckedChange={onVisibilityChange}
+            aria-label={`Mostrar ${label} en público`}
+          />
+        </div>
+      </div>
+      <Input
+        id={id}
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onValueChange(e.target.value)}
+        className={!visible ? "opacity-50" : ""}
+      />
+      {!visible && (
+        <p className="text-xs text-muted-foreground">No visible en tu perfil público</p>
+      )}
+    </div>
   );
 }

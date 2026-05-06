@@ -16,10 +16,10 @@ class ProfileController extends Controller
                     COALESCE(p.name,'') as name,
                     COALESCE(p.bio,'') as bio,
                     COALESCE(p.avatar_url,'') as avatar_url,
-                    COALESCE(p.phone,'') as phone,
-                    COALESCE(p.whatsapp,'') as whatsapp,
-                    COALESCE(p.instagram_url,'') as instagram_url,
-                    COALESCE(p.facebook_url,'') as facebook_url,
+                    CASE WHEN COALESCE(p.show_phone,TRUE)     THEN COALESCE(p.phone,'')         ELSE '' END as phone,
+                    CASE WHEN COALESCE(p.show_whatsapp,TRUE)  THEN COALESCE(p.whatsapp,'')      ELSE '' END as whatsapp,
+                    CASE WHEN COALESCE(p.show_instagram,TRUE) THEN COALESCE(p.instagram_url,'') ELSE '' END as instagram_url,
+                    CASE WHEN COALESCE(p.show_facebook,TRUE)  THEN COALESCE(p.facebook_url,'')  ELSE '' END as facebook_url,
                     COALESCE(p.city,'') as city,
                     COALESCE(p.country,'Chile') as country
              FROM profiles p
@@ -62,7 +62,11 @@ class ProfileController extends Controller
             "SELECT COALESCE(name,'') as name, COALESCE(bio,'') as bio,
                     COALESCE(phone,'') as phone, COALESCE(whatsapp,'') as whatsapp,
                     COALESCE(instagram_url,'') as instagram_url,
-                    COALESCE(facebook_url,'') as facebook_url
+                    COALESCE(facebook_url,'') as facebook_url,
+                    COALESCE(show_phone,TRUE)     as show_phone,
+                    COALESCE(show_whatsapp,TRUE)  as show_whatsapp,
+                    COALESCE(show_instagram,TRUE) as show_instagram,
+                    COALESCE(show_facebook,TRUE)  as show_facebook
              FROM profiles WHERE user_id = ?",
             [$userID]
         );
@@ -86,7 +90,9 @@ class ProfileController extends Controller
         DB::update(
             "UPDATE profiles
              SET name=?, bio=?, phone=?, whatsapp=?,
-                 instagram_url=?, facebook_url=?, updated_at=NOW()
+                 instagram_url=?, facebook_url=?,
+                 show_phone=?, show_whatsapp=?, show_instagram=?, show_facebook=?,
+                 updated_at=NOW()
              WHERE user_id=?",
             [
                 $request->input('name'),
@@ -95,6 +101,10 @@ class ProfileController extends Controller
                 $request->input('whatsapp', ''),
                 $request->input('instagram_url', ''),
                 $request->input('facebook_url', ''),
+                $request->boolean('show_phone', true),
+                $request->boolean('show_whatsapp', true),
+                $request->boolean('show_instagram', true),
+                $request->boolean('show_facebook', true),
                 $userID,
             ]
         );

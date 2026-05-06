@@ -159,6 +159,10 @@ export interface Profile {
   whatsapp: string;
   instagram_url: string;
   facebook_url: string;
+  show_phone: boolean;
+  show_whatsapp: boolean;
+  show_instagram: boolean;
+  show_facebook: boolean;
 }
 
 export interface PendingChanges {
