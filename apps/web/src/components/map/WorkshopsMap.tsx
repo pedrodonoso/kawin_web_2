@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
@@ -8,6 +8,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { MapPin, X, Clock, Maximize2, Minimize2 } from "lucide-react";
 import { type Workshop } from "@/lib/api";
 import { ModalityLabel } from "@/lib/constants";
@@ -144,6 +146,7 @@ function MapClickOutside({ onClose }: { onClose: () => void }) {
   return null;
 }
 
+
 // ─── Main component ─────────────────────────────────────────────────────────
 interface Props {
   workshops: Workshop[];
@@ -154,7 +157,21 @@ interface Props {
 export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }: Props) {
   const [selected, setSelected] = useState<Workshop | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [listOpen, setListOpen] = useState(true);
+  const [listPage, setListPage] = useState(0);
+  const PAGE_SIZE = 5;
   const mapped = workshops.filter((w) => w.lat != null && w.lng != null);
+  const mapRef = useRef<L.Map | null>(null);
+
+  const totalPages = Math.ceil(workshops.length / PAGE_SIZE);
+  const pageWorkshops = workshops.slice(listPage * PAGE_SIZE, (listPage + 1) * PAGE_SIZE);
+
+  function focusWorkshop(w: Workshop) {
+    if (w.lat != null && w.lng != null) {
+      mapRef.current?.flyTo([w.lat, w.lng], 16, { duration: 0.8 });
+    }
+    setSelected(w);
+  }
 
   const exitFullscreen = useCallback(() => setFullscreen(false), []);
 
@@ -170,9 +187,16 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
     return () => { document.body.style.overflow = ""; };
   }, [fullscreen]);
 
+  // Al entrar en fullscreen: mobile oculta la lista, desktop la muestra
+  useEffect(() => {
+    if (!fullscreen) return;
+    const isMobile = window.innerWidth < 768;
+    setListOpen(!isMobile);
+  }, [fullscreen]);
+
   const mapContent = (
     <div className={fullscreen ? "relative w-full h-full" : "relative w-full h-[520px] rounded-xl overflow-hidden border shadow-sm"}>
-      <MapContainer center={center} zoom={zoom} scrollWheelZoom attributionControl={false} className="h-full w-full" style={{ zIndex: 0 }}>
+      <MapContainer ref={mapRef} center={center} zoom={zoom} scrollWheelZoom zoomControl={false} attributionControl={false} className="h-full w-full" style={{ zIndex: 0 }}>
         <TileLayer
           subdomains="abcd"
           maxZoom={20}
@@ -203,6 +227,93 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
           ))}
         </MarkerClusterGroup>
       </MapContainer>
+
+      {/* ── Mini list ── */}
+      {!selected && workshops.length > 0 && (
+        <div className={
+          fullscreen
+            ? "absolute z-[1000] bg-background/95 backdrop-blur-sm border shadow-lg overflow-hidden flex flex-col " +
+              "bottom-0 left-0 right-0 rounded-t-xl md:rounded-none " +
+              "md:bottom-auto md:top-0 md:left-0 md:w-72 md:h-full md:border-r md:border-y-0 md:border-l-0"
+            : "absolute top-3 left-3 z-[1000] w-64 bg-background/95 backdrop-blur-sm border rounded-xl shadow-lg overflow-hidden flex flex-col"
+        }>
+          <div className="px-3 py-2 border-b flex items-center justify-between">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              {workshops.length} {workshops.length !== 1 ? "talleres" : "taller"}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 -mr-1 md:hidden"
+              onClick={() => setListOpen((v) => !v)}
+              title={listOpen ? "Ocultar lista" : "Mostrar lista"}
+            >
+              {listOpen
+                ? <PanelLeftClose className="h-3.5 w-3.5" />
+                : <PanelLeftOpen className="h-3.5 w-3.5" />
+              }
+            </Button>
+          </div>
+          {listOpen && <ul className={fullscreen ? "md:overflow-y-auto md:flex-1" : ""}>
+            {pageWorkshops.map((w) => (
+              <li key={w.id}>
+                <button
+                  onClick={() => focusWorkshop(w)}
+                  className="w-full flex items-start gap-2.5 px-3 py-2.5 hover:bg-secondary/60 transition-colors group text-left"
+                >
+                  <div
+                    className="mt-0.5 w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
+                    style={{ background: w.lat != null ? C.accent : C.border }}
+                  >
+                    {w.category_slug && CATEGORY_PATHS[w.category_slug] ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                        stroke={C.bg} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        dangerouslySetInnerHTML={{ __html: CATEGORY_PATHS[w.category_slug] }}
+                      />
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                        stroke={C.bg} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        dangerouslySetInnerHTML={{ __html: DEFAULT_ICON_PATH }}
+                      />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium leading-tight line-clamp-1 group-hover:text-foreground">{w.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {w.price === 0 ? "Gratis" : `$${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${w.currency}`}
+                    </p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>}
+          {listOpen && totalPages > 1 && (
+            <div className="px-3 py-2 border-t flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setListPage((p) => Math.max(0, p - 1))}
+                disabled={listPage === 0}
+                className="h-7 w-7"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {listPage + 1} / {totalPages}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setListPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={listPage === totalPages - 1}
+                className="h-7 w-7"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Detail panel ── */}
       {selected && (
@@ -295,9 +406,6 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
         </div>
       )}
 
-      <div className="absolute bottom-3 left-3 z-[1000] bg-background/90 backdrop-blur-sm border rounded-full px-3 py-1 text-xs text-muted-foreground">
-        {mapped.length} {mapped.length !== 1 ? "talleres" : "taller"} en el mapa
-      </div>
       {!fullscreen && (
         <button
           type="button"

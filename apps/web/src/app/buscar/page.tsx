@@ -256,7 +256,17 @@ function BuscarContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"list" | "map">("list");
+  const [view, setView] = useState<"list" | "map">(() =>
+    searchParams?.get("vista") === "mapa" ? "map" : "list"
+  );
+
+  function changeView(v: "list" | "map") {
+    setView(v);
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (v === "map") params.set("vista", "mapa");
+    else params.set("vista", "talleres");
+    router.replace(`/buscar?${params}`, { scroll: false });
+  }
 
   useEffect(() => {
     api
@@ -360,7 +370,7 @@ function BuscarContent() {
           {/* List / Map toggle */}
           <div className="flex items-center gap-1 border rounded-lg p-1 bg-background">
             <button
-              onClick={() => setView("list")}
+              onClick={() => changeView("list")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
                 view === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
@@ -368,7 +378,7 @@ function BuscarContent() {
               <LayoutGrid className="h-3.5 w-3.5" /> Lista
             </button>
             <button
-              onClick={() => setView("map")}
+              onClick={() => changeView("map")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
                 view === "map" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
@@ -386,12 +396,12 @@ function BuscarContent() {
           {loading ? "Buscando..." : `${workshops?.length ?? 0} resultado${(workshops?.length ?? 0) !== 1 ? "s" : ""}`}
         </p>
 
-        {/* Map view */}
-        {view === "map" && !loading && (
+        {/* Map view — always mounted to avoid tile reload on tab switch */}
+        <div className={view === "map" ? "block" : "hidden"}>
           <WorkshopsMap
             workshops={workshops.filter((w) => w.modality !== Modality.ONLINE)}
           />
-        )}
+        </div>
 
         {/* List view */}
         {view === "list" && (
