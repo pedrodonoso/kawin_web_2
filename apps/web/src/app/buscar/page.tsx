@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Search, MapPin, Clock, LayoutGrid, Map } from "lucide-react";
+import { Search, MapPin, Clock, LayoutGrid, Map, BookOpen } from "lucide-react";
 import { api, type Workshop, type Category } from "@/lib/api";
 import { Modality } from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
@@ -162,16 +162,19 @@ function WorkshopCard({ w }: { w: Workshop }) {
 
   return (
     <Link href={`/talleres/${w.slug}`}>
-      <Card className="hover:shadow-md transition-shadow h-full">
-        <div className="bg-secondary h-40 rounded-t-lg flex items-center justify-center text-muted-foreground text-sm">
+      <Card className="hover:shadow-md transition-shadow h-full flex flex-col">
+        <div className="bg-secondary h-40 rounded-t-lg flex items-center justify-center text-muted-foreground text-sm shrink-0">
           {w.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={w.cover_image_url} alt={w.title} className="h-full w-full object-cover rounded-t-lg" />
           ) : (
-            "Sin imagen"
+            <div className="flex flex-col items-center gap-2 opacity-30">
+              <BookOpen className="h-8 w-8" strokeWidth={1} />
+              <span className="text-sm font-semibold tracking-tight">kwin<span className="text-primary">.</span></span>
+            </div>
           )}
         </div>
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-4 pb-5 flex flex-col flex-1">
           {/* Title | Type */}
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold leading-tight line-clamp-2">{w.title}</h3>
@@ -181,50 +184,52 @@ function WorkshopCard({ w }: { w: Workshop }) {
           </div>
 
           {w.category && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs mt-2">
               {w.category.name}
             </Badge>
           )}
 
-          <p className="text-sm text-muted-foreground line-clamp-2">{w.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-2 flex-1">{w.description}</p>
 
-          <Separator />
+          <div className="mt-3 space-y-3">
+            <Separator />
 
-          {/* Location | Modality */}
-          <div className="flex items-start justify-between gap-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1 min-w-0">
-              <MapPin className="h-3 w-3 shrink-0" />
-              <span className="truncate">
-                {w.modality === Modality.ONLINE ? "Online" : w.location ?? "—"}
+            {/* Location | Modality */}
+            <div className="flex items-start justify-between gap-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 min-w-0">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">
+                  {w.modality === Modality.ONLINE ? "Online" : w.location ?? "—"}
+                </span>
               </span>
-            </span>
-            <Badge variant="outline" className="shrink-0 text-xs">
-              {modalityLabel[w.modality]}
-            </Badge>
-          </div>
+              <Badge variant="outline" className="shrink-0 text-xs">
+                {modalityLabel[w.modality]}
+              </Badge>
+            </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Price + instructor */}
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-sm text-foreground">
-              {w.price === 0
-                ? "Gratis"
-                : `$${formatPrice(w.price)} ${w.currency}`}
-            </span>
-            {w.instructor && (
-              w.instructor_id ? (
-                <Link
-                  href={`/talleristas/${w.instructor_id}`}
-                  className="text-xs text-muted-foreground/70 hover:text-foreground hover:underline transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  por {w.instructor.name}
-                </Link>
-              ) : (
-                <p className="text-xs text-muted-foreground/70">por {w.instructor.name}</p>
-              )
-            )}
+            {/* Price + instructor */}
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-sm text-foreground">
+                {w.price === 0
+                  ? "Gratis"
+                  : `$${formatPrice(w.price)} ${w.currency}`}
+              </span>
+              {w.instructor && (
+                w.instructor_id ? (
+                  <Link
+                    href={`/talleristas/${w.instructor_id}`}
+                    className="text-xs text-muted-foreground/70 hover:text-foreground hover:underline transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    por {w.instructor.name}
+                  </Link>
+                ) : (
+                  <p className="text-xs text-muted-foreground/70">por {w.instructor.name}</p>
+                )
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
