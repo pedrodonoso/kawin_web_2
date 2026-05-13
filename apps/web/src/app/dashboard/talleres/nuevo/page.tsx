@@ -20,7 +20,7 @@ import { api, adminApi, type Category } from "@/lib/api";
 import { Modality, WorkshopType } from "@/lib/constants";
 import { LocationPicker } from "@/components/map/LocationPicker";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { ArrowLeft, Plus, Send, X, Repeat } from "lucide-react";
+import { ArrowLeft, Plus, Send, X, Repeat, Info } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 
@@ -285,6 +285,52 @@ export default function NuevoTallerPage() {
                   </Select>
                 </div>
               </div>
+              {/* Type info box */}
+              {(() => {
+                const typeInfo: Record<string, { color: string; title: string; desc: string; sessions: string; recurring: string }> = {
+                  workshop: {
+                    color: "bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-200",
+                    title: "Taller",
+                    desc: "Actividad puntual o de pocas sesiones con fecha(s) definida(s). Ideal para experiencias únicas.",
+                    sessions: "Por defecto defines cada sesión con fecha y hora manualmente.",
+                    recurring: "También puedes activar horario recurrente: defines días y hora fijos, y luego materializas las sesiones desde el calendario cuando quieras habilitarlas.",
+                  },
+                  course: {
+                    color: "bg-purple-50 border-purple-200 text-purple-900 dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-200",
+                    title: "Curso",
+                    desc: "Programa de aprendizaje estructurado con varias sesiones secuenciales. Los estudiantes reservan el curso completo.",
+                    sessions: "Por defecto defines cada sesión del programa manualmente.",
+                    recurring: "También puedes activar horario recurrente: defines el patrón de días y hora, y luego materializas las sesiones desde el calendario.",
+                  },
+                  class: {
+                    color: "bg-green-50 border-green-200 text-green-900 dark:bg-green-950/40 dark:border-green-800 dark:text-green-200",
+                    title: "Clase recurrente",
+                    desc: "Actividad que se repite en horarios fijos semana a semana. Los estudiantes reservan sesiones individuales.",
+                    sessions: "El horario recurrente está siempre activo para este tipo.",
+                    recurring: "Defines días de la semana, hora y duración. Las sesiones no se crean solas — debes materializarlas manualmente desde el calendario antes de que los estudiantes puedan reservarlas.",
+                  },
+                  event: {
+                    color: "bg-orange-50 border-orange-200 text-orange-900 dark:bg-orange-950/40 dark:border-orange-800 dark:text-orange-200",
+                    title: "Evento",
+                    desc: "Acontecimiento especial con fecha fija: charla, presentación, demo, etc. Sin estructura de aprendizaje.",
+                    sessions: "Por defecto defines cada sesión del evento manualmente.",
+                    recurring: "También puedes activar horario recurrente si el evento se repite en días y hora fijos (p. ej. feria mensual), y materializar las sesiones desde el calendario.",
+                  },
+                };
+                const info = typeInfo[form.type];
+                if (!info) return null;
+                return (
+                  <div className={`flex gap-3 rounded-lg border p-3 text-sm ${info.color}`}>
+                    <Info className="h-4 w-4 mt-0.5 shrink-0 opacity-70" />
+                    <div className="space-y-1.5">
+                      <p className="font-medium">{info.title}</p>
+                      <p className="opacity-80">{info.desc}</p>
+                      <p className="opacity-70 text-xs">📅 {info.sessions}</p>
+                      <p className="opacity-70 text-xs">🔁 {info.recurring}</p>
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 
