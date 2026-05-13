@@ -160,9 +160,14 @@ export default function AdminTalleresPage() {
                         <Eye className="h-3.5 w-3.5 mr-1" /> Ver
                       </Link>
                     </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/dashboard/talleres/${w.id}/editar`}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                      </Link>
+                    </Button>
                     <Button size="sm" asChild>
                       <Link href={`/admin/talleres/${w.id}`}>
-                        <Pencil className="h-3.5 w-3.5 mr-1" /> Revisar
+                        Revisar
                       </Link>
                     </Button>
                   </div>

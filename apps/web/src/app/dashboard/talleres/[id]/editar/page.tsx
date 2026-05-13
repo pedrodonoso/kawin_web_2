@@ -19,8 +19,10 @@ import {
 } from "@/components/ui/select";
 import { api, adminApi, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
 import { ApprovalStatus, Modality, WorkshopStatus, WorkshopStatusLabel, WorkshopType } from "@/lib/constants";
-import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send } from "lucide-react";
+import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send, Repeat } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { LocationPicker } from "@/components/map/LocationPicker";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import Link from "next/link";
 
 interface SessionDraft {
@@ -108,6 +110,8 @@ export default function EditarTallerPage() {
   const [newScheduleDraft, setNewScheduleDraft] = useState<ScheduleDraft | null>(null);
   // Which existing schedule is being edited (change flow)
   const [changeForm, setChangeForm] = useState<ChangeForm | null>(null);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
 
   // Snapshot de los campos "sensibles" al cargar — para detectar si requieren revisión
   const originalRef = useRef({ title: "", description: "", modality: "" });
@@ -121,9 +125,11 @@ export default function EditarTallerPage() {
     currency: "CLP",
     capacity: "",
     location: "",
+    address: "",
     lat: "",
     lng: "",
     online_url: "",
+    notes: "",
     category_id: "",
     status: "draft",
   });
@@ -136,9 +142,14 @@ export default function EditarTallerPage() {
     }
     if (!id) return;
 
+    const user = JSON.parse(raw);
+    const isAdmin = user?.role === "admin";
+
     Promise.all([
       api.getList<Category>("/api/v1/categories"),
-      api.get<ApiResponse<Workshop>>(`/api/v1/my-workshops/${id}`),
+      isAdmin
+        ? adminApi.getWorkshop(id)
+        : api.get<ApiResponse<Workshop>>(`/api/v1/my-workshops/${id}`),
     ])
       .then(([cats, res]) => {
         setCategories(cats);
@@ -151,18 +162,21 @@ export default function EditarTallerPage() {
           description: w.description ?? "",
           modality:    w.modality,
         };
+        setIsPaid(w.price > 0);
         setFormState({
           title: w.title,
           description: w.description ?? "",
           type: w.type,
           modality: w.modality,
-          price: String(w.price),
+          price: w.price > 0 ? String(w.price) : "",
           currency: w.currency,
           capacity: w.capacity != null ? String(w.capacity) : "",
           location: w.location ?? "",
+          address: w.address ?? "",
           lat: w.lat != null ? String(w.lat) : "",
           lng: w.lng != null ? String(w.lng) : "",
           online_url: w.online_url ?? "",
+          notes: w.notes ?? "",
           category_id: w.category_id ?? "",
           status: w.status,
         });
@@ -175,11 +189,16 @@ export default function EditarTallerPage() {
           }))
         );
 
-        // Load schedules for class type
-        if (w.type === WorkshopType.CLASS) {
+        // Load schedules for class (always) or workshop (may be recurring)
+        if (w.type === WorkshopType.CLASS || w.type === WorkshopType.WORKSHOP) {
           return api
             .getList<Schedule>(`/api/v1/workshops/${id}/schedules`)
-            .then((scheds) => setExistingSchedules(scheds))
+            .then((scheds) => {
+              setExistingSchedules(scheds);
+              if (w.type === WorkshopType.WORKSHOP && scheds.length > 0) {
+                setIsRecurring(true);
+              }
+            })
             .catch(() => {});
         }
       })
@@ -306,7 +325,8 @@ export default function EditarTallerPage() {
   }
 
   async function save(status: string) {
-    if (Number(form.price) > 9_999_999) {
+    const effectivePrice = isPaid ? Number(form.price) : 0;
+    if (effectivePrice > 9_999_999) {
       toast.error("El precio no puede superar 9.999.999");
       return;
     }
@@ -316,13 +336,14 @@ export default function EditarTallerPage() {
         lat: form.lat !== "" ? Number(form.lat) : null,
         lng: form.lng !== "" ? Number(form.lng) : null,
       };
+      const sendSessions = form.type !== WorkshopType.CLASS && !isRecurring;
       await api.put(`/api/v1/workshops/${id}`, {
         ...form,
         ...coordPayload,
         status,
-        price: Number(form.price),
+        price: effectivePrice,
         capacity: form.capacity ? Number(form.capacity) : undefined,
-        sessions: form.type !== WorkshopType.CLASS ? sessions : undefined,
+        sessions: sendSessions ? sessions : undefined,
       });
       toast.success("Cambios guardados");
       router.push("/dashboard");
@@ -334,7 +355,8 @@ export default function EditarTallerPage() {
   }
 
   async function saveAndSubmit() {
-    if (Number(form.price) > 9_999_999) {
+    const effectivePrice2 = isPaid ? Number(form.price) : 0;
+    if (effectivePrice2 > 9_999_999) {
       toast.error("El precio no puede superar 9.999.999");
       return;
     }
@@ -344,13 +366,14 @@ export default function EditarTallerPage() {
         lat: form.lat !== "" ? Number(form.lat) : null,
         lng: form.lng !== "" ? Number(form.lng) : null,
       };
+      const sendSessions2 = form.type !== WorkshopType.CLASS && !isRecurring;
       await api.put(`/api/v1/workshops/${id}`, {
         ...form,
         ...coordPayload,
         status: form.status,
-        price: Number(form.price),
+        price: effectivePrice2,
         capacity: form.capacity ? Number(form.capacity) : undefined,
-        sessions: form.type !== WorkshopType.CLASS ? sessions : undefined,
+        sessions: sendSessions2 ? sessions : undefined,
       });
 
       // Para talleres en borrador también hay que llamar submit-review.
@@ -514,6 +537,24 @@ export default function EditarTallerPage() {
             </CardContent>
           </Card>
 
+          {/* Notas del taller */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Notas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label>Notas del taller (opcional)</Label>
+                <RichTextEditor
+                  key={`workshop-notes-${loading}`}
+                  value={form.notes}
+                  onChange={(html) => setField("notes", html)}
+                  placeholder="Información adicional para los participantes: qué traer, requisitos, instrucciones especiales..."
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Modalidad y lugar */}
           <Card>
             <CardHeader>
@@ -542,13 +583,25 @@ export default function EditarTallerPage() {
               </div>
 
               {form.modality !== Modality.ONLINE && (
-                <LocationPicker
-                  location={form.location}
-                  lat={form.lat}
-                  lng={form.lng}
-                  onLocationChange={(v) => setField("location", v)}
-                  onCoordsChange={(lat, lng) => setFormState((f) => ({ ...f, lat, lng }))}
-                />
+                <>
+                  <LocationPicker
+                    location={form.location}
+                    lat={form.lat}
+                    lng={form.lng}
+                    onLocationChange={(v) => setField("location", v)}
+                    onCoordsChange={(lat, lng) => setFormState((f) => ({ ...f, lat, lng }))}
+                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Indicaciones adicionales</Label>
+                    <Input
+                      id="address"
+                      placeholder="Ej: Piso 3, al lado de Walmart, tocar timbre 4B..."
+                      value={form.address}
+                      onChange={(e) => setField("address", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground/70">Instrucciones para llegar o encontrar el lugar.</p>
+                  </div>
+                </>
               )}
               {(form.modality === Modality.ONLINE || form.modality === Modality.HYBRID) && (
                 <div className="space-y-2">
@@ -575,7 +628,24 @@ export default function EditarTallerPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Taller de pago</p>
+                  <p className="text-xs text-muted-foreground/70">
+                    {bookingsCount > 0 ? "No modificable con reservas activas" : "Por defecto el taller es gratuito"}
+                  </p>
+                </div>
+                <Switch
+                  checked={isPaid}
+                  disabled={bookingsCount > 0}
+                  onCheckedChange={(v) => {
+                    setIsPaid(v);
+                    if (!v) setField("price", "");
+                  }}
+                />
+              </div>
+
+              {isPaid && (
                 <div className="space-y-2">
                   <Label htmlFor="price">Precio *</Label>
                   <div className="flex gap-2">
@@ -597,40 +667,60 @@ export default function EditarTallerPage() {
                     <Input
                       id="price"
                       type="number"
-                      min="0"
+                      min="1"
                       max="9999999"
-                      placeholder="0"
+                      placeholder="Ej: 15000"
                       value={form.price}
                       onChange={(e) => setField("price", e.target.value)}
                       disabled={bookingsCount > 0}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground/70">
-                    {bookingsCount > 0 ? "No modificable con reservas activas" : "Ingresa 0 para talleres gratuitos"}
-                  </p>
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="capacity">Cupos máximos</Label>
-                  <Input
-                    id="capacity"
-                    type="number"
-                    min="1"
-                    placeholder="Sin límite"
-                    value={form.capacity}
-                    onChange={(e) => setField("capacity", e.target.value)}
-                    disabled={bookingsCount > 0}
-                  />
-                  {bookingsCount > 0 && (
-                    <p className="text-xs text-muted-foreground/70">No modificable con reservas activas</p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="capacity">Cupos máximos</Label>
+                <Input
+                  id="capacity"
+                  type="number"
+                  min="1"
+                  placeholder="Sin límite"
+                  value={form.capacity}
+                  onChange={(e) => setField("capacity", e.target.value)}
+                  disabled={bookingsCount > 0}
+                />
+                {bookingsCount > 0 && (
+                  <p className="text-xs text-muted-foreground/70">No modificable con reservas activas</p>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Horario recurrente (solo clases) */}
-          {form.type === WorkshopType.CLASS && (
+          {/* Toggle horario recurrente — solo para tipos no-class */}
+          {form.type !== WorkshopType.CLASS && (
+            <Card>
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Repeat className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Horario recurrente</p>
+                      <p className="text-xs text-muted-foreground/70">
+                        Configura días y horarios fijos en vez de fechas individuales
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={isRecurring}
+                    onCheckedChange={setIsRecurring}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Horario recurrente (clases siempre, o cuando isRecurring activo) */}
+          {(form.type === WorkshopType.CLASS || isRecurring) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Reglas de horario</CardTitle>
@@ -949,8 +1039,8 @@ export default function EditarTallerPage() {
             </Card>
           )}
 
-          {/* Sesiones (non-class types) */}
-          {form.type !== WorkshopType.CLASS && (
+          {/* Sesiones (tipos no-class sin horario recurrente) */}
+          {form.type !== WorkshopType.CLASS && !isRecurring && (
             <Card className={bookingsCount > 0 ? "opacity-60" : ""}>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -1006,12 +1096,15 @@ export default function EditarTallerPage() {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Notas (opcional)</Label>
-                        <Input
-                          placeholder="Ej: Materiales incluidos"
-                          value={s.notes}
-                          onChange={(e) => updateSession(i, "notes", e.target.value)}
-                          disabled={bookingsCount > 0}
-                        />
+                        {bookingsCount > 0 ? (
+                          <Input value={s.notes} disabled />
+                        ) : (
+                          <RichTextEditor
+                            value={s.notes}
+                            onChange={(html) => updateSession(i, "notes", html)}
+                            placeholder="Ej: Materiales incluidos"
+                          />
+                        )}
                       </div>
                     </div>
                   ))

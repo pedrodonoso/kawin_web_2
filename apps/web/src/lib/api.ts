@@ -57,9 +57,11 @@ export interface Workshop {
   currency: string;
   capacity?: number;
   location?: string;
+  address?: string;
   lat?: number | null;
   lng?: number | null;
   online_url?: string;
+  notes?: string;
   cover_image_url?: string;
   status: "draft" | "published" | "archived";
   approval_status?: "not_submitted" | "pending_review" | "approved" | "changes_requested";
@@ -293,6 +295,8 @@ export const adminApi = {
     api
       .get<{ data: AdminWorkshop[] }>(`/api/v1/admin/workshops${status ? `?status=${status}` : ""}`)
       .then((r) => r.data),
+  getWorkshop: (id: string) =>
+    api.get<ApiResponse<Workshop>>(`/api/v1/admin/workshops/${id}`),
   updateWorkshop: (id: string, body: Partial<AdminWorkshop>) =>
     api.put<{ data: { id: string } }>(`/api/v1/admin/workshops/${id}`, body),
   reviewWorkshop: (id: string, action: "approve" | "send_observations", observations?: string) =>

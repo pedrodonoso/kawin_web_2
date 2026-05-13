@@ -82,6 +82,73 @@ class AdminController extends Controller
         return response()->json(['data' => $rows]);
     }
 
+    // GET /api/v1/admin/workshops/:id
+    public function getWorkshop(Request $request, string $id): JsonResponse
+    {
+        $w = DB::selectOne(
+            "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
+                    w.type, w.modality, w.price, w.currency,
+                    w.capacity, COALESCE(w.location,'') as location,
+                    COALESCE(w.address,'') as address,
+                    w.lat, w.lng,
+                    COALESCE(w.online_url,'') as online_url,
+                    COALESCE(w.cover_image_url,'') as cover_image_url,
+                    w.status, w.approval_status,
+                    COALESCE(w.admin_observations,'') as admin_observations,
+                    COALESCE(w.created_at::text,'') as created_at,
+                    COALESCE(c.id::text,'') as category_id,
+                    COALESCE(c.name,'') as category_name,
+                    COALESCE(c.slug,'') as category_slug,
+                    COALESCE(p.name,'') as instructor_name,
+                    COALESCE(p.bio,'') as instructor_bio
+             FROM workshops w
+             LEFT JOIN categories c ON c.id = w.category_id
+             LEFT JOIN profiles p ON p.user_id = w.instructor_id
+             WHERE w.id = ? AND w.status != ?",
+            [$id, \App\Constants\WorkshopStatus::ARCHIVED]
+        );
+
+        if (!$w) {
+            return response()->json(['message' => 'Taller no encontrado'], 404);
+        }
+
+        if ($w->type === \App\Constants\WorkshopType::CLASS_TYPE) {
+            $rows = DB::select(
+                "SELECT id, workshop_id,
+                        array_to_string(days_of_week, ',') as days_of_week,
+                        time_start::text as time_start, duration_min,
+                        valid_from::text as valid_from, valid_until::text as valid_until,
+                        created_at::text as created_at
+                 FROM schedules
+                 WHERE workshop_id = ?
+                   AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
+                 ORDER BY valid_from, time_start",
+                [$w->id]
+            );
+            foreach ($rows as $r) {
+                $r->days_of_week = array_map('intval', array_filter(explode(',', $r->days_of_week ?? ''), fn($v) => $v !== ''));
+            }
+            $w->schedules = $rows;
+            $w->sessions  = [];
+        } else {
+            $w->schedules = [];
+            $w->sessions  = DB::select(
+                "SELECT id, starts_at::text as starts_at, ends_at::text as ends_at,
+                        COALESCE(notes,'') as notes
+                 FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL ORDER BY starts_at",
+                [$w->id]
+            );
+        }
+
+        $bc = DB::selectOne(
+            "SELECT COUNT(*) as cnt FROM bookings WHERE workshop_id = ? AND status = ?",
+            [$w->id, \App\Constants\BookingStatus::CONFIRMED]
+        );
+        $w->bookings_count = (int)($bc->cnt ?? 0);
+
+        return response()->json(['data' => $w]);
+    }
+
     // POST /api/v1/admin/workshops/:id/review
     public function review(Request $request, string $id): JsonResponse
     {
