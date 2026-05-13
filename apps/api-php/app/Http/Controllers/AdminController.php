@@ -92,6 +92,7 @@ class AdminController extends Controller
                     COALESCE(w.address,'') as address,
                     w.lat, w.lng,
                     COALESCE(w.online_url,'') as online_url,
+                    COALESCE(w.notes,'') as notes,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, w.approval_status,
                     COALESCE(w.admin_observations,'') as admin_observations,
@@ -235,6 +236,7 @@ class AdminController extends Controller
             'lat'         => $lat,
             'lng'         => $lng,
             'online_url'  => $request->input('online_url', ''),
+            'notes'       => $request->input('notes', '') ?: null,
             'category_id' => $catID,
         ]);
         $workshop->notifyContext = ['action' => 'admin_update', 'was_published' => $wasPublished];

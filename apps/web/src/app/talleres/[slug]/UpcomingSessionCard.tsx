@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Globe } from "lucide-react";
 import { type Session } from "@/lib/api";
+import { RichTextDisplay } from "@/components/ui/rich-text-display";
 
 import dynamic from 'next/dynamic'
 
@@ -50,7 +51,9 @@ export function UpcomingSessionCard({ session }: Props) {
             <SessionTime isoStrStart={session.starts_at} isoStrEnd={session.ends_at} />
           </div>
           {session.notes && (
-            <p className="text-xs text-muted-foreground/70 mt-1">{session.notes}</p>
+            <div className="mt-1 text-muted-foreground/70">
+              <RichTextDisplay html={session.notes} className="text-xs" />
+            </div>
           )}
         </div>
       </div>

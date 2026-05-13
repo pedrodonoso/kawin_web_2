@@ -13,6 +13,7 @@ import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
 import { MiniMapWrapper } from "./MiniMapWrapper";
 import { DescriptionSection } from "./DescriptionSection";
 import { ShareButtons } from "./ShareButtons";
+import { RichTextDisplay } from "@/components/ui/rich-text-display";
 import Link from "next/link";
 
 const DAYS_ES: Record<number, string> = {
@@ -134,6 +135,16 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           {/* Description */}
           <DescriptionSection description={workshop.description ?? ""} />
 
+          {/* Notas del taller */}
+          {workshop.notes && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">Notas</h2>
+              <div className="p-4 border rounded-lg bg-accent/10 border-accent/30">
+                <RichTextDisplay html={workshop.notes} />
+              </div>
+            </div>
+          )}
+
           {/* Schedule (recurring classes) */}
           {workshop.schedule && (
             <div className="space-y-3">
@@ -200,10 +211,9 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                         {formatTime(s.starts_at, s.ends_at)}
                       </p>
                       {s.notes && (
-                        <p className="text-xs text-muted-foreground/70 mt-1 flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                          {s.notes}
-                        </p>
+                        <div className="mt-1 text-xs text-muted-foreground/70">
+                          <RichTextDisplay html={s.notes} className="text-xs" />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -217,6 +227,12 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             <div className="space-y-3">
               <h2 className="text-xl font-semibold">Ubicación</h2>
               <MiniMapWrapper lat={workshop.lat} lng={workshop.lng} label={workshop.location} />
+              {workshop.address && (
+                <p className="text-sm text-muted-foreground flex items-start gap-2">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                  {workshop.address}
+                </p>
+              )}
             </div>
           )}
 

@@ -19,7 +19,9 @@ import {
 import { api, adminApi, type Category } from "@/lib/api";
 import { Modality, WorkshopType } from "@/lib/constants";
 import { LocationPicker } from "@/components/map/LocationPicker";
-import { ArrowLeft, Plus, Send, X } from "lucide-react";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { ArrowLeft, Plus, Send, X, Repeat } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 
 interface SessionDraft {
@@ -58,6 +60,8 @@ export default function NuevoTallerPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
   const [schedules, setSchedules] = useState<ScheduleDraft[]>([emptySchedule()]);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -68,9 +72,11 @@ export default function NuevoTallerPage() {
     currency: "CLP",
     capacity: "",
     location: "",
+    address: "",
     lat: "",
     lng: "",
     online_url: "",
+    notes: "",
     category_id: "",
     status: "draft",
   });
@@ -135,7 +141,8 @@ export default function NuevoTallerPage() {
     setLoading(true);
     const mode = submitModeRef.current;
     try {
-      if (Number(form.price) > 9_999_999) {
+      const effectivePrice = isPaid ? Number(form.price) : 0;
+      if (effectivePrice > 9_999_999) {
         toast.error("El precio no puede superar 9.999.999");
         setLoading(false);
         return;
@@ -148,12 +155,14 @@ export default function NuevoTallerPage() {
         lng: form.lng !== "" ? Number(form.lng) : null,
       };
 
-      if (form.type === WorkshopType.CLASS) {
+      const usesSchedules = form.type === WorkshopType.CLASS || isRecurring;
+
+      if (usesSchedules) {
         const res = await api.post<{ data: { id: string } }>("/api/v1/workshops", {
           ...form,
           ...coordPayload,
           status: "draft",
-          price: Number(form.price),
+          price: effectivePrice,
           capacity: form.capacity ? Number(form.capacity) : undefined,
         });
         workshopId = res?.data?.id;
@@ -175,7 +184,7 @@ export default function NuevoTallerPage() {
           ...form,
           ...coordPayload,
           status: "draft",
-          price: Number(form.price),
+          price: effectivePrice,
           capacity: form.capacity ? Number(form.capacity) : undefined,
           sessions,
         });
@@ -279,6 +288,23 @@ export default function NuevoTallerPage() {
             </CardContent>
           </Card>
 
+          {/* Notas del taller */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Notas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label>Notas del taller (opcional)</Label>
+                <RichTextEditor
+                  value={form.notes}
+                  onChange={(html) => set("notes", html)}
+                  placeholder="Información adicional para los participantes: qué traer, requisitos, instrucciones especiales..."
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Modalidad y lugar */}
           <Card>
             <CardHeader>
@@ -307,13 +333,25 @@ export default function NuevoTallerPage() {
               </div>
 
               {form.modality !== Modality.ONLINE && (
-                <LocationPicker
-                  location={form.location}
-                  lat={form.lat}
-                  lng={form.lng}
-                  onLocationChange={(v) => set("location", v)}
-                  onCoordsChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
-                />
+                <>
+                  <LocationPicker
+                    location={form.location}
+                    lat={form.lat}
+                    lng={form.lng}
+                    onLocationChange={(v) => set("location", v)}
+                    onCoordsChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Indicaciones adicionales</Label>
+                    <Input
+                      id="address"
+                      placeholder="Ej: Piso 3, al lado de Walmart, tocar timbre 4B..."
+                      value={form.address}
+                      onChange={(e) => set("address", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground/70">Instrucciones para llegar o encontrar el lugar.</p>
+                  </div>
+                </>
               )}
               {(form.modality === Modality.ONLINE || form.modality === Modality.HYBRID) && (
                 <div className="space-y-2">
@@ -337,7 +375,21 @@ export default function NuevoTallerPage() {
               <CardTitle className="text-base">Precio y cupos</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Taller de pago</p>
+                  <p className="text-xs text-muted-foreground/70">Por defecto el taller es gratuito</p>
+                </div>
+                <Switch
+                  checked={isPaid}
+                  onCheckedChange={(v) => {
+                    setIsPaid(v);
+                    if (!v) set("price", "");
+                  }}
+                />
+              </div>
+
+              {isPaid && (
                 <div className="space-y-2">
                   <Label htmlFor="price">Precio *</Label>
                   <div className="flex gap-2">
@@ -355,34 +407,56 @@ export default function NuevoTallerPage() {
                     <Input
                       id="price"
                       type="number"
-                      min="0"
+                      min="1"
                       max="9999999"
-                      placeholder="0"
+                      placeholder="Ej: 15000"
                       required
                       value={form.price}
                       onChange={(e) => set("price", e.target.value)}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground/70">Ingresa 0 para talleres gratuitos</p>
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="capacity">Cupos máximos</Label>
-                  <Input
-                    id="capacity"
-                    type="number"
-                    min="1"
-                    placeholder="Sin límite"
-                    value={form.capacity}
-                    onChange={(e) => set("capacity", e.target.value)}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="capacity">Cupos máximos</Label>
+                <Input
+                  id="capacity"
+                  type="number"
+                  min="1"
+                  placeholder="Sin límite"
+                  value={form.capacity}
+                  onChange={(e) => set("capacity", e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Schedule editor — only for type === "class" */}
-          {form.type === WorkshopType.CLASS && (
+          {/* Toggle horario recurrente — solo para tipos no-class */}
+          {form.type !== WorkshopType.CLASS && (
+            <Card>
+              <CardContent className="pt-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Repeat className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Horario recurrente</p>
+                      <p className="text-xs text-muted-foreground/70">
+                        Configura días y horarios fijos en vez de fechas individuales
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={isRecurring}
+                    onCheckedChange={setIsRecurring}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Schedule editor — para class (siempre) o cuando isRecurring está activo */}
+          {(form.type === WorkshopType.CLASS || isRecurring) && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Horario recurrente</CardTitle>
@@ -479,8 +553,8 @@ export default function NuevoTallerPage() {
             </Card>
           )}
 
-          {/* Manual sessions editor — for non-class types */}
-          {form.type !== WorkshopType.CLASS && (
+          {/* Manual sessions editor — tipos no-class sin horario recurrente */}
+          {form.type !== WorkshopType.CLASS && !isRecurring && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Sesiones</CardTitle>
@@ -525,10 +599,10 @@ export default function NuevoTallerPage() {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Notas (opcional)</Label>
-                        <Input
-                          placeholder="Ej: Materiales incluidos"
+                        <RichTextEditor
                           value={s.notes}
-                          onChange={(e) => updateSession(i, "notes", e.target.value)}
+                          onChange={(html) => updateSession(i, "notes", html)}
+                          placeholder="Ej: Materiales incluidos"
                         />
                       </div>
                     </div>

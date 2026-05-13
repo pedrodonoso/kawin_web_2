@@ -24,8 +24,10 @@ class WorkshopWriteController extends Controller
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
                     w.type, w.modality, w.price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
+                    COALESCE(w.address,'') as address,
                     w.lat, w.lng,
                     COALESCE(w.online_url,'') as online_url,
+                    COALESCE(w.notes,'') as notes,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, w.approval_status,
                     COALESCE(w.admin_observations,'') as admin_observations,
@@ -56,8 +58,10 @@ class WorkshopWriteController extends Controller
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
                     w.type, w.modality, w.price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
+                    COALESCE(w.address,'') as address,
                     w.lat, w.lng,
                     COALESCE(w.online_url,'') as online_url,
+                    COALESCE(w.notes,'') as notes,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, w.approval_status,
                     COALESCE(w.admin_observations,'') as admin_observations,
@@ -138,8 +142,8 @@ class WorkshopWriteController extends Controller
         $row = DB::selectOne(
             "INSERT INTO workshops
                 (instructor_id, category_id, title, slug, description, type, modality,
-                 price, currency, capacity, location, lat, lng, online_url, status, approval_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 price, currency, capacity, location, address, lat, lng, online_url, notes, status, approval_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING id",
             [
                 $userID,
@@ -153,9 +157,11 @@ class WorkshopWriteController extends Controller
                 $currency,
                 $request->input('capacity'),
                 $request->input('location', ''),
+                $request->input('address', '') ?: null,
                 $request->input('lat') !== null ? (float)$request->input('lat') : null,
                 $request->input('lng') !== null ? (float)$request->input('lng') : null,
                 $request->input('online_url', ''),
+                $request->input('notes', '') ?: null,
                 $initialStatus,
                 $initialApproval,
             ]
@@ -192,7 +198,11 @@ class WorkshopWriteController extends Controller
             'modality' => 'required|string',
         ]);
 
-        $workshop = Workshop::where('id', $id)->where('instructor_id', $userID)->first();
+        $query = Workshop::where('id', $id);
+        if (!$isAdmin) {
+            $query->where('instructor_id', $userID);
+        }
+        $workshop = $query->first();
         if (!$workshop) {
             return response()->json(['message' => 'Taller no encontrado o sin permisos'], 404);
         }
@@ -258,9 +268,11 @@ class WorkshopWriteController extends Controller
                 'currency'        => $currency,
                 'capacity'        => $capacity,
                 'location'        => $request->input('location', ''),
+                'address'         => $request->input('address', '') ?: null,
                 'lat'             => $newLat,
                 'lng'             => $newLng,
                 'online_url'      => $request->input('online_url', ''),
+                'notes'           => $request->input('notes', '') ?: null,
                 'category_id'     => $catID,
                 'pending_changes' => $proposed,
                 'approval_status' => ApprovalStatus::PENDING_REVIEW,
@@ -275,9 +287,11 @@ class WorkshopWriteController extends Controller
                 'currency'    => $currency,
                 'capacity'    => $capacity,
                 'location'    => $request->input('location', ''),
+                'address'     => $request->input('address', '') ?: null,
                 'lat'         => $newLat,
                 'lng'         => $newLng,
                 'online_url'  => $request->input('online_url', ''),
+                'notes'       => $request->input('notes', '') ?: null,
                 'category_id' => $catID,
                 'status'      => $newStatus,
             ]);
