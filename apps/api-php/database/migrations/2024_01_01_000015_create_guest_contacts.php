@@ -41,20 +41,28 @@ class CreateGuestContacts extends Migration
                     REFERENCES guest_contacts(id) ON DELETE SET NULL
         ");
 
-        DB::statement("
-            ALTER TABLE routes
-                ADD COLUMN IF NOT EXISTS guest_contact_id UUID
-                    REFERENCES guest_contacts(id) ON DELETE SET NULL
+        // routes table may not exist in all environments
+        $routesExist = DB::selectOne("
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'routes'
         ");
+
+        if ($routesExist) {
+            DB::statement("
+                ALTER TABLE routes
+                    ADD COLUMN IF NOT EXISTS guest_contact_id UUID
+                        REFERENCES guest_contacts(id) ON DELETE SET NULL
+            ");
+
+            DB::statement("
+                CREATE INDEX IF NOT EXISTS idx_routes_guest_contact
+                ON routes(guest_contact_id) WHERE guest_contact_id IS NOT NULL
+            ");
+        }
 
         DB::statement("
             CREATE INDEX IF NOT EXISTS idx_workshops_guest_contact
             ON workshops(guest_contact_id) WHERE guest_contact_id IS NOT NULL
-        ");
-
-        DB::statement("
-            CREATE INDEX IF NOT EXISTS idx_routes_guest_contact
-            ON routes(guest_contact_id) WHERE guest_contact_id IS NOT NULL
         ");
     }
 
