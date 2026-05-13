@@ -41,7 +41,7 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
   useEffect(() => {
     if (!editor || initialized.current) return;
     if (value) {
-      editor.commands.setContent(value, false);
+      editor.commands.setContent(value, { emitUpdate: false });
       initialized.current = true;
     }
   }, [value, editor]);
