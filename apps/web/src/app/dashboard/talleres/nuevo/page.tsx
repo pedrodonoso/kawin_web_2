@@ -663,14 +663,24 @@ export default function NuevoTallerPage() {
           {/* Actions */}
           <div className="flex justify-end gap-3">
             {isAdmin ? (
-              <Button
-                type="submit"
-                disabled={loading}
-                onClick={() => { submitModeRef.current = "publish"; }}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {loading ? "Publicando..." : "Publicar"}
-              </Button>
+              <>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={() => { submitModeRef.current = "draft"; }}
+                >
+                  Guardar borrador
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  onClick={() => { submitModeRef.current = "publish"; }}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {loading ? "Publicando..." : "Publicar"}
+                </Button>
+              </>
             ) : (
               <>
                 <Button
