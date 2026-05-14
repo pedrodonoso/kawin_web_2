@@ -34,7 +34,7 @@ function formatScheduleRule(sch: Schedule): string {
       ? dayNames[0]
       : dayNames.slice(0, -1).join(", ") + " y " + dayNames[dayNames.length - 1];
   const time = sch.time_start.slice(0, 5); // "HH:MM"
-  return `Clases los ${daysStr} a las ${time} (${sch.duration_min} min)`;
+  return `${daysStr.charAt(0).toUpperCase() + daysStr.slice(1)} a las ${time} (${sch.duration_min} min)`;
 }
 
 async function getWorkshop(slug: string): Promise<Workshop | null> {
@@ -157,7 +157,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           )}
 
           {/* Schedules como reglas de recurrencia — solo informativo */}
-          {workshop.type === WorkshopType.CLASS && workshop.schedules && workshop.schedules.length > 0 && (
+          {workshop.schedules && workshop.schedules.length > 0 && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold">Horario</h2>
               <div className="space-y-2">

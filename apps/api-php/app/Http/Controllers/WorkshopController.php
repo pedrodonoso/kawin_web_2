@@ -144,7 +144,7 @@ class WorkshopController extends Controller
                  FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL ORDER BY starts_at",
                 [$w->id]
             );
-            $w->schedules = [];
+            $w->schedules = $this->loadScheduleRows($w->id);
         }
 
         // Active discounts (workshop-wide and session-specific)
