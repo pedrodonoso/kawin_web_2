@@ -98,6 +98,7 @@ export default function EditarTallerPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [bookingsCount, setBookingsCount] = useState(0);
   const [adminObservations, setAdminObservations] = useState<string | null>(null);
   const [approvalStatus, setApprovalStatus] = useState<string>("not_submitted");
@@ -144,6 +145,7 @@ export default function EditarTallerPage() {
 
     const user = JSON.parse(raw);
     const isAdmin = user?.role === "admin";
+    setIsAdmin(isAdmin);
 
     Promise.all([
       api.getList<Category>("/api/v1/categories"),
@@ -1160,26 +1162,38 @@ export default function EditarTallerPage() {
                       {saving ? "Restaurando..." : "Restaurar taller"}
                     </Button>
                   ) : isPublished && !hasObservations ? (
-                    needsReview ? (
-                      // Cambió título/descripción/modalidad → solo revisión
-                      <Button
-                        type="button"
-                        disabled={saving}
-                        onClick={saveAndSubmit}
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        {saving ? "Enviando..." : "Guardar y enviar a revisión"}
-                      </Button>
-                    ) : (
-                      // Solo cambios menores → guardar directo
-                      <Button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => save("published")}
-                      >
-                        {saving ? "Guardando..." : "Guardar cambios"}
-                      </Button>
-                    )
+                    <>
+                      {isAdmin && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={saving}
+                          onClick={() => save("draft")}
+                        >
+                          {saving ? "Guardando..." : "Pasar a borrador"}
+                        </Button>
+                      )}
+                      {needsReview ? (
+                        // Cambió título/descripción/modalidad → solo revisión
+                        <Button
+                          type="button"
+                          disabled={saving}
+                          onClick={saveAndSubmit}
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          {saving ? "Enviando..." : "Guardar y enviar a revisión"}
+                        </Button>
+                      ) : (
+                        // Solo cambios menores → guardar directo
+                        <Button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => save("published")}
+                        >
+                          {saving ? "Guardando..." : "Guardar cambios"}
+                        </Button>
+                      )}
+                    </>
                   ) : (
                     // Borrador u observaciones pendientes → flujo de revisión
                     <>

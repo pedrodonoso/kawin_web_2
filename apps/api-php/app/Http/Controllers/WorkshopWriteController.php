@@ -136,8 +136,11 @@ class WorkshopWriteController extends Controller
         $catID = $request->input('category_id') ?: null;
 
         $isAdmin         = $this->userRole($request) === UserRole::ADMIN;
-        $initialStatus   = $isAdmin ? WorkshopStatus::PUBLISHED : WorkshopStatus::DRAFT;
-        $initialApproval = $isAdmin ? ApprovalStatus::APPROVED : ApprovalStatus::NOT_SUBMITTED;
+        $requestedStatus = $request->input('status', WorkshopStatus::DRAFT);
+        $initialStatus   = $isAdmin ? $requestedStatus : WorkshopStatus::DRAFT;
+        $initialApproval = ($isAdmin && $initialStatus === WorkshopStatus::PUBLISHED)
+            ? ApprovalStatus::APPROVED
+            : ApprovalStatus::NOT_SUBMITTED;
 
         $row = DB::selectOne(
             "INSERT INTO workshops
