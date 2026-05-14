@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { api, adminApi, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
 import { ApprovalStatus, Modality, WorkshopStatus, WorkshopStatusLabel, WorkshopType } from "@/lib/constants";
-import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send, Repeat } from "lucide-react";
+import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send, Repeat, RotateCcw, Archive } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { LocationPicker } from "@/components/map/LocationPicker";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -189,13 +189,13 @@ export default function EditarTallerPage() {
           }))
         );
 
-        // Load schedules for class (always) or workshop (may be recurring)
-        if (w.type === WorkshopType.CLASS || w.type === WorkshopType.WORKSHOP) {
+        // Load schedules for all types (class always uses them; others may use recurring)
+        if (true) {
           return api
             .getList<Schedule>(`/api/v1/workshops/${id}/schedules`)
             .then((scheds) => {
               setExistingSchedules(scheds);
-              if (w.type === WorkshopType.WORKSHOP && scheds.length > 0) {
+              if (w.type !== WorkshopType.CLASS && scheds.length > 0) {
                 setIsRecurring(true);
               }
             })
@@ -450,6 +450,17 @@ export default function EditarTallerPage() {
             <p className="text-sm text-muted-foreground/70 truncate max-w-xs">{form.title}</p>
           </div>
         </div>
+
+        {/* Banner de taller archivado */}
+        {form.status === WorkshopStatus.ARCHIVED && (
+          <div className="flex items-start gap-3 rounded-lg border border-muted bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            <Archive className="h-4 w-4 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-foreground/80 mb-0.5">Taller archivado</p>
+              <p>Este taller no aparece en el catálogo público. Puedes restaurarlo como borrador para volver a publicarlo.</p>
+            </div>
+          </div>
+        )}
 
         {/* Observaciones del admin */}
         {adminObservations && (
@@ -1124,6 +1135,7 @@ export default function EditarTallerPage() {
               </span>
             </p>
             {(() => {
+              const isArchived = form.status === WorkshopStatus.ARCHIVED;
               const isPublished = form.status === WorkshopStatus.PUBLISHED;
               const hasObservations = approvalStatus === ApprovalStatus.CHANGES_REQUESTED;
               const sensitiveChanged =
@@ -1136,7 +1148,18 @@ export default function EditarTallerPage() {
 
               return (
                 <div className="flex gap-3">
-                  {isPublished && !hasObservations ? (
+                  {isArchived ? (
+                    // Archivado → restaurar como borrador
+                    <Button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => save("draft")}
+                      className="bg-green-700 hover:bg-green-800 text-white"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      {saving ? "Restaurando..." : "Restaurar taller"}
+                    </Button>
+                  ) : isPublished && !hasObservations ? (
                     needsReview ? (
                       // Cambió título/descripción/modalidad → solo revisión
                       <Button

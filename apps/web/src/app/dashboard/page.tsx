@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, UserCircle, AlertCircle, Clock, BarChart2, CalendarCheck } from "lucide-react";
+import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, RotateCcw, UserCircle, AlertCircle, Clock, BarChart2, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
 import { api, type Workshop, type Profile } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
@@ -121,10 +121,26 @@ export default function DashboardPage() {
     if (!window.confirm(`¿Archivar "${title}"? No aparecerá en los resultados de búsqueda.`)) return;
     try {
       await api.delete(`/api/v1/workshops/${id}`);
-      setWorkshops((ws) => ws.filter((w) => w.id !== id));
+      setWorkshops((ws) => ws.map((w) => w.id === id ? { ...w, status: "archived" as const } : w));
       toast.success("Taller archivado");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al archivar");
+    }
+  }
+
+  async function restoreWorkshop(w: Workshop) {
+    if (!window.confirm(`¿Restaurar "${w.title}"? Quedará como borrador.`)) return;
+    try {
+      await api.put(`/api/v1/workshops/${w.id}`, {
+        title: w.title,
+        type: w.type,
+        modality: w.modality,
+        status: "draft",
+      });
+      setWorkshops((ws) => ws.map((x) => x.id === w.id ? { ...x, status: "draft" as const } : x));
+      toast.success("Taller restaurado como borrador");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al restaurar");
     }
   }
 
@@ -274,7 +290,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex gap-2 shrink-0 flex-wrap">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/talleres/${w.slug}`}>
+                        <Link href={w.status === WorkshopStatus.ARCHIVED ? `/dashboard/talleres/${w.id}/editar` : `/talleres/${w.slug}`}>
                           <Eye className="h-3.5 w-3.5 mr-1" />
                           Ver
                         </Link>
@@ -286,14 +302,26 @@ export default function DashboardPage() {
                           Editar
                         </Link>
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => archiveWorkshop(w.id, w.title)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {w.status === WorkshopStatus.ARCHIVED ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-green-700 border-green-200 hover:bg-green-50"
+                          onClick={() => restoreWorkshop(w)}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                          Restaurar
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => archiveWorkshop(w.id, w.title)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
