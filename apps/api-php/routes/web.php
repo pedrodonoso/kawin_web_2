@@ -26,6 +26,12 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     // Active discounts for a workshop (public — no auth needed)
     $router->get('/workshops/{id}/active-discounts', 'DiscountController@publicDiscounts');
 
+    // Resolve Google Maps short URL → lat/lng (public — no auth needed)
+    $router->get('/resolve-gmaps', 'UtilsController@resolveGmaps');
+
+    // Location search via Photon (proxy — no auth needed)
+    $router->get('/search-location', 'UtilsController@searchLocation');
+
     // -------------------------------------------------------------------------
     // Protected routes (require JWT)
     // -------------------------------------------------------------------------
