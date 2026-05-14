@@ -211,11 +211,15 @@ function WorkshopCard({ w }: { w: Workshop }) {
 
             {/* Price + instructor */}
             <div className="flex items-center justify-between">
-              <span className="font-bold text-sm text-foreground">
-                {w.price === 0
-                  ? "Gratis"
-                  : `$${formatPrice(w.price)} ${w.currency}`}
-              </span>
+              {Number(w.price) === 0 ? (
+                <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                  Gratuito
+                </span>
+              ) : (
+                <span className={`font-bold text-sm text-foreground`}>
+                  {`$${formatPrice(w.price)} ${w.currency}`}
+                </span>
+              )}
               {w.instructor && (
                 w.instructor_id ? (
                   <Link
@@ -277,7 +281,9 @@ function BuscarContent() {
     api
       .getList<Category>("/api/v1/categories")
       .then(setCategories)
-      .catch(() => {});
+      .catch(() => {
+        setCategories([]);
+      });
   }, []);
 
   const fetchWorkshops = useCallback(async () => {
@@ -330,67 +336,65 @@ function BuscarContent() {
 
           {/* Filters + view toggle */}
           <div className="flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-3">
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las categorías</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.slug}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-3">
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.slug}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select value={modality} onValueChange={setModality}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Modalidad" />
-              </SelectTrigger>
-              <SelectContent>
-                {MODALITIES.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select value={modality} onValueChange={setModality}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Modalidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODALITIES.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* List / Map toggle */}
-          <div className="flex items-center gap-1 border rounded-lg p-1 bg-background">
-            <button
-              onClick={() => changeView("list")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                view === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" /> Lista
-            </button>
-            <button
-              onClick={() => changeView("map")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                view === "map" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Map className="h-3.5 w-3.5" /> Mapa
-            </button>
-          </div>
+            {/* List / Map toggle */}
+            <div className="flex items-center gap-1 border rounded-lg p-1 bg-background">
+              <button
+                onClick={() => changeView("list")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${view === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Lista
+              </button>
+              <button
+                onClick={() => changeView("map")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${view === "map" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+              >
+                <Map className="h-3.5 w-3.5" /> Mapa
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -410,11 +414,11 @@ function BuscarContent() {
 
         {/* List view */}
         {view === "list" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => <WorkshopSkeleton key={i} />)
-            : workshops.map((w) => <WorkshopCard key={w.id} w={w} />)}
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading
+              ? Array.from({ length: 6 }).map((_, i) => <WorkshopSkeleton key={i} />)
+              : workshops.map((w) => <WorkshopCard key={w.id} w={w} />)}
+          </div>
         )}
 
         {!loading && !workshops?.length && (

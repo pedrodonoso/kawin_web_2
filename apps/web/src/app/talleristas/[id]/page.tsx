@@ -151,7 +151,7 @@ export default async function TalleristaPage({
               {profile.workshops.map((w) => (
                 <Link key={w.id} href={`/talleres/${w.slug}`}>
                   <Card className="hover:shadow-md transition-shadow h-full">
-                    <div className="h-36 rounded-t-lg bg-secondary flex items-center justify-center overflow-hidden">
+                    <div className="relative h-36 rounded-t-lg bg-secondary flex items-center justify-center overflow-hidden">
                       {w.cover_image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -163,6 +163,11 @@ export default async function TalleristaPage({
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-muted-foreground/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
+                      )}
+                      {Number(w.price) === 0 && (
+                        <span className="absolute top-2 left-2 inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          Gratuito
+                        </span>
                       )}
                     </div>
                     <CardContent className="p-4 space-y-2">
@@ -190,7 +195,7 @@ export default async function TalleristaPage({
                           {w.location.split(",").map(s => s.trim()).find(p => !/^\d+$/.test(p)) ?? w.location.split(",")[0]}
                         </p>
                       )}
-                      <p className="text-sm font-bold pt-1">
+                      <p className={`text-sm font-bold pt-1 ${Number(w.price) === 0 ? "text-emerald-600" : ""}`}>
                         {Number(w.price) === 0
                           ? "Gratis"
                           : `$${formatPrice(Number(w.price))} ${w.currency}`}

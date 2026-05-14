@@ -279,8 +279,8 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-medium leading-tight line-clamp-1 group-hover:text-foreground">{w.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {w.price === 0 ? "Gratis" : `$${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${w.currency}`}
+                    <p className={`text-xs mt-0.5 ${Number(w.price) === 0 ? "text-emerald-600 font-bold" : "text-muted-foreground"}`}>
+                      {Number(w.price) === 0 ? "Gratuito" : `$${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${w.currency}`}
                     </p>
                   </div>
                 </button>
@@ -389,9 +389,16 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
           )}
 
           <div className="flex items-center justify-between pt-1">
-            <span className="text-sm font-bold">
-              {selected.price === 0 ? "Gratis" : `$${Math.round(Number(selected.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${selected.currency}`}
-            </span>
+            
+            {Number(selected.price) > 0 ? (
+              <span className={`text-sm font-bold text-emerald-600`}>
+                {`$${Math.round(Number(selected.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${selected.currency}`}
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                Gratuito
+              </span>
+            )}
             <Link
               href={`/talleres/${selected.slug}`}
               className="text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
