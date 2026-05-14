@@ -1163,16 +1163,14 @@ export default function EditarTallerPage() {
                     </Button>
                   ) : isPublished && !hasObservations ? (
                     <>
-                      {isAdmin && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={saving}
-                          onClick={() => save("draft")}
-                        >
-                          {saving ? "Guardando..." : "Pasar a borrador"}
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() => save("draft")}
+                      >
+                        {saving ? "Guardando..." : "Pasar a borrador"}
+                      </Button>
                       {needsReview ? (
                         // Cambió título/descripción/modalidad → solo revisión
                         <Button
