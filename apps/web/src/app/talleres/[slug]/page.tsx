@@ -184,16 +184,6 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             </div>
           )}
 
-          {/* Estado vacío para clases sin sesiones disponibles */}
-          {workshop.type === WorkshopType.CLASS && (!workshop.sessions || workshop.sessions.length === 0) && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Próximas clases</h2>
-              <div className="p-6 border rounded-lg bg-secondary/50 text-center text-muted-foreground text-sm">
-                Aún no hay clases programadas. Vuelve pronto.
-              </div>
-            </div>
-          )}
-
           {/* Manual sessions — workshop / course / event */}
           {workshop.type !== WorkshopType.CLASS && workshop.sessions && workshop.sessions.length > 0 && (
             <div className="space-y-4">
