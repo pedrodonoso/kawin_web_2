@@ -12,11 +12,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Descargar el JAR de photon desde GitHub Releases
-ARG PHOTON_VERSION=1.0.0
-RUN wget -q \
-    "https://github.com/komoot/photon/releases/download/${PHOTON_VERSION}/photon-${PHOTON_VERSION}.jar" \
-    -O photon.jar && \
-    echo "Photon ${PHOTON_VERSION} descargado."
+# curl -fsSL sigue redirects (necesario para el CDN de GitHub)
+ARG PHOTON_JAR_VERSION=1.1.0
+RUN curl -fsSL \
+    "https://github.com/komoot/photon/releases/download/${PHOTON_JAR_VERSION}/photon-${PHOTON_JAR_VERSION}.jar" \
+    -o photon.jar && \
+    echo "Photon JAR ${PHOTON_JAR_VERSION} descargado."
 
 # Copiar script de arranque
 COPY start.sh .

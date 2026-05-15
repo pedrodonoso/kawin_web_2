@@ -4,7 +4,7 @@ set -e
 # ─── Configuración ────────────────────────────────────────────────────────────
 PORT="${PORT:-2322}"
 DATA_DIR="${DATA_DIR:-/photon/data}"
-PHOTON_VERSION="${PHOTON_VERSION:-1.0}"   # versión del DUMP (major.minor, no el JAR)
+PHOTON_DUMP_VERSION="${PHOTON_DUMP_VERSION:-1.0}"   # versión del DUMP de datos (major.minor)
 JAVA_OPTS="${JAVA_OPTS:--Xmx2G}"
 COUNTRY_CODE="${COUNTRY_CODE:-cl}"        # código ISO para filtrar al importar
 
@@ -22,16 +22,16 @@ mkdir -p "$DATA_DIR"
 if [ -d "$DATA_DIR/photon_data" ]; then
     echo "[photon] Base de datos encontrada — omitiendo descarga."
 else
-    echo "[photon] Buscando datos para Chile (versión ${PHOTON_VERSION})..."
+    echo "[photon] Buscando datos para Chile (versión ${PHOTON_DUMP_VERSION})..."
 
     # Candidatos en orden de preferencia (de más pequeño a más grande)
     declare -a CANDIDATES=(
         # 1. Extract específico de Chile (si existe)
-        "${BASE}/south-america/chile/photon-dump-chile-${PHOTON_VERSION}-latest.jsonl.zst"
+        "${BASE}/south-america/chile/photon-dump-chile-${PHOTON_DUMP_VERSION}-latest.jsonl.zst"
         # 2. Ruta antigua (puede seguir activa)
-        "${BASE}/extracts/by-country-code/${COUNTRY_CODE}/photon-dump-${COUNTRY_CODE}-${PHOTON_VERSION}-latest.jsonl.zst"
+        "${BASE}/extracts/by-country-code/${COUNTRY_CODE}/photon-dump-${COUNTRY_CODE}-${PHOTON_DUMP_VERSION}-latest.jsonl.zst"
         # 3. Dump de todo Sudamérica (más grande, ~1-2 GB, se filtra por país al importar)
-        "${BASE}/south-america/photon-dump-south-america-${PHOTON_VERSION}-latest.jsonl.zst"
+        "${BASE}/south-america/photon-dump-south-america-${PHOTON_DUMP_VERSION}-latest.jsonl.zst"
     )
 
     DUMP_URL=""
@@ -45,7 +45,7 @@ else
     done
 
     if [ -z "$DUMP_URL" ]; then
-        echo "[photon] ERROR: No se encontró ningún dump para Chile con versión ${PHOTON_VERSION}."
+        echo "[photon] ERROR: No se encontró ningún dump para Chile con versión ${PHOTON_DUMP_VERSION}."
         echo "[photon] Verifica las URLs disponibles en: ${BASE}/"
         exit 1
     fi
