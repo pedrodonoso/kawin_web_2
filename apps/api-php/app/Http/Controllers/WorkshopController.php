@@ -67,7 +67,7 @@ class WorkshopController extends Controller
     }
 
     // GET /api/v1/workshops/:id  (accepts UUID or slug)
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         $w = DB::selectOne(
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
@@ -101,6 +101,16 @@ class WorkshopController extends Controller
 
         if (!$w) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
+        }
+
+        if ($w->status === \App\Constants\WorkshopStatus::ARCHIVED) {
+            $userID   = $request->attributes->get('userID');
+            $userRole = $request->attributes->get('userRole', '');
+            $isOwner  = $userID && $userID === $w->instructor_id;
+            $isAdmin  = $userRole === \App\Constants\UserRole::ADMIN;
+            if (!$isOwner && !$isAdmin) {
+                return response()->json(['message' => 'Taller no encontrado'], 404);
+            }
         }
 
         // Booking count

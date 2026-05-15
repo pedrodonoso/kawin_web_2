@@ -32,6 +32,7 @@ export function Navbar() {
   function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    document.cookie = "token=; path=/; max-age=0";
     setUser(null);
     window.location.href = "/";
   }

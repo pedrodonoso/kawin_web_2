@@ -1209,15 +1209,25 @@ export default function EditarTallerPage() {
               return (
                 <div className="flex gap-3">
                   {isArchived ? (
-                    <Button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => save("draft")}
-                      className="bg-green-700 hover:bg-green-800 text-white"
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      {saving ? "Restaurando..." : "Restaurar taller"}
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() => save("archived")}
+                      >
+                        {saving ? "Guardando..." : "Guardar cambios"}
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => save("draft")}
+                        className="bg-green-700 hover:bg-green-800 text-white"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        {saving ? "Restaurando..." : "Restaurar como borrador"}
+                      </Button>
+                    </>
                   ) : isAdmin ? (
                     // Admin: guardar directo sin revisión
                     <>

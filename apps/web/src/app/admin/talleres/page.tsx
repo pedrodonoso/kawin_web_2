@@ -194,15 +194,17 @@ export default function AdminTalleresPage() {
                         <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurar
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => archiveWorkshop(w.id, w.title)}>
-                        <Archive className="h-3.5 w-3.5 mr-1" /> Archivar
-                      </Button>
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => archiveWorkshop(w.id, w.title)}>
+                          <Archive className="h-3.5 w-3.5 mr-1" /> Archivar
+                        </Button>
+                        <Button size="sm" asChild>
+                          <Link href={`/admin/talleres/${w.id}`}>
+                            Revisar
+                          </Link>
+                        </Button>
+                      </>
                     )}
-                    <Button size="sm" asChild>
-                      <Link href={`/admin/talleres/${w.id}`}>
-                        Revisar
-                      </Link>
-                    </Button>
                   </div>
                 </CardContent>
               </Card>

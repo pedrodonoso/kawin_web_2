@@ -58,8 +58,9 @@ $app->middleware([
 ]);
 
 $app->routeMiddleware([
-    'auth' => App\Http\Middleware\Authenticate::class,
-    'admin' => App\Http\Middleware\AdminOnly::class,
+    'auth'         => App\Http\Middleware\Authenticate::class,
+    'admin'        => App\Http\Middleware\AdminOnly::class,
+    'optional-auth' => App\Http\Middleware\OptionalAuth::class,
 ]);
 
 /*

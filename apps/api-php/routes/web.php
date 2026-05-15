@@ -15,7 +15,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
 
     $router->get('/categories',      'CategoryController@index');
     $router->get('/workshops',        'WorkshopController@index');
-    $router->get('/workshops/{id}',   'WorkshopController@show');
+    $router->get('/workshops/{id}',   ['middleware' => 'optional-auth', 'uses' => 'WorkshopController@show']);
 
     $router->post('/auth/register',   'AuthController@register');
     $router->post('/auth/login',      'AuthController@login');

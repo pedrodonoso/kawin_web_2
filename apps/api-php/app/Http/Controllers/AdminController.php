@@ -116,8 +116,8 @@ class AdminController extends Controller
              LEFT JOIN categories c ON c.id = w.category_id
              LEFT JOIN profiles p ON p.user_id = w.instructor_id
              LEFT JOIN users u ON u.id = w.instructor_id
-             WHERE w.id = ? AND w.status != ?",
-            [$id, \App\Constants\WorkshopStatus::ARCHIVED]
+             WHERE w.id = ?",
+            [$id]
         );
 
         if (!$w) {
@@ -175,7 +175,7 @@ class AdminController extends Controller
             'observations' => 'sometimes|string',
         ]);
 
-        $workshop = Workshop::where('id', $id)->where('status', '!=', WorkshopStatus::ARCHIVED)->first();
+        $workshop = Workshop::where('id', $id)->first();
         if (!$workshop) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
@@ -260,7 +260,7 @@ class AdminController extends Controller
         $lat = $request->input('lat') !== null ? (float)$request->input('lat') : null;
         $lng = $request->input('lng') !== null ? (float)$request->input('lng') : null;
 
-        $workshop = Workshop::where('id', $id)->where('status', '!=', WorkshopStatus::ARCHIVED)->first();
+        $workshop = Workshop::where('id', $id)->first();
         if (!$workshop) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }

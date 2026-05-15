@@ -6,8 +6,23 @@ const API_BASE =
     ? (process.env.API_INTERNAL_URL ?? "http://api:8080")
     : "";
 
+async function getTokenServerSide(): Promise<string | null> {
+  try {
+    // next/headers is only available in App Router server components; cookies() is async in Next.js 15+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { cookies } = require("next/headers") as { cookies: () => Promise<{ get: (name: string) => { value: string } | undefined }> };
+    const jar = await cookies();
+    return jar.get("token")?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("token")
+      : await getTokenServerSide();
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
     ...options,

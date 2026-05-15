@@ -339,7 +339,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="flex gap-2 shrink-0 flex-wrap">
                                   <Button variant="outline" size="sm" asChild>
-                                    <Link href={w.status === WorkshopStatus.ARCHIVED ? `/dashboard/talleres/${w.id}/editar` : `/talleres/${w.slug}`}>
+                                    <Link href={`/talleres/${w.slug}`}>
                                       <Eye className="h-3.5 w-3.5 mr-1" />
                                       Ver
                                     </Link>

@@ -23,6 +23,7 @@ export default function LoginPage() {
       const data = await api.post<AuthResponse>("/api/v1/auth/login", form);
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      document.cookie = `token=${data.token}; path=/; SameSite=Lax; max-age=2592000`;
       toast.success("¡Bienvenido de vuelta!");
       // Use full reload so the navbar re-mounts and reads the updated localStorage
       if (data.user.role === UserRole.INSTRUCTOR || data.user.role === UserRole.BOTH) {

@@ -215,8 +215,51 @@ class WorkshopWriteController extends Controller
             return response()->json(['message' => 'Taller no encontrado o sin permisos'], 404);
         }
 
-        $newStatus   = $request->input('status', WorkshopStatus::DRAFT) ?: WorkshopStatus::DRAFT;
+        $newStatus    = $request->input('status', WorkshopStatus::DRAFT) ?: WorkshopStatus::DRAFT;
         $wasPublished = $workshop->status === WorkshopStatus::PUBLISHED;
+        $wasArchived  = $workshop->status === WorkshopStatus::ARCHIVED;
+
+        $bc = DB::selectOne(
+            "SELECT COUNT(*) as cnt FROM bookings WHERE workshop_id = ? AND status = ?",
+            [$id, BookingStatus::CONFIRMED]
+        );
+        $confirmedBookings = (int)($bc->cnt ?? 0);
+
+        // Archived workshops can be edited directly (not public) or restored to draft.
+        // No review required in either case since the workshop is not visible publicly.
+        if ($wasArchived && in_array($newStatus, [WorkshopStatus::DRAFT, WorkshopStatus::ARCHIVED])) {
+            $catID = $request->input('category_id') ?: null;
+            $workshop->fill([
+                'title'       => $request->input('title'),
+                'description' => $request->input('description', ''),
+                'modality'    => $request->input('modality'),
+                'price'       => (float)$request->input('price', 0),
+                'currency'    => $request->input('currency', 'CLP') ?: 'CLP',
+                'capacity'    => $request->input('capacity'),
+                'location'    => $request->input('location', ''),
+                'address'     => $request->input('address', '') ?: null,
+                'lat'         => $request->input('lat') !== null ? (float)$request->input('lat') : null,
+                'lng'         => $request->input('lng') !== null ? (float)$request->input('lng') : null,
+                'online_url'  => $request->input('online_url', ''),
+                'notes'       => $request->input('notes', '') ?: null,
+                'category_id' => $catID,
+                'status'      => $newStatus,
+            ]);
+            $workshop->save();
+
+            if ($newStatus === WorkshopStatus::DRAFT && $confirmedBookings === 0) {
+                DB::delete("DELETE FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL", [$id]);
+                foreach ((array)$request->input('sessions', []) as $s) {
+                    if (empty($s['starts_at']) || empty($s['ends_at'])) continue;
+                    DB::insert(
+                        "INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES (?, ?, ?, ?)",
+                        [$id, $s['starts_at'], $s['ends_at'], $s['notes'] ?? '']
+                    );
+                }
+            }
+
+            return response()->json(['data' => ['id' => $id, 'status' => $newStatus]]);
+        }
 
         if (!$isAdmin
             && $newStatus === WorkshopStatus::PUBLISHED
@@ -227,12 +270,6 @@ class WorkshopWriteController extends Controller
                 'message' => 'El taller debe ser aprobado por un administrador antes de publicarse',
             ], 403);
         }
-
-        $bc = DB::selectOne(
-            "SELECT COUNT(*) as cnt FROM bookings WHERE workshop_id = ? AND status = ?",
-            [$id, BookingStatus::CONFIRMED]
-        );
-        $confirmedBookings = (int)($bc->cnt ?? 0);
 
         $price    = $confirmedBookings > 0 ? $workshop->price    : (float)$request->input('price', 0);
         $capacity = $confirmedBookings > 0 ? $workshop->capacity : $request->input('capacity');
