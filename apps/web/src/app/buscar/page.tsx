@@ -213,7 +213,7 @@ function WorkshopCard({ w }: { w: Workshop }) {
             <div className="flex items-center justify-between">
               {Number(w.price) === 0 ? (
                 <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                  Gratuito
+                  Gratuito - Aporte Voluntario
                 </span>
               ) : (
                 <span className={`font-bold text-sm text-foreground`}>

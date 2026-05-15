@@ -289,7 +289,7 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12, 
                   <div className="min-w-0">
                     <p className="text-xs font-medium leading-tight line-clamp-1 group-hover:text-foreground">{w.title}</p>
                     <p className={`text-xs mt-0.5 ${Number(w.price) === 0 ? "text-emerald-600 font-bold" : "text-muted-foreground"}`}>
-                      {Number(w.price) === 0 ? "Gratuito" : `$${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${w.currency}`}
+                      {Number(w.price) === 0 ? "Gratuito - Aporte Voluntario" : `$${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${w.currency}`}
                     </p>
                   </div>
                 </button>
