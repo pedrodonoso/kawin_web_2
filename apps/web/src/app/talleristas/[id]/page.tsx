@@ -104,7 +104,11 @@ export default async function TalleristaPage({
                 )}
                 {profile.instagram_url && (
                   <a
-                    href={profile.instagram_url}
+                    href={
+                      profile.instagram_url.startsWith("http://") || profile.instagram_url.startsWith("https://")
+                        ? profile.instagram_url
+                        : `https://instagram.com/${profile.instagram_url.replace(/^@/, "")}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border hover:bg-accent/10 transition-colors"

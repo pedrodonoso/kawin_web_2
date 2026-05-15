@@ -44,3 +44,7 @@ redis_data/
 
 
 .claude
+
+# Local dev
+local.docker-compose.yml
+*.pid

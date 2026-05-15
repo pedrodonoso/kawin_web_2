@@ -273,7 +273,11 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
                       )}
                       {workshop.instructor_instagram && (
                         <a
-                          href={workshop.instructor_instagram}
+                          href={
+                            workshop.instructor_instagram.startsWith("http://") || workshop.instructor_instagram.startsWith("https://")
+                              ? workshop.instructor_instagram
+                              : `https://instagram.com/${workshop.instructor_instagram.replace(/^@/, "")}`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
