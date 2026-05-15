@@ -409,6 +409,7 @@ function BuscarContent() {
         <div className={view === "map" ? "block" : "hidden"}>
           <WorkshopsMap
             workshops={workshops.filter((w) => w.modality !== Modality.ONLINE)}
+            visible={view === "map"}
           />
         </div>
 

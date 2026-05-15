@@ -152,9 +152,10 @@ interface Props {
   workshops: Workshop[];
   center?: [number, number];
   zoom?: number;
+  visible?: boolean;
 }
 
-export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }: Props) {
+export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12, visible }: Props) {
   const [selected, setSelected] = useState<Workshop | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [listOpen, setListOpen] = useState(true);
@@ -193,6 +194,14 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12 }
     const isMobile = window.innerWidth < 768;
     setListOpen(!isMobile);
   }, [fullscreen]);
+
+  useEffect(() => {
+    if (visible) {
+      // Leaflet no conoce el tamaño real si montó con display:none
+      const t = setTimeout(() => mapRef.current?.invalidateSize(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [visible]);
 
   const mapContent = (
     <div className={fullscreen ? "relative w-full h-full" : "relative w-full h-[520px] rounded-xl overflow-hidden border shadow-sm"}>
