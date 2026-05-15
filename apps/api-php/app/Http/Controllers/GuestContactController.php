@@ -16,8 +16,7 @@ class GuestContactController extends Controller
                     gc.bio, gc.instagram, gc.website,
                     gc.created_at::text as created_at,
                     COALESCE(p.name,'') as created_by_name,
-                    (SELECT COUNT(*) FROM workshops w WHERE w.guest_contact_id = gc.id)::int as workshops_count,
-                    (SELECT COUNT(*) FROM routes r WHERE r.guest_contact_id = gc.id)::int as routes_count
+                    (SELECT COUNT(*) FROM workshops w WHERE w.guest_contact_id = gc.id)::int as workshops_count
              FROM guest_contacts gc
              LEFT JOIN profiles p ON p.user_id = gc.created_by
              ORDER BY gc.name ASC"

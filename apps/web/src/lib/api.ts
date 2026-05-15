@@ -363,11 +363,10 @@ export interface GuestContact {
   created_by?: string;
   created_by_name?: string;
   workshops_count?: number;
-  routes_count?: number;
   created_at: string;
 }
 
-export type GuestContactInput = Omit<GuestContact, "id" | "created_by" | "created_by_name" | "workshops_count" | "routes_count" | "created_at">;
+export type GuestContactInput = Omit<GuestContact, "id" | "created_by" | "created_by_name" | "workshops_count" | "created_at">;
 
 export const guestContactsApi = {
   list: () =>
