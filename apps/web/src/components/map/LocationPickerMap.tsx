@@ -6,12 +6,24 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { FullscreenMapWrapper } from "./FullscreenMapWrapper";
 
-const icon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
+const pinHtml = `
+<div style="display:flex;flex-direction:column;align-items:center;width:40px;">
+  <img src="/brand/kwin-favicon-light-64.png" style="width:36px;height:36px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.4);" />
+  <div style="
+    width:0;height:0;
+    border-left:9px solid transparent;
+    border-right:9px solid transparent;
+    border-top:13px solid #b54a2c;
+    margin-top:-1px;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+  "></div>
+</div>`;
+
+const icon = L.divIcon({
+  html: pinHtml,
+  className: "",
+  iconSize: [44, 58],
+  iconAnchor: [22, 58],
 });
 
 function MapController({ lat, lng }: { lat: number; lng: number }) {

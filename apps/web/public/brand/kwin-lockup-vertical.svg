@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 320" width="600" height="320">
-  
-  <text x="300" y="165" class="w" fill="#1a1916" text-anchor="middle">kwin<tspan fill="#656b3f">.</tspan></text>
-  <line x1="275" y1="210" x2="325" y2="210" stroke="#1a1916" stroke-opacity="0.4" stroke-width="1"></line>
-  <text x="300" y="255" class="t" fill="#1a1916" text-anchor="middle">Talleres · Clases · Comunidad</text>
-</svg>
