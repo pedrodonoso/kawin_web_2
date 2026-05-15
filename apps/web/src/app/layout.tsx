@@ -17,12 +17,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://kwin-latam.cl"),
   title: {
-    default: "kwin — Talleres y Cursos en América Latina",
+    default: "kwin - Conocimiento en tu barrio",
     template: "%s | kwin",
   },
   description:
     "Descubre y reserva talleres, cursos y clases cerca de ti. Conectamos talleristas apasionados con personas que quieren aprender.",
-  keywords: ["talleres", "cursos", "clases", "América Latina", "aprendizaje"],
+  keywords: ["talleres", "cursos", "clases", "América Latina", "aprendizaje", "barrio", "comunidad", "conocimiento", "reservas", "experiencias", "presenciales", "online"],
   icons: {
     icon: [
       { url: "/brand/kwin-favicon-32.png",  sizes: "32x32",  type: "image/png" },
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     shortcut: "/brand/kwin-favicon-32.png",
   },
   openGraph: {
-    title: "kwin — Talleres y Cursos en América Latina",
+    title: "kwin - Conocimiento en tu barrio",
     description: "Descubre y reserva talleres, cursos y clases cerca de ti.",
     type: "website",
     locale: "es_CL",
