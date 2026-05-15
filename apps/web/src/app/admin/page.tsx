@@ -159,12 +159,6 @@ export default function AdminPage() {
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </Button>
-        <Button asChild>
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <LayoutDashboard className="h-4 w-4" /> Ir al dashboard
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </Button>
       </div>
     </div>
   );

@@ -105,6 +105,8 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
             $router->get('/workshops/{id}',                     'AdminController@getWorkshop');
             $router->put('/workshops/{id}',                     'AdminController@updateWorkshop');
             $router->post('/workshops/{id}/review',             'AdminController@review');
+            $router->delete('/workshops/{id}',                  'AdminController@archiveWorkshop');
+            $router->post('/workshops/{id}/restore',            'AdminController@restoreWorkshop');
             $router->patch('/workshops/{id}/guest-contact',     'AdminController@setWorkshopGuestContact');
 
             $router->get('/guest-contacts',             'GuestContactController@index');

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, RotateCcw, UserCircle, AlertCircle, Clock, BarChart2, CalendarCheck } from "lucide-react";
+import { Plus, BookOpen, Users, DollarSign, Eye, Pencil, Trash2, FileEdit, Archive, UserCircle, AlertCircle, Clock, BarChart2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { api, type Workshop, type Profile } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
@@ -89,6 +89,14 @@ export default function DashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [bookings, setBookings] = useState<InstructorBooking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    draft: true,
+    archived: true,
+  });
+
+  function toggleSection(key: string) {
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   useEffect(() => {
     const raw = localStorage.getItem("user");
@@ -97,6 +105,10 @@ export default function DashboardPage() {
       return;
     }
     const u = JSON.parse(raw);
+    if (u.role === UserRole.ADMIN) {
+      router.replace("/admin");
+      return;
+    }
     setIsAdmin(u.role === UserRole.ADMIN);
 
     api
@@ -258,76 +270,118 @@ export default function DashboardPage() {
                 </Button>
               </CardContent>
             </Card>
-          ) : (
-            <div className="space-y-3">
-              {workshops?.map((w) => (
-                <Card key={w.id}>
-                  <CardContent className="p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold">{w.title}</h3>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[w.status]}`}>
-                          {statusLabel[w.status]}
-                        </span>
-                        {w.approval_status && w.approval_status !== ApprovalStatus.APPROVED && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${approvalStyle[w.approval_status]}`}>
-                            {w.approval_status === ApprovalStatus.PENDING_REVIEW && <Clock className="h-3 w-3" />}
-                            {w.approval_status === ApprovalStatus.CHANGES_REQUESTED && <AlertCircle className="h-3 w-3" />}
-                            {approvalLabel[w.approval_status]}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {WorkshopTypeLabel[w.type] ?? w.type} ·{" "}
-                        {ModalityLabel[w.modality] ?? w.modality} ·{" "}
-                        <span className="font-medium">${formatPrice(w.price)} {w.currency}</span>
-                      </p>
-                      {w.admin_observations && (
-                        <p className="text-xs text-orange-700 bg-orange-50 px-2 py-1.5 rounded border border-orange-200 mt-1">
-                          <span className="font-medium">Observación del admin:</span> {w.admin_observations}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2 shrink-0 flex-wrap">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={w.status === WorkshopStatus.ARCHIVED ? `/dashboard/talleres/${w.id}/editar` : `/talleres/${w.slug}`}>
-                          <Eye className="h-3.5 w-3.5 mr-1" />
-                          Ver
-                        </Link>
-                      </Button>
+          ) : (() => {
+            const groups: { key: string; label: string; items: Workshop[] }[] = [
+              { key: "published", label: "Publicados", items: workshops.filter((w) => w.status === WorkshopStatus.PUBLISHED) },
+              { key: "draft", label: "Borradores", items: workshops.filter((w) => w.status === "draft") },
+              { key: "archived", label: "Archivados", items: workshops.filter((w) => w.status === WorkshopStatus.ARCHIVED) },
+            ].filter((g) => g.items.length > 0);
 
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/dashboard/talleres/${w.id}/editar`}>
-                          <Pencil className="h-3.5 w-3.5 mr-1" />
-                          Editar
-                        </Link>
-                      </Button>
-                      {w.status === WorkshopStatus.ARCHIVED ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-green-700 border-green-200 hover:bg-green-50"
-                          onClick={() => restoreWorkshop(w)}
-                        >
-                          <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                          Restaurar
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => archiveWorkshop(w.id, w.title)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+            if (!groups.length) return (
+              <Card>
+                <CardContent className="py-16 text-center text-muted-foreground">
+                  <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                  <p className="font-medium">No existen talleres</p>
+                  <p className="text-sm mt-1">Crea tu primer taller y comienza a recibir reservas.</p>
+                  <Button className="mt-4" asChild>
+                    <Link href="/dashboard/talleres/nuevo">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crear taller
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+
+            return (
+              <div className="space-y-4">
+                {groups.map(({ key, label, items }) => {
+                  const isCollapsed = !!collapsedSections[key];
+                  return (
+                    <div key={key} className="space-y-2">
+                      <button
+                        onClick={() => toggleSection(key)}
+                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        {label}
+                        <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">{items.length}</span>
+                      </button>
+                      {!isCollapsed && (
+                        <div className="space-y-3">
+                          {items.map((w) => (
+                            <Card key={w.id}>
+                              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                                <div className="space-y-1.5 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="font-semibold">{w.title}</h3>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[w.status]}`}>
+                                      {statusLabel[w.status]}
+                                    </span>
+                                    {w.approval_status && w.approval_status !== ApprovalStatus.APPROVED && (
+                                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${approvalStyle[w.approval_status]}`}>
+                                        {w.approval_status === ApprovalStatus.PENDING_REVIEW && <Clock className="h-3 w-3" />}
+                                        {w.approval_status === ApprovalStatus.CHANGES_REQUESTED && <AlertCircle className="h-3 w-3" />}
+                                        {approvalLabel[w.approval_status]}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {WorkshopTypeLabel[w.type] ?? w.type} ·{" "}
+                                    {ModalityLabel[w.modality] ?? w.modality} ·{" "}
+                                    <span className="font-medium">${formatPrice(w.price)} {w.currency}</span>
+                                  </p>
+                                  {w.admin_observations && (
+                                    <p className="text-xs text-orange-700 bg-orange-50 px-2 py-1.5 rounded border border-orange-200 mt-1">
+                                      <span className="font-medium">Observación del admin:</span> {w.admin_observations}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex gap-2 shrink-0 flex-wrap">
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link href={w.status === WorkshopStatus.ARCHIVED ? `/dashboard/talleres/${w.id}/editar` : `/talleres/${w.slug}`}>
+                                      <Eye className="h-3.5 w-3.5 mr-1" />
+                                      Ver
+                                    </Link>
+                                  </Button>
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link href={`/dashboard/talleres/${w.id}/editar`}>
+                                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                                      Editar
+                                    </Link>
+                                  </Button>
+                                  {w.status === WorkshopStatus.ARCHIVED ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-amber-700 border-amber-200 hover:bg-amber-50"
+                                      onClick={() => restoreWorkshop(w)}
+                                    >
+                                      <FileEdit className="h-3.5 w-3.5 mr-1" />
+                                      Restaurar
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-muted-foreground border-muted hover:bg-muted"
+                                      onClick={() => archiveWorkshop(w.id, w.title)}
+                                    >
+                                      <Archive className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         {isAdmin && <Separator />}
