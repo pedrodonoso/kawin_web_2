@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Eye, Pencil, Clock, CheckCircle2, XCircle, AlertCircle, Plus } from "lucide-react";
-import { adminApi, type AdminWorkshop } from "@/lib/api";
+import { BookOpen, Eye, Pencil, Clock, CheckCircle2, XCircle, AlertCircle, Plus, Archive, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
+import { adminApi, api, type AdminWorkshop } from "@/lib/api";
 import { ModalityLabel, WorkshopTypeLabel } from "@/lib/constants";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -24,32 +24,33 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 const APPROVAL_LABEL: Record<string, string> = {
-  not_submitted: "Sin enviar",
-  pending_review: "En revisión",
-  approved: "Aprobado",
+  not_submitted:     "Sin enviar",
+  pending_review:    "En revisión",
+  approved:          "Aprobado",
   changes_requested: "Cambios solicitados",
 };
 
 const APPROVAL_STYLE: Record<string, string> = {
-  not_submitted: "bg-muted text-muted-foreground",
-  pending_review: "bg-amber-100 text-amber-700",
-  approved: "bg-green-100 text-green-700",
+  not_submitted:     "bg-muted text-muted-foreground",
+  pending_review:    "bg-amber-100 text-amber-700",
+  approved:          "bg-green-100 text-green-700",
   changes_requested: "bg-orange-100 text-orange-700",
 };
 
 const APPROVAL_ICON: Record<string, React.ElementType> = {
-  not_submitted: BookOpen,
-  pending_review: Clock,
-  approved: CheckCircle2,
+  not_submitted:     BookOpen,
+  pending_review:    Clock,
+  approved:          CheckCircle2,
   changes_requested: AlertCircle,
 };
 
 const STATUS_FILTERS = [
-  { value: "", label: "Todos" },
-  { value: "pending_review", label: "En revisión" },
+  { value: "",                  label: "Todos" },
+  { value: "pending_review",    label: "En revisión" },
   { value: "changes_requested", label: "Cambios solicitados" },
-  { value: "approved", label: "Aprobados" },
-  { value: "not_submitted", label: "Sin enviar" },
+  { value: "approved",          label: "Aprobados" },
+  { value: "not_submitted",     label: "Sin enviar" },
+  { value: "archived",          label: "Archivados" },
 ];
 
 export default function AdminTalleresPage() {
@@ -65,6 +66,28 @@ export default function AdminTalleresPage() {
       .catch(() => setWorkshops([]))
       .finally(() => setLoading(false));
   }, [activeFilter]);
+
+  async function archiveWorkshop(id: string, title: string) {
+    if (!window.confirm(`¿Archivar "${title}"? No aparecerá en los resultados de búsqueda.`)) return;
+    try {
+      await api.delete(`/api/v1/admin/workshops/${id}`);
+      setWorkshops((ws) => ws.map((w) => w.id === id ? { ...w, status: "archived" } : w));
+      toast.success("Taller archivado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al archivar");
+    }
+  }
+
+  async function restoreWorkshop(w: AdminWorkshop) {
+    if (!window.confirm(`¿Restaurar "${w.title}"? Quedará como borrador.`)) return;
+    try {
+      await api.post(`/api/v1/admin/workshops/${w.id}/restore`, {});
+      setWorkshops((ws) => ws.map((x) => x.id === w.id ? { ...x, status: "draft" } : x));
+      toast.success("Taller restaurado como borrador");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al restaurar");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -120,6 +143,7 @@ export default function AdminTalleresPage() {
         <div className="space-y-3">
           {workshops.map((w) => {
             const ApprIcon = APPROVAL_ICON[w.approval_status ?? "not_submitted"];
+            const isArchived = w.status === "archived";
             return (
               <Card key={w.id}>
                 <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -165,6 +189,15 @@ export default function AdminTalleresPage() {
                         <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                       </Link>
                     </Button>
+                    {isArchived ? (
+                      <Button variant="outline" size="sm" onClick={() => restoreWorkshop(w)}>
+                        <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurar
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => archiveWorkshop(w.id, w.title)}>
+                        <Archive className="h-3.5 w-3.5 mr-1" /> Archivar
+                      </Button>
+                    )}
                     <Button size="sm" asChild>
                       <Link href={`/admin/talleres/${w.id}`}>
                         Revisar

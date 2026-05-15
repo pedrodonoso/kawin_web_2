@@ -65,6 +65,7 @@ class WorkshopWriteController extends Controller
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, w.approval_status,
                     COALESCE(w.admin_observations,'') as admin_observations,
+                    w.pending_changes,
                     COALESCE(w.created_at::text,'') as created_at,
                     COALESCE(c.id::text,'') as category_id,
                     COALESCE(c.name,'') as category_name,
@@ -81,6 +82,10 @@ class WorkshopWriteController extends Controller
         if (!$w) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
+
+        $w->pending_changes = $w->pending_changes
+            ? json_decode($w->pending_changes, true)
+            : null;
 
         if ($w->type === WorkshopType::CLASS_TYPE) {
             $rows = DB::select(
@@ -254,32 +259,30 @@ class WorkshopWriteController extends Controller
         $newLat      = $request->input('lat') !== null ? (float)$request->input('lat') : null;
         $newLng      = $request->input('lng') !== null ? (float)$request->input('lng') : null;
 
-        $sensitiveChanged = !$isAdmin && $wasPublished && (
-            $newTitle    !== $workshop->title ||
-            $newDesc     !== $workshop->description ||
-            $newModality !== $workshop->modality
-        );
-
-        if ($sensitiveChanged) {
-            $proposed = [];
-            if ($newTitle    !== $workshop->title)       $proposed['title']       = $newTitle;
-            if ($newDesc     !== $workshop->description) $proposed['description'] = $newDesc;
-            if ($newModality !== $workshop->modality)    $proposed['modality']    = $newModality;
+        if (!$isAdmin) {
+            // All instructor edits go to review without exception
+            $proposed = [
+                'title'       => $newTitle,
+                'description' => $newDesc,
+                'modality'    => $newModality,
+                'price'       => $price,
+                'currency'    => $currency,
+                'capacity'    => $capacity,
+                'location'    => $request->input('location', ''),
+                'address'     => $request->input('address', '') ?: null,
+                'lat'         => $newLat,
+                'lng'         => $newLng,
+                'online_url'  => $request->input('online_url', ''),
+                'notes'       => $request->input('notes', '') ?: null,
+                'category_id' => $catID,
+                'sessions'    => $request->input('sessions', []),
+            ];
 
             $workshop->fill([
-                'price'           => $price,
-                'currency'        => $currency,
-                'capacity'        => $capacity,
-                'location'        => $request->input('location', ''),
-                'address'         => $request->input('address', '') ?: null,
-                'lat'             => $newLat,
-                'lng'             => $newLng,
-                'online_url'      => $request->input('online_url', ''),
-                'notes'           => $request->input('notes', '') ?: null,
-                'category_id'     => $catID,
                 'pending_changes' => $proposed,
                 'approval_status' => ApprovalStatus::PENDING_REVIEW,
             ]);
+            $sensitiveChanged = true;
         } else {
             $workshop->fill([
                 'title'       => $newTitle,
@@ -298,6 +301,7 @@ class WorkshopWriteController extends Controller
                 'category_id' => $catID,
                 'status'      => $newStatus,
             ]);
+            $sensitiveChanged = false;
         }
 
         $workshop->notifyContext = [
@@ -308,7 +312,9 @@ class WorkshopWriteController extends Controller
         ];
         $workshop->save();
 
-        if ($confirmedBookings === 0) {
+        if (!$isAdmin && $confirmedBookings === 0) {
+            // sessions are stored in pending_changes; apply only on admin approval
+        } elseif ($isAdmin && $confirmedBookings === 0) {
             DB::delete("DELETE FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL", [$id]);
             foreach ((array)$request->input('sessions', []) as $s) {
                 if (empty($s['starts_at']) || empty($s['ends_at'])) {
@@ -383,11 +389,16 @@ class WorkshopWriteController extends Controller
         );
         $instructorName = $instructor?->name ?? '';
 
-        $workshop->fill([
+        $fillData = [
             'approval_status'    => ApprovalStatus::PENDING_REVIEW,
             'admin_observations' => null,
-            'pending_changes'    => $previousValues ?: null,
-        ]);
+        ];
+        // Solo pisar pending_changes si viene explícitamente en el body.
+        // Si ya fue seteado por el PUT previo (flujo borrador), se conserva.
+        if ($request->has('previous_values')) {
+            $fillData['pending_changes'] = $previousValues ?: null;
+        }
+        $workshop->fill($fillData);
         $workshop->notifyContext = [
             'action'           => 'submit_review',
             'instructor_name'  => $instructorName,

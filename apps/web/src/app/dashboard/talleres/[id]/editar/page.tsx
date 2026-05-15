@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, adminApi, type Category, type Workshop, type Schedule, type ApiResponse } from "@/lib/api";
+import { api, adminApi, type Category, type Workshop, type Schedule, type ApiResponse, type PendingChanges } from "@/lib/api";
 import { ApprovalStatus, Modality, WorkshopStatus, WorkshopStatusLabel, WorkshopType } from "@/lib/constants";
-import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send, Repeat, RotateCcw, Archive } from "lucide-react";
+import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Send, Repeat, RotateCcw, Archive, GitCompare } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { LocationPicker } from "@/components/map/LocationPicker";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -113,9 +113,9 @@ export default function EditarTallerPage() {
   const [changeForm, setChangeForm] = useState<ChangeForm | null>(null);
   const [isRecurring, setIsRecurring] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
-
-  // Snapshot de los campos "sensibles" al cargar — para detectar si requieren revisión
-  const originalRef = useRef({ title: "", description: "", modality: "" });
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges | null>(null);
+  const [viewingPending, setViewingPending] = useState(false);
+  const [publishedSnapshot, setPublishedSnapshot] = useState<typeof form | null>(null);
 
   const [form, setFormState] = useState({
     title: "",
@@ -159,13 +159,9 @@ export default function EditarTallerPage() {
         setBookingsCount(w.bookings_count ?? 0);
         setAdminObservations(w.admin_observations ?? null);
         setApprovalStatus(w.approval_status ?? "not_submitted");
-        originalRef.current = {
-          title:       w.title,
-          description: w.description ?? "",
-          modality:    w.modality,
-        };
+        setPendingChanges(w.pending_changes ?? null);
         setIsPaid(w.price > 0);
-        setFormState({
+        const published = {
           title: w.title,
           description: w.description ?? "",
           type: w.type,
@@ -181,7 +177,9 @@ export default function EditarTallerPage() {
           notes: w.notes ?? "",
           category_id: w.category_id ?? "",
           status: w.status,
-        });
+        };
+        setPublishedSnapshot(published);
+        setFormState(published);
         setSessions(
           (w.sessions ?? []).map((s) => ({
             id: s.id,
@@ -478,6 +476,55 @@ export default function EditarTallerPage() {
           </div>
         )}
 
+        {/* Toggle versión en revisión */}
+        {pendingChanges && approvalStatus === ApprovalStatus.PENDING_REVIEW && (
+          <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            <GitCompare className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
+            <div className="flex-1">
+              <p className="font-semibold mb-0.5">Tienes cambios enviados a revisión</p>
+              <p className="text-blue-700 text-xs">
+                {viewingPending
+                  ? "Estás viendo la versión enviada a revisión (solo lectura)."
+                  : "Estás viendo la versión publicada actualmente."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-blue-300 text-blue-700 hover:bg-blue-100"
+              onClick={() => {
+                if (!viewingPending && pendingChanges && publishedSnapshot) {
+                  setFormState({
+                    ...publishedSnapshot,
+                    title: pendingChanges.title ?? publishedSnapshot.title,
+                    description: pendingChanges.description ?? publishedSnapshot.description,
+                    modality: (pendingChanges.modality as typeof publishedSnapshot.modality) ?? publishedSnapshot.modality,
+                    price: pendingChanges.price != null ? String(pendingChanges.price) : publishedSnapshot.price,
+                    currency: pendingChanges.currency ?? publishedSnapshot.currency,
+                    capacity: pendingChanges.capacity != null ? String(pendingChanges.capacity) : publishedSnapshot.capacity,
+                    location: pendingChanges.location ?? publishedSnapshot.location,
+                    address: pendingChanges.address ?? publishedSnapshot.address,
+                    lat: pendingChanges.lat != null ? String(pendingChanges.lat) : publishedSnapshot.lat,
+                    lng: pendingChanges.lng != null ? String(pendingChanges.lng) : publishedSnapshot.lng,
+                    online_url: pendingChanges.online_url ?? publishedSnapshot.online_url,
+                    notes: pendingChanges.notes ?? publishedSnapshot.notes,
+                    category_id: pendingChanges.category_id ?? publishedSnapshot.category_id,
+                  });
+                  setIsPaid((pendingChanges.price ?? 0) > 0);
+                  setViewingPending(true);
+                } else if (publishedSnapshot) {
+                  setFormState(publishedSnapshot);
+                  setIsPaid(Number(publishedSnapshot.price) > 0);
+                  setViewingPending(false);
+                }
+              }}
+            >
+              {viewingPending ? "Ver versión publicada" : "Ver versión en revisión"}
+            </Button>
+          </div>
+        )}
+
         {/* Aviso de campos bloqueados */}
         {bookingsCount > 0 && (
           <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -488,7 +535,7 @@ export default function EditarTallerPage() {
           </div>
         )}
 
-        <div className="space-y-6">
+        <div className={`space-y-6 ${viewingPending ? "opacity-75 pointer-events-none select-none" : ""}`}>
           {/* Información básica */}
           <Card>
             <CardHeader>
@@ -502,6 +549,7 @@ export default function EditarTallerPage() {
                   placeholder="Ej: Cerámica para principiantes"
                   value={form.title}
                   onChange={(e) => setField("title", e.target.value)}
+                  disabled={viewingPending}
                 />
               </div>
 
@@ -512,9 +560,10 @@ export default function EditarTallerPage() {
                   rows={5}
                   maxLength={2000}
                   placeholder="Describe tu taller: qué aprenderán, qué incluye, quién puede asistir..."
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
                   value={form.description}
                   onChange={(e) => setField("description", e.target.value)}
+                  disabled={viewingPending}
                 />
                 <p className="text-xs text-muted-foreground/70 text-right">{form.description.length}/2000</p>
               </div>
@@ -711,21 +760,27 @@ export default function EditarTallerPage() {
 
           {/* Toggle horario recurrente — solo para tipos no-class */}
           {form.type !== WorkshopType.CLASS && (
-            <Card>
+            <Card className={bookingsCount > 0 ? "opacity-60" : ""}>
               <CardContent className="pt-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Repeat className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">Horario recurrente</p>
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        Horario recurrente
+                        {bookingsCount > 0 && <Lock className="h-3.5 w-3.5 text-amber-500" />}
+                      </p>
                       <p className="text-xs text-muted-foreground/70">
-                        Configura días y horarios fijos en vez de fechas individuales
+                        {bookingsCount > 0
+                          ? "No modificable con reservas activas"
+                          : "Configura días y horarios fijos en vez de fechas individuales"}
                       </p>
                     </div>
                   </div>
                   <Switch
                     checked={isRecurring}
                     onCheckedChange={setIsRecurring}
+                    disabled={bookingsCount > 0}
                   />
                 </div>
               </CardContent>
@@ -734,9 +789,12 @@ export default function EditarTallerPage() {
 
           {/* Horario recurrente (clases siempre, o cuando isRecurring activo) */}
           {(form.type === WorkshopType.CLASS || isRecurring) && (
-            <Card>
+            <Card className={bookingsCount > 0 ? "opacity-60" : ""}>
               <CardHeader>
-                <CardTitle className="text-base">Reglas de horario</CardTitle>
+                <CardTitle className="text-base flex items-center gap-2">
+                  Reglas de horario
+                  {bookingsCount > 0 && <Lock className="h-3.5 w-3.5 text-amber-500" />}
+                </CardTitle>
                 <p className="text-xs text-muted-foreground/70 mt-1">
                   Define cuándo se ofrecen clases. Las sesiones se materializan desde el{" "}
                   <Link href={`/dashboard/talleres/${id}/calendario`} className="underline text-foreground/60 hover:text-foreground">
@@ -755,7 +813,7 @@ export default function EditarTallerPage() {
                       Gestionar sesiones
                     </Link>
                   </Button>
-                  {!newScheduleDraft && (
+                  {!newScheduleDraft && !bookingsCount && (
                     <Button
                       type="button"
                       variant="outline"
@@ -910,26 +968,28 @@ export default function EditarTallerPage() {
                             {sch.valid_until ? ` hasta ${sch.valid_until}` : " (sin fin)"}
                           </p>
                         </div>
-                        <div className="flex gap-2 shrink-0">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openChangeForm(sch)}
-                          >
-                            <Pencil className="h-3 w-3 mr-1" />
-                            Cambiar
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 border-red-200 hover:bg-red-50"
-                            onClick={() => deleteSchedule(sch.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        {!bookingsCount && (
+                          <div className="flex gap-2 shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openChangeForm(sch)}
+                            >
+                              <Pencil className="h-3 w-3 mr-1" />
+                              Cambiar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => deleteSchedule(sch.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1129,6 +1189,11 @@ export default function EditarTallerPage() {
           <Separator />
 
           {/* Acciones */}
+          {viewingPending ? (
+            <p className="text-sm text-center text-blue-600 bg-blue-50 border border-blue-200 rounded-lg py-3">
+              Modo de solo lectura — estás viendo la versión enviada a revisión. Vuelve a la versión publicada para editar.
+            </p>
+          ) : (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground/70">
               Estado:{" "}
@@ -1140,18 +1205,10 @@ export default function EditarTallerPage() {
               const isArchived = form.status === WorkshopStatus.ARCHIVED;
               const isPublished = form.status === WorkshopStatus.PUBLISHED;
               const hasObservations = approvalStatus === ApprovalStatus.CHANGES_REQUESTED;
-              const sensitiveChanged =
-                form.title       !== originalRef.current.title ||
-                form.description !== originalRef.current.description ||
-                form.modality    !== originalRef.current.modality;
-
-              // Taller publicado + cambios en campos sensibles → revisión
-              const needsReview = isPublished && sensitiveChanged;
 
               return (
                 <div className="flex gap-3">
                   {isArchived ? (
-                    // Archivado → restaurar como borrador
                     <Button
                       type="button"
                       disabled={saving}
@@ -1161,7 +1218,29 @@ export default function EditarTallerPage() {
                       <RotateCcw className="h-4 w-4 mr-2" />
                       {saving ? "Restaurando..." : "Restaurar taller"}
                     </Button>
+                  ) : isAdmin ? (
+                    // Admin: guardar directo sin revisión
+                    <>
+                      {isPublished && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={saving}
+                          onClick={() => save("draft")}
+                        >
+                          {saving ? "Guardando..." : "Pasar a borrador"}
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => save(isPublished ? "published" : "draft")}
+                      >
+                        {saving ? "Guardando..." : "Guardar cambios"}
+                      </Button>
+                    </>
                   ) : isPublished && !hasObservations ? (
+                    // Publicado → siempre requiere revisión
                     <>
                       <Button
                         type="button"
@@ -1171,26 +1250,14 @@ export default function EditarTallerPage() {
                       >
                         {saving ? "Guardando..." : "Pasar a borrador"}
                       </Button>
-                      {needsReview ? (
-                        // Cambió título/descripción/modalidad → solo revisión
-                        <Button
-                          type="button"
-                          disabled={saving}
-                          onClick={saveAndSubmit}
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          {saving ? "Enviando..." : "Guardar y enviar a revisión"}
-                        </Button>
-                      ) : (
-                        // Solo cambios menores → guardar directo
-                        <Button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => save("published")}
-                        >
-                          {saving ? "Guardando..." : "Guardar cambios"}
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        disabled={saving}
+                        onClick={saveAndSubmit}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        {saving ? "Enviando..." : "Guardar y enviar a revisión"}
+                      </Button>
                     </>
                   ) : (
                     // Borrador u observaciones pendientes → flujo de revisión
@@ -1217,6 +1284,7 @@ export default function EditarTallerPage() {
               );
             })()}
           </div>
+          )}
         </div>
       </div>
 

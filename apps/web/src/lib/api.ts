@@ -83,6 +83,7 @@ export interface Workshop {
   schedules?: Schedule[];
   bookings_count?: number;
   discounts?: Discount[];
+  pending_changes?: PendingChanges | null;
   created_at: string;
 }
 
@@ -171,6 +172,16 @@ export interface PendingChanges {
   title?:       string;
   description?: string;
   modality?:    string;
+  price?:       number;
+  currency?:    string;
+  capacity?:    number | null;
+  location?:    string;
+  address?:     string | null;
+  lat?:         number | null;
+  lng?:         number | null;
+  online_url?:  string;
+  notes?:       string | null;
+  category_id?: string;
 }
 
 export interface AdminWorkshop extends Workshop {
@@ -296,7 +307,7 @@ export const adminApi = {
       .get<{ data: AdminWorkshop[] }>(`/api/v1/admin/workshops${status ? `?status=${status}` : ""}`)
       .then((r) => r.data),
   getWorkshop: (id: string) =>
-    api.get<ApiResponse<Workshop>>(`/api/v1/admin/workshops/${id}`),
+    api.get<ApiResponse<AdminWorkshop>>(`/api/v1/admin/workshops/${id}`),
   updateWorkshop: (id: string, body: Partial<AdminWorkshop>) =>
     api.put<{ data: { id: string } }>(`/api/v1/admin/workshops/${id}`, body),
   reviewWorkshop: (id: string, action: "approve" | "send_observations", observations?: string) =>

@@ -61,13 +61,20 @@ class AdminController extends Controller
                 LEFT JOIN categories c ON c.id = w.category_id
                 LEFT JOIN profiles p ON p.user_id = w.instructor_id
                 LEFT JOIN users u ON u.id = w.instructor_id
-                WHERE w.status != ?";
+                WHERE 1=1";
 
-        $bindings = [BookingStatus::CONFIRMED, WorkshopStatus::ARCHIVED];
+        $bindings = [BookingStatus::CONFIRMED];
 
-        if ($filter !== '') {
-            $sql .= " AND w.approval_status = ?";
-            $bindings[] = $filter;  // already a validated approval_status string from query param
+        if ($filter === WorkshopStatus::ARCHIVED) {
+            $sql .= " AND w.status = ?";
+            $bindings[] = WorkshopStatus::ARCHIVED;
+        } elseif ($filter !== '') {
+            $sql .= " AND w.status != ? AND w.approval_status = ?";
+            $bindings[] = WorkshopStatus::ARCHIVED;
+            $bindings[] = $filter;
+        } else {
+            $sql .= " AND w.status != ?";
+            $bindings[] = WorkshopStatus::ARCHIVED;
         }
         $sql .= " ORDER BY w.created_at DESC";
 
@@ -96,15 +103,19 @@ class AdminController extends Controller
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, w.approval_status,
                     COALESCE(w.admin_observations,'') as admin_observations,
+                    w.pending_changes,
                     COALESCE(w.created_at::text,'') as created_at,
                     COALESCE(c.id::text,'') as category_id,
                     COALESCE(c.name,'') as category_name,
                     COALESCE(c.slug,'') as category_slug,
+                    w.instructor_id::text as instructor_id,
                     COALESCE(p.name,'') as instructor_name,
+                    COALESCE(u.email,'') as instructor_email,
                     COALESCE(p.bio,'') as instructor_bio
              FROM workshops w
              LEFT JOIN categories c ON c.id = w.category_id
              LEFT JOIN profiles p ON p.user_id = w.instructor_id
+             LEFT JOIN users u ON u.id = w.instructor_id
              WHERE w.id = ? AND w.status != ?",
             [$id, \App\Constants\WorkshopStatus::ARCHIVED]
         );
@@ -112,6 +123,10 @@ class AdminController extends Controller
         if (!$w) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
+
+        $w->pending_changes = $w->pending_changes
+            ? json_decode($w->pending_changes, true)
+            : null;
 
         if ($w->type === \App\Constants\WorkshopType::CLASS_TYPE) {
             $rows = DB::select(
@@ -168,24 +183,51 @@ class AdminController extends Controller
         $action = $request->input('action');
 
         if ($action === AdminAction::APPROVE) {
-            $pending      = $workshop->pending_changes ?? [];
-            $propTitle    = $pending['title']       ?? null;
-            $propDesc     = $pending['description'] ?? null;
-            $propModality = $pending['modality']    ?? null;
+            $pending = $workshop->pending_changes ?? [];
 
-            $workshop->fill([
+            $fillData = [
                 'approval_status'    => ApprovalStatus::APPROVED,
                 'status'             => WorkshopStatus::PUBLISHED,
                 'admin_observations' => null,
                 'pending_changes'    => null,
-                'title'              => $propTitle    ?? $workshop->title,
-                'description'        => $propDesc     ?? $workshop->description,
-                'modality'           => $propModality ?? $workshop->modality,
                 'reviewed_by'        => $adminID,
                 'reviewed_at'        => \Carbon\Carbon::now(),
-            ]);
+            ];
+
+            // Apply all pending fields if present
+            $scalarFields = ['title', 'description', 'modality', 'price', 'currency',
+                             'capacity', 'location', 'address', 'lat', 'lng',
+                             'online_url', 'notes', 'category_id'];
+            foreach ($scalarFields as $field) {
+                if (array_key_exists($field, $pending)) {
+                    $fillData[$field] = $pending[$field];
+                }
+            }
+
+            $workshop->fill($fillData);
             $workshop->notifyContext = ['action' => 'approve'];
             $workshop->save();
+
+            // Apply pending sessions if present
+            if (array_key_exists('sessions', $pending) && is_array($pending['sessions'])) {
+                $confirmedBookings = (int)(DB::selectOne(
+                    "SELECT COUNT(*) as cnt FROM bookings WHERE workshop_id = ? AND status = ?",
+                    [$id, \App\Constants\BookingStatus::CONFIRMED]
+                )->cnt ?? 0);
+
+                if ($confirmedBookings === 0) {
+                    DB::delete("DELETE FROM sessions WHERE workshop_id = ? AND schedule_id IS NULL", [$id]);
+                    foreach ($pending['sessions'] as $s) {
+                        if (empty($s['starts_at']) || empty($s['ends_at'])) {
+                            continue;
+                        }
+                        DB::insert(
+                            "INSERT INTO sessions (workshop_id, starts_at, ends_at, notes) VALUES (?, ?, ?, ?)",
+                            [$id, $s['starts_at'], $s['ends_at'], $s['notes'] ?? '']
+                        );
+                    }
+                }
+            }
 
             return response()->json(['data' => ['id' => $id, 'approval_status' => ApprovalStatus::APPROVED, 'status' => WorkshopStatus::PUBLISHED]]);
         }
@@ -271,5 +313,50 @@ class AdminController extends Controller
         );
 
         return response()->json(['data' => ['id' => $id]]);
+    }
+
+    // DELETE /api/v1/admin/workshops/:id
+    public function archiveWorkshop(string $id): JsonResponse
+    {
+        $exists = DB::selectOne(
+            "SELECT id FROM workshops WHERE id = ? AND status != ?",
+            [$id, WorkshopStatus::ARCHIVED]
+        );
+        if (!$exists) {
+            return response()->json(['message' => 'Taller no encontrado o ya archivado'], 404);
+        }
+
+        if ($count = $this->activeBookingsCount($id)) {
+            return response()->json([
+                'message'         => "El taller tiene {$count} reserva(s) activa(s). No se puede archivar.",
+                'active_bookings' => $count,
+            ], 409);
+        }
+
+        DB::update(
+            "UPDATE workshops SET status = ?, updated_at = NOW() WHERE id = ?",
+            [WorkshopStatus::ARCHIVED, $id]
+        );
+
+        return response()->json(['data' => ['id' => $id, 'status' => WorkshopStatus::ARCHIVED]]);
+    }
+
+    // POST /api/v1/admin/workshops/:id/restore
+    public function restoreWorkshop(string $id): JsonResponse
+    {
+        $exists = DB::selectOne(
+            "SELECT id FROM workshops WHERE id = ? AND status = ?",
+            [$id, WorkshopStatus::ARCHIVED]
+        );
+        if (!$exists) {
+            return response()->json(['message' => 'Taller no encontrado o no está archivado'], 404);
+        }
+
+        DB::update(
+            "UPDATE workshops SET status = ?, updated_at = NOW() WHERE id = ?",
+            [WorkshopStatus::DRAFT, $id]
+        );
+
+        return response()->json(['data' => ['id' => $id, 'status' => WorkshopStatus::DRAFT]]);
     }
 }
