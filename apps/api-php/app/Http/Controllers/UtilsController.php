@@ -91,7 +91,9 @@ class UtilsController extends Controller
             return response()->json(['features' => []]);
         }
 
-        $url = "https://photon.komoot.io/api/?q=" . urlencode($q) . "&limit=6&lang=en";
+        $base = rtrim(env('PHOTON_BASE_URL', 'https://photon.komoot.io'), '/');
+        $lang = env('PHOTON_LANG', 'en');
+        $url = "{$base}/api/?q=" . urlencode($q) . "&limit=6&lang={$lang}";
 
         $ctx = stream_context_create([
             'http' => [
@@ -113,7 +115,9 @@ class UtilsController extends Controller
     // Photon reverse geocoding — free, no API key, OSM-based, better POI support
     private function photonReverse(float $lat, float $lng): ?string
     {
-        $url = "https://photon.komoot.io/reverse?lat={$lat}&lon={$lng}&lang=en";
+        $base = rtrim(env('PHOTON_BASE_URL', 'https://photon.komoot.io'), '/');
+        $lang = env('PHOTON_LANG', 'en');
+        $url = "{$base}/reverse?lat={$lat}&lon={$lng}&lang={$lang}";
 
         $ctx = stream_context_create([
             'http' => [
