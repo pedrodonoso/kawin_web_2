@@ -1,0 +1,11 @@
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+# Photon tarda en arrancar el primer boot (descarga de datos)
+# healthcheckTimeout cubre ese tiempo de espera
+healthcheckPath = "/api?q=Santiago"
+healthcheckTimeout = 1800    # 30 minutos para el primer boot con descarga
+
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
