@@ -2,63 +2,72 @@
 set -e
 
 # ─── Configuración ────────────────────────────────────────────────────────────
-# Railway inyecta PORT; photon lo necesita como argumento.
-# Si no viene de Railway, usamos 2322 (puerto por defecto de photon).
 PORT="${PORT:-2322}"
-
-# Directorio donde se monta el volumen de Railway
 DATA_DIR="${DATA_DIR:-/photon/data}"
-
-# Versión de dump a usar (debe coincidir con la versión del JAR)
-PHOTON_VERSION="${PHOTON_VERSION:-1.0}"
-
-# Base URL del servidor de descargas de GraphHopper
-BASE_URL="${DOWNLOAD_BASE_URL:-https://download1.graphhopper.com/public/south-america/chile}"
-
-# Opciones de JVM (ajustar según el plan de Railway)
+PHOTON_VERSION="${PHOTON_VERSION:-1.0}"   # versión del DUMP (major.minor, no el JAR)
 JAVA_OPTS="${JAVA_OPTS:--Xmx2G}"
+COUNTRY_CODE="${COUNTRY_CODE:-cl}"        # código ISO para filtrar al importar
+
+BASE="https://download1.graphhopper.com/public"
+
+# wget/curl con User-Agent de navegador (el servidor bloquea UAs por defecto)
+UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+
+url_exists() { curl -fsSL -A "$UA" --head "$1" -o /dev/null 2>/dev/null; }
+download()   { wget -q --user-agent="$UA" -O "$1" "$2"; }
 
 # ─── Preparación ──────────────────────────────────────────────────────────────
 mkdir -p "$DATA_DIR"
 
-# Si ya existe la base de datos (volumen persistido), saltar la descarga
 if [ -d "$DATA_DIR/photon_data" ]; then
-    echo "[photon] Base de datos encontrada en $DATA_DIR/photon_data — omitiendo descarga."
+    echo "[photon] Base de datos encontrada — omitiendo descarga."
 else
-    echo "[photon] No se encontró base de datos. Iniciando descarga de datos para Chile..."
+    echo "[photon] Buscando datos para Chile (versión ${PHOTON_VERSION})..."
 
-    # 1. Intentar con DB dump (el más fácil: descomprimir y listo)
-    DB_URL="${BASE_URL}/photon-db-cl-${PHOTON_VERSION}-latest.tar.bz2"
-    echo "[photon] Verificando DB dump en: $DB_URL"
+    # Candidatos en orden de preferencia (de más pequeño a más grande)
+    declare -a CANDIDATES=(
+        # 1. Extract específico de Chile (si existe)
+        "${BASE}/south-america/chile/photon-dump-chile-${PHOTON_VERSION}-latest.jsonl.zst"
+        # 2. Ruta antigua (puede seguir activa)
+        "${BASE}/extracts/by-country-code/${COUNTRY_CODE}/photon-dump-${COUNTRY_CODE}-${PHOTON_VERSION}-latest.jsonl.zst"
+        # 3. Dump de todo Sudamérica (más grande, ~1-2 GB, se filtra por país al importar)
+        "${BASE}/south-america/photon-dump-south-america-${PHOTON_VERSION}-latest.jsonl.zst"
+    )
 
-    if curl --output /dev/null --silent --head --fail "$DB_URL"; then
-        echo "[photon] Descargando DB dump (~pocos GB, puede tardar varios minutos)..."
-        cd "$DATA_DIR"
-        wget -O - "$DB_URL" | pbzip2 -cd | tar x
-        echo "[photon] DB dump extraído correctamente."
+    DUMP_URL=""
+    for url in "${CANDIDATES[@]}"; do
+        echo "[photon] Verificando: $url"
+        if url_exists "$url"; then
+            DUMP_URL="$url"
+            echo "[photon] ✓ Encontrado."
+            break
+        fi
+    done
 
-    else
-        # 2. Fallback: JSON dump + importar con photon
-        JSON_URL="${BASE_URL}/photon-dump-cl-${PHOTON_VERSION}-latest.jsonl.zst"
-        echo "[photon] DB dump no disponible. Usando JSON dump: $JSON_URL"
-        echo "[photon] Este proceso puede tardar entre 10 y 30 minutos..."
-
-        cd "$DATA_DIR"
-        wget -O photon-dump-cl.jsonl.zst "$JSON_URL"
-
-        echo "[photon] Importando datos (esto puede tardar)..."
-        zstd --stdout -d photon-dump-cl.jsonl.zst | \
-            java $JAVA_OPTS -jar /photon/photon.jar \
-                -nominatim-import -import-file -
-
-        rm -f photon-dump-cl.jsonl.zst
-        echo "[photon] Importación completada."
+    if [ -z "$DUMP_URL" ]; then
+        echo "[photon] ERROR: No se encontró ningún dump para Chile con versión ${PHOTON_VERSION}."
+        echo "[photon] Verifica las URLs disponibles en: ${BASE}/"
+        exit 1
     fi
+
+    echo "[photon] Descargando: $DUMP_URL"
+    echo "[photon] (Puede tardar 10-30 min en el primer arranque)"
+    cd "$DATA_DIR"
+    download photon-dump.jsonl.zst "$DUMP_URL"
+
+    echo "[photon] Importando datos (country_code=${COUNTRY_CODE})..."
+    zstd --stdout -d photon-dump.jsonl.zst | \
+        java $JAVA_OPTS -jar /photon/photon.jar \
+            -nominatim-import -import-file - \
+            -country-codes "$COUNTRY_CODE" \
+            -data-dir "$DATA_DIR"
+
+    rm -f photon-dump.jsonl.zst
+    echo "[photon] Importación completada."
 fi
 
 # ─── Arrancar Photon ──────────────────────────────────────────────────────────
-echo "[photon] Iniciando servidor en puerto $PORT..."
-cd "$DATA_DIR"
-
+echo "[photon] Iniciando en puerto $PORT..."
 exec java $JAVA_OPTS -jar /photon/photon.jar \
-    -listen-port "$PORT"
+    -listen-port "$PORT" \
+    -data-dir "$DATA_DIR"
