@@ -9,17 +9,25 @@ use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
+    private const ALLOWED_ROLES = ['student', 'instructor'];
+    private const TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days
+
     // POST /api/v1/auth/register
     public function register(Request $request): JsonResponse
     {
         $this->validate($request, [
-            'name'     => 'required|string',
-            'email'    => 'required|email',
-            'password' => 'required|min:8',
-            'role'     => 'sometimes|string',
+            'name'     => 'required|string|max:120',
+            'email'    => 'required|email|max:255',
+            'password' => 'required|min:8|max:128',
+            'role'     => 'sometimes|string|in:student,instructor',
         ]);
 
         $role = $request->input('role', 'student') ?: 'student';
+        if (!in_array($role, self::ALLOWED_ROLES, true)) {
+            $role = 'student';
+        }
+
+        $email = mb_strtolower(trim($request->input('email')));
         $hash = password_hash($request->input('password'), PASSWORD_BCRYPT);
 
         try {
@@ -27,7 +35,7 @@ class AuthController extends Controller
                 "INSERT INTO users (email, password_hash, role)
                  VALUES (?, ?, ?)
                  RETURNING id",
-                [$request->input('email'), $hash, $role]
+                [$email, $hash, $role]
             )->id;
         } catch (\Exception $e) {
             return response()->json(['message' => 'El email ya está registrado'], 409);
@@ -36,14 +44,14 @@ class AuthController extends Controller
         DB::insert(
             "INSERT INTO profiles (user_id, name) VALUES (?, ?)
              ON CONFLICT (user_id) DO NOTHING",
-            [$userId, $request->input('name')]
+            [$userId, trim($request->input('name'))]
         );
 
-        $token = $this->makeToken($userId, $request->input('email'), $role);
+        $token = $this->makeToken($userId, $email, $role);
 
         return response()->json([
             'token' => $token,
-            'user'  => ['id' => $userId, 'email' => $request->input('email'), 'role' => $role],
+            'user'  => ['id' => $userId, 'email' => $email, 'role' => $role],
         ], 201);
     }
 
@@ -51,24 +59,26 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $this->validate($request, [
-            'email'    => 'required|email',
-            'password' => 'required',
+            'email'    => 'required|email|max:255',
+            'password' => 'required|max:128',
         ]);
+
+        $email = mb_strtolower(trim($request->input('email')));
 
         $user = DB::selectOne(
             "SELECT id, password_hash, role FROM users WHERE email = ?",
-            [$request->input('email')]
+            [$email]
         );
 
         if (!$user || !password_verify($request->input('password'), $user->password_hash)) {
             return response()->json(['message' => 'Credenciales incorrectas'], 401);
         }
 
-        $token = $this->makeToken($user->id, $request->input('email'), $user->role);
+        $token = $this->makeToken($user->id, $email, $user->role);
 
         return response()->json([
             'token' => $token,
-            'user'  => ['id' => $user->id, 'email' => $request->input('email'), 'role' => $user->role],
+            'user'  => ['id' => $user->id, 'email' => $email, 'role' => $user->role],
         ]);
     }
 
@@ -76,13 +86,19 @@ class AuthController extends Controller
 
     private function makeToken(string $userId, string $email, string $role): string
     {
+        $secret = env('API_SECRET');
+        if (!$secret) {
+            throw new \RuntimeException('API_SECRET env var is not set');
+        }
+
         $payload = [
             'sub'   => $userId,
             'email' => $email,
             'role'  => $role,
-            'exp'   => time() + (30 * 24 * 60 * 60),
+            'iat'   => time(),
+            'exp'   => time() + self::TOKEN_TTL,
         ];
 
-        return JWT::encode($payload, env('API_SECRET', 'dev-secret'), 'HS256');
+        return JWT::encode($payload, $secret, 'HS256');
     }
 }

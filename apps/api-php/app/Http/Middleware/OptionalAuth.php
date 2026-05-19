@@ -16,7 +16,10 @@ class OptionalAuth
 
         if (str_starts_with($header, 'Bearer ')) {
             $token  = substr($header, 7);
-            $secret = env('API_SECRET', 'dev-secret');
+            $secret = env('API_SECRET');
+            if (!$secret) {
+                return $next($request);
+            }
 
             try {
                 $decoded = JWT::decode($token, new Key($secret, 'HS256'));

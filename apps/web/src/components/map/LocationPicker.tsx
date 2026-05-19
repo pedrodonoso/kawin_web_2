@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { MapPin, Loader2, LocateFixed, Link } from "lucide-react";
+import { useUserLocation } from "@/hooks/useUserLocation";
 
 const LocationPickerMap = dynamic(
   () => import("./LocationPickerMap").then((m) => m.LocationPickerMap),
@@ -51,8 +52,9 @@ export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsC
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const mapLat = lat !== "" ? Number(lat) : DEFAULT_LAT;
-  const mapLng = lng !== "" ? Number(lng) : DEFAULT_LNG;
+  const { coords: userLocation } = useUserLocation();
+  const mapLat = lat !== "" ? Number(lat) : userLocation[0];
+  const mapLng = lng !== "" ? Number(lng) : userLocation[1];
   const hasCoords = lat !== "" && lng !== "";
 
   // Sync external location → local query

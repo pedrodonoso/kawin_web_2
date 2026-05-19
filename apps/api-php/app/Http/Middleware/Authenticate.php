@@ -19,7 +19,10 @@ class Authenticate
         }
 
         $token = substr($header, 7);
-        $secret = env('API_SECRET', 'dev-secret');
+        $secret = env('API_SECRET');
+        if (!$secret) {
+            return response()->json(['message' => 'Server misconfigured'], 500);
+        }
 
         try {
             $decoded = JWT::decode($token, new Key($secret, 'HS256'));

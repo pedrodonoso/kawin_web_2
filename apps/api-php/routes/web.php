@@ -17,8 +17,10 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     $router->get('/workshops',        'WorkshopController@index');
     $router->get('/workshops/{id}',   ['middleware' => 'optional-auth', 'uses' => 'WorkshopController@show']);
 
-    $router->post('/auth/register',   'AuthController@register');
-    $router->post('/auth/login',      'AuthController@login');
+    $router->group(['middleware' => 'throttle-auth'], function () use ($router) {
+        $router->post('/auth/register',   'AuthController@register');
+        $router->post('/auth/login',      'AuthController@login');
+    });
 
     // Public instructor profile
     $router->get('/instructors/{id}/profile', 'ProfileController@publicShow');

@@ -53,6 +53,8 @@ export default function RegistroPage() {
       });
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      const secure = window.location.protocol === "https:" ? "; Secure" : "";
+      document.cookie = `token=${data.token}; path=/; SameSite=Lax; max-age=604800${secure}`;
       toast.success("¡Cuenta creada exitosamente!");
       if (role === UserRole.INSTRUCTOR) {
         window.location.href = "/dashboard";
