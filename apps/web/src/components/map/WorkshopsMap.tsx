@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, CircleMarker, useMapEvents, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -21,6 +21,14 @@ const C = {
   primary: "#1a1916",      // dark brown
   bg: "#f4efe6",           // cream
   border: "#d4c9b8",
+  workshop: "#ea580c",     // orange-600
+  workshopDark: "#c2410c", // orange-700
+  course: "#d97706",       // amber-600
+  courseDark: "#b45309",   // amber-700
+  class: "#4f46e5",        // indigo-600
+  classDark: "#4338ca",    // indigo-700
+  event: "#059669",        // emerald-600
+  eventDark: "#047857",    // emerald-700
 };
 
 // ─── Category SVG icon paths (Lucide, viewBox 0 0 24 24) ───────────────────
@@ -76,8 +84,43 @@ const DEFAULT_ICON_PATH = `
     C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
   <circle cx="12" cy="10" r="3"/>`;
 
-function makePinSvg(iconPath: string, size: number, selected: boolean) {
-  const bg      = selected ? C.accentDark : C.accent;
+const WORKSHOP_ICON_PATH = `
+  <path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z"/>
+  <path d="M9 8c-2 3-4 3.5-7 4l8 10c2-1 6-5 6-7"/>
+  <path d="M14.5 17.5 4.5 15"/>`;
+
+const COURSE_ICON_PATH = `
+  <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/>
+  <path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>`;
+
+const CLASS_ICON_PATH = `
+  <path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/>
+  <path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>`;
+
+const EVENT_ICON_PATH = `
+  <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+  <line x1="16" x2="16" y1="2" y2="6"/>
+  <line x1="8" x2="8" y1="2" y2="6"/>
+  <line x1="3" x2="21" y1="10" y2="10"/>
+  <path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/>
+  <path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>`;
+
+const TYPE_ICON_PATHS: Record<string, string> = {
+  workshop: WORKSHOP_ICON_PATH,
+  course: COURSE_ICON_PATH,
+  class: CLASS_ICON_PATH,
+  event: EVENT_ICON_PATH,
+};
+
+const TYPE_COLORS: Record<string, { color: string; dark: string }> = {
+  workshop: { color: C.workshop, dark: C.workshopDark },
+  course: { color: C.course, dark: C.courseDark },
+  class: { color: C.class, dark: C.classDark },
+  event: { color: C.event, dark: C.eventDark },
+};
+
+function makePinSvg(iconPath: string, size: number, selected: boolean, color?: string, colorDark?: string) {
+  const bg      = selected ? (colorDark ?? C.accentDark) : (color ?? C.accent);
   const ring    = selected ? `<circle cx="${size / 2}" cy="${size / 2 - 4}" r="${size / 2 - 2}" fill="none" stroke="${C.bg}" stroke-width="2.5" opacity="0.6"/>` : "";
   const iconSize = size * 0.42;
   const cx = size / 2 - iconSize / 2;
@@ -100,11 +143,13 @@ function makePinSvg(iconPath: string, size: number, selected: boolean) {
     </svg>`;
 }
 
-function createCategoryIcon(categorySlug: string | undefined, selected: boolean): L.DivIcon {
-  const path = CATEGORY_PATHS[categorySlug ?? ""] ?? DEFAULT_ICON_PATH;
+function createCategoryIcon(categorySlug: string | undefined, selected: boolean, workshopType?: string): L.DivIcon {
+  const typeIcon = workshopType ? TYPE_ICON_PATHS[workshopType] : undefined;
+  const typeCol = workshopType ? TYPE_COLORS[workshopType] : undefined;
+  const path = typeIcon ?? (CATEGORY_PATHS[categorySlug ?? ""] ?? DEFAULT_ICON_PATH);
   const size = selected ? 46 : 38;
   return L.divIcon({
-    html: makePinSvg(path, size, selected),
+    html: makePinSvg(path, size, selected, typeCol?.color, typeCol?.dark),
     className: "",
     iconSize: [size, size + 8],
     iconAnchor: [size / 2, size + 8],
@@ -140,9 +185,28 @@ function createClusterIcon(cluster: any): L.DivIcon {
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const MODALITY = ModalityLabel;
 const TYPE: Record<string, string>     = { workshop: "Taller", course: "Curso", class: "Clase", event: "Evento" };
+const TYPE_COLOR: Record<string, string> = {
+  workshop: "bg-orange-100 text-orange-700 border-0",
+  course: "bg-amber-100 text-amber-700 border-0",
+  class: "bg-indigo-100 text-indigo-700 border-0",
+  event: "bg-emerald-100 text-emerald-700 border-0",
+};
 
 function MapClickOutside({ onClose }: { onClose: () => void }) {
   useMapEvents({ click: () => onClose() });
+  return null;
+}
+
+function SyncCenter({ center }: { center: [number, number] }) {
+  const map = useMap();
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
+      return;
+    }
+    map.setView(center, map.getZoom());
+  }, [center, map]);
   return null;
 }
 
@@ -151,11 +215,12 @@ function MapClickOutside({ onClose }: { onClose: () => void }) {
 interface Props {
   workshops: Workshop[];
   center?: [number, number];
+  userLocation?: [number, number];
   zoom?: number;
   visible?: boolean;
 }
 
-export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12, visible }: Props) {
+export function WorkshopsMap({ workshops, center = [-33.45, -70.65], userLocation, zoom = 12, visible }: Props) {
   const [selected, setSelected] = useState<Workshop | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [listOpen, setListOpen] = useState(true);
@@ -211,7 +276,15 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12, 
           maxZoom={20}
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
+        <SyncCenter center={center} />
         <MapClickOutside onClose={() => setSelected(null)} />
+
+        {userLocation && (
+          <>
+            <CircleMarker center={userLocation} radius={18} pathOptions={{ color: "transparent", fillColor: "#3b82f6", fillOpacity: 0.15 }} />
+            <CircleMarker center={userLocation} radius={7} pathOptions={{ color: "#fff", weight: 2, fillColor: "#3b82f6", fillOpacity: 1 }} />
+          </>
+        )}
 
         <MarkerClusterGroup
           chunkedLoading
@@ -225,7 +298,7 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12, 
             <Marker
               key={w.id}
               position={[w.lat!, w.lng!]}
-              icon={createCategoryIcon(w.category_slug, selected?.id === w.id)}
+              icon={createCategoryIcon(w.category_slug, selected?.id === w.id, w.type)}
               eventHandlers={{
                 click(e) {
                   e.originalEvent.stopPropagation();
@@ -272,24 +345,17 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12, 
                 >
                   <div
                     className="mt-0.5 w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
-                    style={{ background: w.lat != null ? C.accent : C.border }}
+                    style={{ background: TYPE_COLORS[w.type]?.color ?? (w.lat != null ? C.accent : C.border) }}
                   >
-                    {w.category_slug && CATEGORY_PATHS[w.category_slug] ? (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                        stroke={C.bg} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        dangerouslySetInnerHTML={{ __html: CATEGORY_PATHS[w.category_slug] }}
-                      />
-                    ) : (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                        stroke={C.bg} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        dangerouslySetInnerHTML={{ __html: DEFAULT_ICON_PATH }}
-                      />
-                    )}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                      stroke={C.bg} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      dangerouslySetInnerHTML={{ __html: TYPE_ICON_PATHS[w.type] ?? (CATEGORY_PATHS[w.category_slug ?? ""] ?? DEFAULT_ICON_PATH) }}
+                    />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-medium leading-tight line-clamp-1 group-hover:text-foreground">{w.title}</p>
                     <p className={`text-xs mt-0.5 ${Number(w.price) === 0 ? "text-emerald-600 font-bold" : "text-muted-foreground"}`}>
-                      {Number(w.price) === 0 ? "Gratuito - Aporte Voluntario" : `$${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${w.currency}`}
+                      {Number(w.price) === 0 ? "Gratuito - Aporte consciente" : `$${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${w.currency}`}
                     </p>
                   </div>
                 </button>
@@ -327,17 +393,17 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12, 
       {/* ── Detail panel ── */}
       {selected && (
         <div className="absolute top-3 right-3 z-[1000] w-72 bg-background border rounded-xl shadow-lg p-4 space-y-3">
-          {/* Category icon strip */}
-          {selected.category_slug && CATEGORY_PATHS[selected.category_slug] && (
+          {/* Type icon strip */}
+          {(TYPE_ICON_PATHS[selected.type] || (selected.category_slug && CATEGORY_PATHS[selected.category_slug])) && (
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: C.accent }}
+              style={{ background: TYPE_COLORS[selected.type]?.color ?? C.accent }}
             >
               <svg
                 width="16" height="16" viewBox="0 0 24 24"
                 fill="none" stroke={C.bg} strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round"
-                dangerouslySetInnerHTML={{ __html: CATEGORY_PATHS[selected.category_slug] }}
+                dangerouslySetInnerHTML={{ __html: TYPE_ICON_PATHS[selected.type] ?? CATEGORY_PATHS[selected.category_slug!] }}
               />
             </div>
           )}
@@ -351,7 +417,7 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], zoom = 12, 
 
           <div className="flex flex-wrap gap-1.5">
             <Badge variant="outline" className="text-xs">{MODALITY[selected.modality]}</Badge>
-            <Badge variant="secondary" className="text-xs">{TYPE[selected.type]}</Badge>
+            <Badge className={`text-xs ${TYPE_COLOR[selected.type] ?? "bg-muted text-muted-foreground"}`}>{TYPE[selected.type]}</Badge>
             {selected.category && (
               <Badge className="text-xs bg-primary/10 text-primary border-0">{selected.category.name}</Badge>
             )}

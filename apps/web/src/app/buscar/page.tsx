@@ -17,10 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Search, MapPin, Clock, LayoutGrid, Map, BookOpen } from "lucide-react";
+import { Search, MapPin, Clock, LayoutGrid, Map, BookOpen, CalendarDays, Brush, GraduationCap, Repeat } from "lucide-react";
 import { api, type Workshop, type Category } from "@/lib/api";
 import { Modality } from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
+import { useUserLocation } from "@/hooks/useUserLocation";
 
 const WorkshopsMap = dynamic(
   () => import("@/components/map/WorkshopsMap").then((m) => m.WorkshopsMap),
@@ -154,25 +155,44 @@ function WorkshopCard({ w }: { w: Workshop }) {
   };
 
   const typeColor: Record<string, string> = {
-    workshop: "bg-primary/10 text-primary",
-    course: "bg-accent/20 text-accent",
-    class: "bg-accent/30 text-accent",
-    event: "bg-primary/15 text-primary",
+    workshop: "bg-orange-100 text-orange-700",
+    course: "bg-amber-100 text-amber-700",
+    class: "bg-indigo-100 text-indigo-700",
+    event: "bg-emerald-100 text-emerald-700",
+  };
+
+  const typeBg: Record<string, string> = {
+    workshop: "bg-orange-950/30",
+    course: "bg-amber-950/30",
+    class: "bg-indigo-950/30",
+    event: "bg-emerald-950/30",
+  };
+
+  const TypeIcon: Record<string, React.ElementType> = {
+    workshop: Brush,
+    course: GraduationCap,
+    class: Repeat,
+    event: CalendarDays,
+  };
+
+  const typeIconColor: Record<string, string> = {
+    workshop: "text-orange-400",
+    course: "text-amber-400",
+    class: "text-indigo-400",
+    event: "text-emerald-400",
   };
 
   return (
     <Link href={`/talleres/${w.slug}`}>
       <Card className="hover:shadow-md transition-shadow h-full flex flex-col">
-        <div className="bg-secondary h-40 rounded-t-lg flex items-center justify-center text-muted-foreground text-sm shrink-0">
+        <div className={`${typeBg[w.type] ?? "bg-secondary"} h-40 rounded-t-lg flex items-center justify-center text-muted-foreground text-sm shrink-0`}>
           {w.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={w.cover_image_url} alt={w.title} className="h-full w-full object-cover rounded-t-lg" />
-          ) : (
-            <div className="flex flex-col items-center gap-2 opacity-30">
-              <BookOpen className="h-8 w-8" strokeWidth={1} />
-              <span className="text-sm font-semibold tracking-tight">kwin<span className="text-primary">.</span></span>
-            </div>
-          )}
+          ) : (() => {
+            const Icon = TypeIcon[w.type] ?? BookOpen;
+            return <Icon className={`w-10 h-10 opacity-50 ${typeIconColor[w.type] ?? "text-muted-foreground"}`} />;
+          })()}
         </div>
         <CardContent className="p-4 pb-5 flex flex-col flex-1">
           {/* Title | Type */}
@@ -213,7 +233,7 @@ function WorkshopCard({ w }: { w: Workshop }) {
             <div className="flex items-center justify-between">
               {Number(w.price) === 0 ? (
                 <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                  Gratuito - Aporte Voluntario
+                  Gratuito - Aporte consciente
                 </span>
               ) : (
                 <span className={`font-bold text-sm text-foreground`}>
@@ -268,6 +288,7 @@ function BuscarContent() {
   const [view, setView] = useState<"list" | "map">(() =>
     searchParams?.get("vista") === "mapa" ? "map" : "list"
   );
+  const { coords: userLocation, isReal: hasUserLocation } = useUserLocation();
 
   function changeView(v: "list" | "map") {
     setView(v);
@@ -409,6 +430,8 @@ function BuscarContent() {
         <div className={view === "map" ? "block" : "hidden"}>
           <WorkshopsMap
             workshops={workshops.filter((w) => w.modality !== Modality.ONLINE)}
+            center={userLocation}
+            userLocation={hasUserLocation ? userLocation : undefined}
             visible={view === "map"}
           />
         </div>
