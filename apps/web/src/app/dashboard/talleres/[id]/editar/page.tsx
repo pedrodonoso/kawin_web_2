@@ -1243,11 +1243,22 @@ export default function EditarTallerPage() {
                       )}
                       <Button
                         type="button"
+                        variant={isPublished ? "default" : "outline"}
                         disabled={saving}
                         onClick={() => save(isPublished ? "published" : "draft")}
                       >
                         {saving ? "Guardando..." : "Guardar cambios"}
                       </Button>
+                      {!isPublished && (
+                        <Button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => save("published")}
+                          className="bg-green-700 hover:bg-green-800 text-white"
+                        >
+                          {saving ? "Publicando..." : "Publicar"}
+                        </Button>
+                      )}
                     </>
                   ) : isPublished && !hasObservations ? (
                     // Publicado → siempre requiere revisión
