@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Search, MapPin, ArrowRight,
+  Search, MapPin, ArrowRight, CalendarDays, Route,
   Palette, ChefHat, Music, Heart, Code, Globe, Activity,
   Briefcase, Camera, Scissors,
   type LucideIcon,
@@ -66,12 +66,12 @@ export default function Home() {
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight">
             Aprendamos juntos.<br />
-            <span className="text-primary-foreground/50">Afuera.</span>
+            <span className="text-primary-foreground/50">En la calle.</span>
           </h1>
 
           <p className="text-primary-foreground/65 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            Kawin es donde las personas se encuentran para enseñarse unas a otras.
-            Sin pantallas de por medio. Sin algoritmos. Solo personas y ganas.
+            En Kwin, las personas se reunen para enseñarse lo que saben.
+            Sin pantallas de por medio, sin algoritmos decidiendo por ti. Solo gente con ganas de compartir.
           </p>
 
           <form onSubmit={handleSearch} className="flex gap-2 max-w-lg mx-auto">
@@ -91,7 +91,7 @@ export default function Home() {
           </form>
 
           <p className="text-primary-foreground/40 text-sm">
-            Talleres, cursos y clases presenciales cerca de ti
+            Talleres, cursos, clases y eventos presenciales cerca de ti
           </p>
         </div>
       </section>
@@ -118,9 +118,8 @@ export default function Home() {
             ¿Qué es <span className="text-primary">kawinear</span>?
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
-            Kawinear es salir a la calle, juntarse con otros y aprender algo con las manos.
-            Es que el panadero del barrio te enseñe masa madre. Que la vecina del 4to te dé
-            tu primera clase de cerámica. Es aprendizaje real, entre personas reales.
+            Kawinear es salir a la calle y aprender algo con las manos. Es que el panadero del barrio te enseñe masa madre. 
+            Que la vecina te dé tu primera clase de cerámica. Es aprender de personas reales, en lugares reales.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
             <Button size="lg" asChild className="rounded-xl">
@@ -172,7 +171,7 @@ export default function Home() {
             <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Descubre</p>
             <h2 className="text-3xl md:text-4xl font-extrabold">Todo en un solo punto de reunión</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             <Link
               href="/buscar"
               className="group border bg-background rounded-2xl p-7 space-y-3 hover:border-primary hover:shadow-sm transition-all"
@@ -199,9 +198,22 @@ export default function Home() {
               </p>
             </Link>
 
+            <Link
+              href="/buscar?tipo=event"
+              className="group border bg-background rounded-2xl p-7 space-y-3 hover:border-primary hover:shadow-sm transition-all"
+            >
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <CalendarDays className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="text-lg font-bold group-hover:text-primary transition-colors">Eventos</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Ferias, encuentros y actividades únicas — experiencias que suceden una sola vez.
+              </p>
+            </Link>
+
             <div className="border border-dashed bg-background rounded-2xl p-7 space-y-3 opacity-70">
               <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
-                <Activity className="h-5 w-5 text-muted-foreground" />
+                <Route className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-bold">Rutas turísticas</h3>
