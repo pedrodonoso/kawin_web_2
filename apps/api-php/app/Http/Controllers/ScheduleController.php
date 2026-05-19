@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\BookingStatus;
+use App\Constants\UserRole;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,8 @@ class ScheduleController extends Controller
     // POST /api/v1/workshops/:id/schedules
     public function store(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === UserRole::ADMIN;
 
         $owner = DB::selectOne(
             "SELECT instructor_id::text as instructor_id FROM workshops WHERE id = ?",
@@ -22,7 +24,7 @@ class ScheduleController extends Controller
         if (!$owner) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
-        if ($owner->instructor_id !== $userID) {
+        if (!$isAdmin && $owner->instructor_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para modificar este taller'], 403);
         }
 
@@ -89,7 +91,8 @@ class ScheduleController extends Controller
     // DELETE /api/v1/schedules/:id  (soft-delete: set valid_until = today)
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === UserRole::ADMIN;
 
         $owner = DB::selectOne(
             "SELECT w.instructor_id::text as instructor_id
@@ -101,12 +104,12 @@ class ScheduleController extends Controller
         if (!$owner) {
             return response()->json(['message' => 'Schedule no encontrado'], 404);
         }
-        if ($owner->instructor_id !== $userID) {
+        if (!$isAdmin && $owner->instructor_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para modificar este schedule'], 403);
         }
 
         $affected = DB::update(
-            "UPDATE schedules SET valid_until = CURRENT_DATE WHERE id = ? AND valid_until IS NULL",
+            "UPDATE schedules SET valid_until = CURRENT_DATE - INTERVAL '1 day' WHERE id = ? AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)",
             [$id]
         );
 
@@ -120,7 +123,8 @@ class ScheduleController extends Controller
     // PUT /api/v1/schedules/:id  (immutable: closes old, creates new)
     public function update(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === UserRole::ADMIN;
 
         $ownership = DB::selectOne(
             "SELECT w.instructor_id::text as owner_id, s.workshop_id::text as workshop_id
@@ -132,7 +136,7 @@ class ScheduleController extends Controller
         if (!$ownership) {
             return response()->json(['message' => 'Schedule no encontrado'], 404);
         }
-        if ($ownership->owner_id !== $userID) {
+        if (!$isAdmin && $ownership->owner_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para modificar este schedule'], 403);
         }
 
@@ -196,6 +200,8 @@ class ScheduleController extends Controller
             return response()->json(['message' => 'change_date inválido, usa YYYY-MM-DD'], 400);
         }
 
+        $isAdmin = $this->userRole($request) === UserRole::ADMIN;
+
         $owner = DB::selectOne(
             "SELECT w.instructor_id::text as instructor_id
              FROM schedules s
@@ -206,7 +212,7 @@ class ScheduleController extends Controller
         if (!$owner) {
             return response()->json(['message' => 'Schedule no encontrado'], 404);
         }
-        if ($owner->instructor_id !== $userID) {
+        if (!$isAdmin && $owner->instructor_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso'], 403);
         }
 
@@ -241,7 +247,8 @@ class ScheduleController extends Controller
     // POST /api/v1/schedules/:id/bulk-action
     public function bulkAction(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === UserRole::ADMIN;
 
         $this->validate($request, [
             'action'      => 'required|string|in:migrate_all,refund_all',
@@ -268,7 +275,7 @@ class ScheduleController extends Controller
         if (!$owner) {
             return response()->json(['message' => 'Schedule no encontrado'], 404);
         }
-        if ($owner->instructor_id !== $userID) {
+        if (!$isAdmin && $owner->instructor_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso'], 403);
         }
 
