@@ -64,6 +64,7 @@ export default function AdminWorkshopReviewPage() {
   const [observations, setObservations] = useState("");
   const [sendingObs, setSendingObs] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [showObsForm, setShowObsForm] = useState(false);
   const [editingContact, setEditingContact] = useState(false);
 
@@ -121,6 +122,21 @@ export default function AdminWorkshopReviewPage() {
       toast.error(err instanceof Error ? err.message : "Error al aprobar");
     } finally {
       setApproving(false);
+    }
+  }
+
+  async function publish() {
+    if (!workshop) return;
+    if (!window.confirm("¿Publicar este taller?")) return;
+    setPublishing(true);
+    try {
+      await adminApi.publishWorkshop(workshop.id);
+      setWorkshop((prev) => prev ? { ...prev, status: "published" } : prev);
+      toast.success("Taller publicado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al publicar");
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -208,6 +224,15 @@ export default function AdminWorkshopReviewPage() {
               <CheckCircle2 className="h-4 w-4 mr-2" />
               {approving ? "Aprobando..." : approvalStatus === ApprovalStatus.APPROVED ? "Ya aprobado" : "Aprobar y publicar"}
             </Button>
+            {workshop.status === "draft" && (
+              <Button
+                onClick={publish}
+                disabled={publishing || workshop.status !== "draft"}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {publishing ? "Publicando..." : "Publicar"}
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setShowObsForm((v) => !v)}
