@@ -341,6 +341,25 @@ class AdminController extends Controller
         return response()->json(['data' => ['id' => $id, 'status' => WorkshopStatus::ARCHIVED]]);
     }
 
+    // POST /api/v1/admin/workshops/:id/publish
+    public function publishWorkshop(string $id): JsonResponse
+    {
+        $exists = DB::selectOne(
+            "SELECT id FROM workshops WHERE id = ? AND status = ?",
+            [$id, WorkshopStatus::DRAFT]
+        );
+        if (!$exists) {
+            return response()->json(['message' => 'Taller no encontrado o no está en borrador'], 404);
+        }
+
+        DB::update(
+            "UPDATE workshops SET status = ?, updated_at = NOW() WHERE id = ?",
+            [WorkshopStatus::PUBLISHED, $id]
+        );
+
+        return response()->json(['data' => ['id' => $id, 'status' => WorkshopStatus::PUBLISHED]]);
+    }
+
     // POST /api/v1/admin/workshops/:id/restore
     public function restoreWorkshop(string $id): JsonResponse
     {
@@ -358,5 +377,24 @@ class AdminController extends Controller
         );
 
         return response()->json(['data' => ['id' => $id, 'status' => WorkshopStatus::DRAFT]]);
+    }
+
+    // DELETE /api/v1/admin/workshops/:id/permanent
+    public function permanentDeleteWorkshop(string $id): JsonResponse
+    {
+        $workshop = DB::selectOne(
+            "SELECT id FROM workshops WHERE id = ? AND status = ?",
+            [$id, WorkshopStatus::ARCHIVED]
+        );
+        if (!$workshop) {
+            return response()->json(['message' => 'Solo se pueden eliminar talleres archivados'], 404);
+        }
+
+        DB::delete("DELETE FROM bookings WHERE workshop_id = ?", [$id]);
+        DB::delete("DELETE FROM sessions WHERE workshop_id = ?", [$id]);
+        DB::delete("DELETE FROM schedules WHERE workshop_id = ?", [$id]);
+        DB::delete("DELETE FROM workshops WHERE id = ?", [$id]);
+
+        return response()->json(['data' => ['id' => $id, 'deleted' => true]]);
     }
 }

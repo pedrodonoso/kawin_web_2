@@ -341,6 +341,12 @@ class WorkshopWriteController extends Controller
             $sensitiveChanged = false;
         }
 
+        if ($isAdmin && $newStatus === WorkshopStatus::PUBLISHED) {
+            $workshop->approval_status = ApprovalStatus::APPROVED;
+            $workshop->pending_changes = null;
+            $workshop->admin_observations = null;
+        }
+
         $workshop->notifyContext = [
             'action'            => 'update',
             'was_published'     => $wasPublished,
@@ -373,12 +379,20 @@ class WorkshopWriteController extends Controller
     // DELETE /api/v1/workshops/:id
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === UserRole::ADMIN;
 
-        $exists = DB::selectOne(
-            "SELECT true as ok FROM workshops WHERE id = ? AND instructor_id = ? AND status != ?",
-            [$id, $userID, WorkshopStatus::ARCHIVED]
-        );
+        if ($isAdmin) {
+            $exists = DB::selectOne(
+                "SELECT true as ok FROM workshops WHERE id = ? AND status != ?",
+                [$id, WorkshopStatus::ARCHIVED]
+            );
+        } else {
+            $exists = DB::selectOne(
+                "SELECT true as ok FROM workshops WHERE id = ? AND instructor_id = ? AND status != ?",
+                [$id, $userID, WorkshopStatus::ARCHIVED]
+            );
+        }
         if (!$exists) {
             return response()->json(['message' => 'Taller no encontrado o ya archivado'], 404);
         }
@@ -390,13 +404,42 @@ class WorkshopWriteController extends Controller
             ], 409);
         }
 
-        DB::update(
-            "UPDATE workshops SET status = ?, updated_at = NOW()
-             WHERE id = ? AND instructor_id = ? AND status != ?",
-            [WorkshopStatus::ARCHIVED, $id, $userID, WorkshopStatus::ARCHIVED]
-        );
+        if ($isAdmin) {
+            DB::update(
+                "UPDATE workshops SET status = ?, updated_at = NOW()
+                 WHERE id = ? AND status != ?",
+                [WorkshopStatus::ARCHIVED, $id, WorkshopStatus::ARCHIVED]
+            );
+        } else {
+            DB::update(
+                "UPDATE workshops SET status = ?, updated_at = NOW()
+                 WHERE id = ? AND instructor_id = ? AND status != ?",
+                [WorkshopStatus::ARCHIVED, $id, $userID, WorkshopStatus::ARCHIVED]
+            );
+        }
 
         return response()->json(['data' => ['id' => $id, 'status' => WorkshopStatus::ARCHIVED]]);
+    }
+
+    // DELETE /api/v1/workshops/:id/permanent
+    public function permanentDelete(Request $request, string $id): JsonResponse
+    {
+        $userID = $this->userId($request);
+
+        $workshop = DB::selectOne(
+            "SELECT id FROM workshops WHERE id = ? AND instructor_id = ? AND status = ?",
+            [$id, $userID, WorkshopStatus::ARCHIVED]
+        );
+        if (!$workshop) {
+            return response()->json(['message' => 'Solo se pueden eliminar talleres archivados'], 404);
+        }
+
+        DB::delete("DELETE FROM bookings WHERE workshop_id = ?", [$id]);
+        DB::delete("DELETE FROM sessions WHERE workshop_id = ?", [$id]);
+        DB::delete("DELETE FROM schedules WHERE workshop_id = ?", [$id]);
+        DB::delete("DELETE FROM workshops WHERE id = ? AND instructor_id = ?", [$id, $userID]);
+
+        return response()->json(['data' => ['id' => $id, 'deleted' => true]]);
     }
 
     // POST /api/v1/my-workshops/:id/submit-review

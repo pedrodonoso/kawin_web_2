@@ -156,6 +156,17 @@ export default function DashboardPage() {
     }
   }
 
+  async function deleteWorkshop(id: string, title: string) {
+    if (!window.confirm(`¿Eliminar permanentemente "${title}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/api/v1/workshops/${id}/permanent`);
+      setWorkshops((ws) => ws.filter((w) => w.id !== id));
+      toast.success("Taller eliminado permanentemente");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al eliminar");
+    }
+  }
+
   const published = workshops?.filter((w) => w.status === WorkshopStatus.PUBLISHED).length;
   const now = new Date();
   const bookingsThisMonth = bookings?.filter((b) => {
@@ -351,15 +362,26 @@ export default function DashboardPage() {
                                     </Link>
                                   </Button>
                                   {w.status === WorkshopStatus.ARCHIVED ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-amber-700 border-amber-200 hover:bg-amber-50"
-                                      onClick={() => restoreWorkshop(w)}
-                                    >
-                                      <FileEdit className="h-3.5 w-3.5 mr-1" />
-                                      Restaurar
-                                    </Button>
+                                    <>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-amber-700 border-amber-200 hover:bg-amber-50"
+                                        onClick={() => restoreWorkshop(w)}
+                                      >
+                                        <FileEdit className="h-3.5 w-3.5 mr-1" />
+                                        Restaurar
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                                        onClick={() => deleteWorkshop(w.id, w.title)}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                        Eliminar
+                                      </Button>
+                                    </>
                                   ) : (
                                     <Button
                                       variant="outline"

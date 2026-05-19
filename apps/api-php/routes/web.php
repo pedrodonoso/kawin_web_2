@@ -50,6 +50,7 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
         $router->post('/workshops',            'WorkshopWriteController@store');
         $router->put('/workshops/{id}',        'WorkshopWriteController@update');
         $router->delete('/workshops/{id}',     'WorkshopWriteController@destroy');
+        $router->delete('/workshops/{id}/permanent', 'WorkshopWriteController@permanentDelete');
         $router->post('/my-workshops/{id}/submit-review', 'WorkshopWriteController@submitForReview');
 
         // Schedules
@@ -108,6 +109,8 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
             $router->put('/workshops/{id}',                     'AdminController@updateWorkshop');
             $router->post('/workshops/{id}/review',             'AdminController@review');
             $router->delete('/workshops/{id}',                  'AdminController@archiveWorkshop');
+            $router->delete('/workshops/{id}/permanent',        'AdminController@permanentDeleteWorkshop');
+            $router->post('/workshops/{id}/publish',            'AdminController@publishWorkshop');
             $router->post('/workshops/{id}/restore',            'AdminController@restoreWorkshop');
             $router->patch('/workshops/{id}/guest-contact',     'AdminController@setWorkshopGuestContact');
 
