@@ -6,9 +6,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Search, MapPin, ArrowRight, CalendarDays, Route,
-  Palette, ChefHat, Music, Heart, Code, Globe, Activity,
-  Briefcase, Camera, Scissors,
+  Search, MapPin, ArrowRight, Code2, ShieldCheck,
+  Palette, ChefHat, Music, Sprout, Hammer, Globe, Activity,
+  HandHeart, Camera, Scissors,
   type LucideIcon,
 } from "lucide-react";
 import InstallAppSection from "./InstallAppSection";
@@ -16,20 +16,20 @@ import InstallAppSection from "./InstallAppSection";
 const categories: { name: string; Icon: LucideIcon; slug: string }[] = [
   { name: "Arte y Creatividad",   Icon: Palette,   slug: "arte-creatividad" },
   { name: "Cocina y Gastronomía", Icon: ChefHat,   slug: "cocina-gastronomia" },
+  { name: "Oficios y Reparación", Icon: Hammer,    slug: "oficios" },
+  { name: "Tierra y Huerta",      Icon: Sprout,    slug: "tierra-huerta" },
   { name: "Música y Danza",       Icon: Music,     slug: "musica-danza" },
-  { name: "Bienestar y Salud",    Icon: Heart,     slug: "bienestar-salud" },
-  { name: "Tecnología",           Icon: Code,      slug: "tecnologia" },
+  { name: "Cuerpo y Salud",       Icon: Activity,  slug: "bienestar-salud" },
   { name: "Idiomas",              Icon: Globe,     slug: "idiomas" },
-  { name: "Deportes",             Icon: Activity,  slug: "deportes" },
-  { name: "Negocios",             Icon: Briefcase, slug: "negocios" },
+  { name: "Cuidados y Crianza",   Icon: HandHeart, slug: "cuidados" },
   { name: "Fotografía",           Icon: Camera,    slug: "fotografia" },
   { name: "Artesanía",            Icon: Scissors,  slug: "artesania" },
 ];
 
 const manifesto = [
-  { phrase: "Sal del feed.", sub: "El aprendizaje pasa en persona, no en una pantalla." },
-  { phrase: "Sin tutoriales.", sub: "Con personas reales que ya lo saben y quieren enseñarlo." },
-  { phrase: "Tu barrio sabe.", sub: "Cada cuadra guarda alguien con algo valioso para darte." },
+  { phrase: "Compartir.", sub: "Nadie lo sabe todo, todos sabemos algo. Acá puedes compartirlo." },
+  { phrase: "El valor del trabajo.", sub: "Quien enseña su oficio merece reconocimiento, no caridad ni propina." },
+  { phrase: "Autogestión.", sub: "Autogestión: cada quien pone su precio, su tiempo y sus reglas." },
 ];
 
 export default function Home() {
@@ -46,8 +46,7 @@ export default function Home() {
     <main className="min-h-screen">
 
       {/* ── Hero ── */}
-      <section className="relative bg-primary text-primary-foreground overflow-hidden">
-        {/* fondo decorativo */}
+      <section className="relative bg-foreground text-background overflow-hidden">
         <div
           aria-hidden
           className="absolute inset-0 opacity-[0.06]"
@@ -56,22 +55,23 @@ export default function Home() {
             backgroundSize: "60px 60px",
           }}
         />
+        <div aria-hidden className="absolute top-0 inset-x-0 h-1.5 bg-primary" />
 
         <div className="relative max-w-4xl mx-auto px-4 py-28 text-center space-y-8">
-          {/* tag */}
-          <span className="inline-flex items-center gap-2 bg-primary-foreground/10 border border-primary-foreground/20 text-primary-foreground/80 rounded-full px-4 py-1.5 text-sm font-medium">
+          <span className="inline-flex items-center gap-2 bg-primary/15 border border-primary/40 text-primary rounded-full px-4 py-1.5 text-sm font-medium">
             <MapPin className="h-3.5 w-3.5" />
-            El punto de reunión de tu barrio
+            El punto de reunión del barrio
           </span>
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight">
-            Aprendamos juntos.<br />
-            <span className="text-primary-foreground/50">En la calle.</span>
+            El conocimiento es de quien<br />
+            <span className="text-primary">lo trabaja.</span>
           </h1>
 
-          <p className="text-primary-foreground/65 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            En Kwin, las personas se reunen para enseñarse lo que saben.
-            Sin pantallas de por medio, sin algoritmos decidiendo por ti. Solo gente con ganas de compartir.
+          <p className="text-background/65 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            El conocimiento vive en el territorio: en las manos del vecino, en la mesa común,
+            en el taller de la esquina. Acá nos juntamos a aprenderlo cara a cara,
+            sin algoritmos decidiendo por ti.
           </p>
 
           <form onSubmit={handleSearch} className="flex gap-2 max-w-lg mx-auto">
@@ -85,51 +85,96 @@ export default function Home() {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <Button size="lg" type="submit" className="bg-background text-foreground hover:bg-secondary h-12 rounded-xl px-6">
+            <Button size="lg" type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 rounded-xl px-6">
               Buscar
             </Button>
           </form>
 
-          <p className="text-primary-foreground/40 text-sm">
-            Talleres, cursos, clases y eventos presenciales cerca de ti
+          <p className="text-background/40 text-sm">
+            Talleres, oficios, clases y encuentros presenciales cerca de ti
           </p>
         </div>
       </section>
 
-      {/* ── Manifesto ── */}
+      {/* ── Manifiesto ── */}
       <section className="py-20 px-4 bg-background">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-border rounded-2xl overflow-hidden">
+        <div className="max-w-5xl mx-auto space-y-8">
+          <div className="text-center space-y-2">
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">Nuestra forma de hacer</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold">Un mercado que no se siente como mercado</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-foreground rounded-2xl overflow-hidden">
             {manifesto.map(({ phrase, sub }) => (
               <div key={phrase} className="bg-background px-8 py-10 space-y-2">
-                <p className="text-2xl font-bold tracking-tight">{phrase}</p>
+                <p className="text-2xl font-bold tracking-tight">
+                  <span className="text-primary">/</span> {phrase}
+                </p>
                 <p className="text-muted-foreground text-sm leading-relaxed">{sub}</p>
               </div>
             ))}
           </div>
+          <p className="text-muted-foreground text-base leading-relaxed text-center max-w-2xl mx-auto">
+            Todo trabajo tiene valor. Si encuentras un kawin gratuito, esperamos que como comunidad
+            aportemos de forma consciente a quien comparte su tiempo y su saber.
+          </p>
         </div>
       </section>
 
-      {/* ── Que es kawinear ── */}
-      <section className="py-20 px-4 bg-secondary/30">
-        <div className="max-w-4xl mx-auto text-center space-y-6">
-          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">El concepto</p>
-          <h2 className="text-4xl md:text-5xl font-extrabold leading-tight">
-            ¿Qué es <span className="text-primary">kawinear</span>?
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
-            Kawinear es salir a la calle y aprender algo con las manos. Es que el panadero del barrio te enseñe masa madre. 
-            Que la vecina te dé tu primera clase de cerámica. Es aprender de personas reales, en lugares reales.
+      {/* ── El nombre y el concepto ── */}
+      <section className="py-20 px-4 bg-foreground text-background">
+        <div className="max-w-4xl mx-auto space-y-10">
+          <div className="text-center space-y-2">
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">El nombre</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
+              Kawin viene de <span className="text-primary">kawiñ</span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-px bg-background/15 rounded-2xl overflow-hidden">
+            <div className="bg-foreground px-8 py-10 space-y-3">
+              <p className="text-sm font-semibold tracking-widest text-primary uppercase">Mapudungun</p>
+              <p className="text-2xl font-bold leading-snug">
+                <span lang="arn">kawiñ</span>
+              </p>
+              <p className="text-background/70 text-base leading-relaxed">
+                Palabra del pueblo mapuche para la <strong className="text-background">fiesta o reunión</strong>:
+                el encuentro donde la gente se junta, comparte y celebra.
+              </p>
+            </div>
+            <div className="bg-foreground px-8 py-10 space-y-3">
+              <p className="text-sm font-semibold tracking-widest text-primary uppercase">Hoy en Chile</p>
+              <p className="text-2xl font-bold leading-snug">el cahuín</p>
+              <p className="text-background/70 text-base leading-relaxed">
+                Con el tiempo, en el habla cotidiana <span lang="arn">kawiñ</span> derivó en
+                <strong className="text-background"> cahuín</strong>: la junta, la conversa que se alarga.
+                Sigue siendo, en el fondo, gente reunida que comparte.
+              </p>
+            </div>
+          </div>
+
+          <p className="text-background/65 text-lg max-w-2xl mx-auto leading-relaxed text-center">
+            Nos quedamos con la raíz: <strong className="text-background">reunirse</strong>.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-            <Button size="lg" asChild className="rounded-xl">
-              <Link href="/buscar">
-                Quiero kawinear <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild className="rounded-xl">
-              <Link href="/registro">Quiero enseñar</Link>
-            </Button>
+
+          {/* ── Qué es kawinear ── */}
+          <div className="pt-10 border-t border-background/15 text-center space-y-6">
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">El concepto</p>
+            <h2 className="text-4xl md:text-5xl font-extrabold leading-tight">
+              ¿Qué es <span className="text-primary">kawinear</span>?
+            </h2>
+            <p className="text-background/65 text-lg max-w-2xl mx-auto leading-relaxed">
+              Kawin es el punto de reunión donde el barrio se encuentra cara a cara para aprender, compartir un oficio, un evento de tu interés, una pichanga, una feria de moda, un café, un club de lectura o simplemente conversar. Una fiesta de saberes, hecha comunidad.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+              <Button size="lg" asChild className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+                <Link href="/buscar">
+                  Quiero kawinear <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild className="rounded-xl border-background/30 bg-transparent text-background hover:bg-background/10 hover:text-background">
+                <Link href="/registro">Quiero enseñar lo que sé</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>
@@ -139,7 +184,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto space-y-8">
           <div className="flex items-end justify-between">
             <div className="space-y-1">
-              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Aprende lo que tu barrio enseña</p>
+              <p className="text-xs font-semibold tracking-widest text-primary uppercase">Lo que tu territorio enseña</p>
               <h2 className="text-2xl font-bold">¿Qué quieres aprender hoy?</h2>
             </div>
             <Link
@@ -164,123 +209,163 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Explora ── */}
-      <section className="py-20 px-4 bg-secondary/30">
-        <div className="max-w-5xl mx-auto space-y-10">
-          <div className="text-center space-y-2">
-            <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Descubre</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold">Todo en un solo punto de reunión</h2>
+      {/* ── Territorio ── */}
+      <section className="py-20 px-4 bg-secondary/40">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10 items-center">
+          <div className="space-y-5">
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">Pertenecer</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
+              El territorio se aprende <span className="text-primary">caminándolo.</span>
+            </h2>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              No somos una plataforma para consumir contenido. Somos un punto de encuentro
+              entre quienes habitan un mismo lugar. Activa tu ubicación y descubre lo que
+              está pasando ahora mismo, a la vuelta de la esquina.
+            </p>
+            <Button size="lg" asChild className="rounded-xl">
+              <Link href="/buscar?vista=mapa">
+                <MapPin className="mr-2 h-4 w-4" /> Ver el mapa del barrio
+              </Link>
+            </Button>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              No guardamos tus datos de ubicación: solo se usan para marcar tu posición en las
+              funcionalidades con mapa, en tu propio dispositivo. La ubicación puede fallar si tu equipo
+              tiene desactivada la función de geolocalización del navegador o restricciones de uso del GPS.
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <Link
-              href="/buscar"
-              className="group border bg-background rounded-2xl p-7 space-y-3 hover:border-primary hover:shadow-sm transition-all"
-            >
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Search className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="text-lg font-bold group-hover:text-primary transition-colors">Talleres y clases</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Arte, cocina, baile, idiomas, oficios — personas de tu ciudad que ya saben y quieren enseñar.
-              </p>
-            </Link>
-
-            <Link
-              href="/buscar?vista=mapa"
-              className="group border bg-background rounded-2xl p-7 space-y-3 hover:border-primary hover:shadow-sm transition-all"
-            >
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <MapPin className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="text-lg font-bold group-hover:text-primary transition-colors">Mapa de talleres</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Activa la ubicación y encuentra lo que está pasando ahora mismo cerca de ti, en el mapa.
-              </p>
-            </Link>
-
-            <Link
-              href="/buscar?tipo=event"
-              className="group border bg-background rounded-2xl p-7 space-y-3 hover:border-primary hover:shadow-sm transition-all"
-            >
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <CalendarDays className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="text-lg font-bold group-hover:text-primary transition-colors">Eventos</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Ferias, encuentros y actividades únicas — experiencias que suceden una sola vez.
-              </p>
-            </Link>
-
-            <div className="border border-dashed bg-background rounded-2xl p-7 space-y-3 opacity-70">
-              <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
-                <Route className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold">Rutas turísticas</h3>
-                <span className="text-xs font-semibold bg-primary/10 text-primary rounded-full px-2 py-0.5">Pronto</span>
-              </div>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Panoramas y rutas curadas — descubre tu ciudad de otra forma, guiado por quienes la conocen de verdad.
-              </p>
-            </div>
-          </div>
+          <Link
+            href="/buscar?vista=mapa"
+            className="group relative h-64 rounded-2xl border-2 border-dashed border-foreground/20 bg-background flex flex-col items-center justify-center gap-3 hover:border-primary transition-colors overflow-hidden"
+          >
+            <div
+              aria-hidden
+              className="absolute inset-0 opacity-[0.07]"
+              style={{
+                backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)",
+                backgroundSize: "32px 32px",
+              }}
+            />
+            <MapPin className="h-10 w-10 text-primary relative" />
+            <span className="text-sm text-muted-foreground relative">Encuentros cerca de ti</span>
+          </Link>
         </div>
       </section>
 
       {/* ── Cómo funciona ── */}
-      <section className="py-20 px-4 bg-primary text-primary-foreground">
+      <section className="py-20 px-4 bg-foreground text-background">
         <div className="max-w-5xl mx-auto space-y-12">
           <div className="text-center space-y-2">
-            <p className="text-xs font-semibold tracking-widest text-primary-foreground/50 uppercase">Así de simple</p>
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">Así de simple</p>
             <h2 className="text-3xl md:text-4xl font-extrabold">De la pantalla a la calle, en tres pasos</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { n: "01", title: "Encuentra", desc: "Busca un taller cerca de ti. Arte, cocina, baile, idiomas — lo que tu barrio tiene." },
-              { n: "02", title: "Reserva", desc: "Agenda en segundos. Sin cuentas de banco, sin complicaciones." },
-              { n: "03", title: "Kawinea", desc: "Aparece. Conoce a quien lo enseña. Aprende con las manos." },
+              { n: "01", title: "Encuentra", desc: "Busca un taller cerca de ti. Arte, cocina, oficios, huerta — lo que tu barrio tiene para dar." },
+              { n: "02", title: "Reserva", desc: "Agenda en segundos, directo con quien enseña. Sin intermediarios que se queden con todo." },
+              { n: "03", title: "Reúnete", desc: "Aparece. Conoce a la persona. Aprende con las manos y quédate a conversar." },
             ].map(({ n, title, desc }) => (
               <div key={n} className="space-y-3">
-                <span className="text-5xl font-black text-primary-foreground/20">{n}</span>
+                <span className="text-5xl font-black text-primary">{n}</span>
                 <h3 className="text-xl font-bold">{title}</h3>
-                <p className="text-primary-foreground/60 text-sm leading-relaxed">{desc}</p>
+                <p className="text-background/60 text-sm leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
           <div className="text-center">
-            <Button size="lg" variant="secondary" asChild className="rounded-xl">
+            <Button size="lg" asChild className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
               <Link href="/buscar">Buscar talleres cerca</Link>
             </Button>
           </div>
         </div>
       </section>
 
-      <InstallAppSection />
+      {/* ── Infraestructura y cuidado ── */}
+      <section className="py-20 px-4 bg-secondary/40">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10">
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <Code2 className="h-6 w-6 text-primary" />
+              <p className="text-xs font-semibold tracking-widest text-primary uppercase">Infraestructura modesta</p>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
+              Un proyecto <span className="text-primary">pequeño y honesto.</span>
+            </h2>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Kawin no corre sobre Google ni Amazon. Los servicios se levantan en
+              <strong className="text-foreground"> Railway</strong>, y para encontrar lugares usamos la
+              capa demo de <strong className="text-foreground">Photon</strong> (photon.komoot.io). Es una
+              infraestructura modesta y de bajo costo: te pedimos paciencia y consideración al usar el
+              sitio, porque sostiene una comunidad, no una gran corporación.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[
+                "Railway", "Photon (demo)",
+              ].map((tech) => (
+                <span
+                  key={tech}
+                  className="text-sm font-medium border border-foreground/20 bg-background rounded-full px-3 py-1"
+                >
+                  {tech}
+                </span>
+              ))}
+            </div>
+          </div>
 
-      {/* ── CTA Talleristas ── */}
-      <section className="py-24 px-4 bg-background">
-        <div className="max-w-3xl mx-auto text-center space-y-5">
-          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Para talleristas</p>
-          <h2 className="text-4xl font-extrabold leading-tight">
-            Tu barrio tiene ganas de aprender<br />
-            <span className="text-primary">lo que sabes.</span>
-          </h2>
-          <p className="text-muted-foreground text-lg">
-            Crea tu taller, pon tu precio y empieza a reunir personas.
-            Kawin hace el resto.
-          </p>
-          <Button size="lg" className="mt-2 rounded-xl" asChild>
-            <Link href="/registro">
-              Comenzar a enseñar <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="space-y-5">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="h-6 w-6 text-primary" />
+              <p className="text-xs font-semibold tracking-widest text-primary uppercase">Cuidado de la comunidad</p>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
+              Un espacio <span className="text-primary">cuidado.</span>
+            </h2>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Para que el barrio se mantenga sano, Kawin necesita administración. Revisamos las
+              publicaciones para evitar el spam y los avisos mal intencionados, de modo que lo que
+              encuentres sean talleres y encuentros reales de personas reales. Cuidar el espacio común
+              también es parte del apoyo mutuo.
+            </p>
+          </div>
         </div>
       </section>
 
+      {/* ── Aporta talleres y encuentros ── */}
+      <section className="py-20 px-4 bg-background">
+        <div className="max-w-3xl mx-auto text-center space-y-6">
+          <p className="text-xs font-semibold tracking-widest text-primary uppercase">Aporta a la comunidad</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
+            ¿Conoces algo que <span className="text-primary">vale la pena compartir?</span>
+          </h2>
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            Si quieres aportar con talleres que no gestionas pero te parecen interesantes —eventos,
+            clases, encuentros y más—, escríbenos a la administración. Nos contactaremos contigo y con
+            tus referencias para hacer esta comunidad más grande, segura y abierta.
+          </p>
+          <div className="pt-2">
+            <Button size="lg" asChild className="rounded-xl">
+              <Link href="/contacto">
+                Escribir a la administración <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-sm leading-relaxed pt-4">
+            ¿Tienes sugerencias sobre la experiencia de uso o encontraste algún error en la plataforma?
+            Se agradece que nos lo comentes en la{" "}
+            <Link href="/contacto" className="text-primary font-medium hover:underline">sección de contacto</Link>{" "}
+            o directamente al correo{" "}
+            <a href="mailto:oasis.latam.info@gmail.com" className="text-primary font-medium hover:underline">
+              oasis.latam.info@gmail.com
+            </a>.
+          </p>
+        </div>
+      </section>
+
+      <InstallAppSection />
+
       {/* ── Footer ── */}
-      <footer className="border-t py-8 px-4">
+      <footer className="border-t py-8 px-4 bg-background">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-          <span>© 2025 Kawin. Aprendamos juntos.</span>
+          <span>© 2026 Kawin · Conocimiento y territorio</span>
           <div className="flex gap-6">
             <Link href="/privacidad" className="hover:text-foreground">Privacidad</Link>
             <Link href="/contacto" className="hover:text-foreground">Contacto</Link>
