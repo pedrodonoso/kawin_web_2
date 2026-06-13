@@ -191,12 +191,12 @@ export default function DashboardPage() {
                 Mi perfil
               </Link>
             </Button>
-            <Button variant="outline" asChild>
+            {/* <Button variant="outline" asChild>
               <Link href="/dashboard/estadisticas">
                 <BarChart2 className="h-4 w-4 mr-2" />
                 Estadísticas
               </Link>
-            </Button>
+            </Button> */}
             <Button asChild>
               <Link href="/dashboard/talleres/nuevo">
                 <Plus className="h-4 w-4 mr-2" />
@@ -408,7 +408,7 @@ export default function DashboardPage() {
 
         {isAdmin && <Separator />}
 
-        {/* Recent bookings */}
+        {/* Recent bookings - hidden
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Reservas recientes</h2>
@@ -491,7 +491,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           )}
-        </div>
+        </div> */}
       </div>
     </main>
   );
