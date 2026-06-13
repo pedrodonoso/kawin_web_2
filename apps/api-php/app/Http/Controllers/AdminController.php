@@ -41,7 +41,7 @@ class AdminController extends Controller
         $filter = $request->query('status', '');
 
         $sql = "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
-                       w.type, w.modality, w.price, w.currency,
+                       w.type, w.modality, w.price::int as price, w.currency,
                        w.capacity, COALESCE(w.location,'') as location,
                        COALESCE(w.online_url,'') as online_url,
                        COALESCE(w.cover_image_url,'') as cover_image_url,
@@ -94,7 +94,7 @@ class AdminController extends Controller
     {
         $w = DB::selectOne(
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
-                    w.type, w.modality, w.price, w.currency,
+                    w.type, w.modality, w.price::int as price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
                     COALESCE(w.address,'') as address,
                     w.lat, w.lng,
@@ -271,7 +271,7 @@ class AdminController extends Controller
             'title'       => $request->input('title'),
             'description' => $request->input('description', ''),
             'modality'    => $request->input('modality'),
-            'price'       => (float)$request->input('price', 0),
+            'price'       => (int) round((float)$request->input('price', 0)),
             'currency'    => $currency,
             'capacity'    => $request->input('capacity'),
             'location'    => $request->input('location', ''),

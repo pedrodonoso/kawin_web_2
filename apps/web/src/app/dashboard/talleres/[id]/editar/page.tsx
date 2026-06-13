@@ -731,9 +731,10 @@ export default function EditarTallerPage() {
                       type="number"
                       min="1"
                       max="9999999"
+                      step="1"
                       placeholder="Ej: 15000"
                       value={form.price}
-                      onChange={(e) => setField("price", e.target.value)}
+                      onChange={(e) => setField("price", e.target.value.replace(/[.,]/g, ""))}
                       disabled={bookingsCount > 0}
                     />
                   </div>

@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { api, discountApi, type Discount, type Session, type Workshop } from "@/lib/api";
 import { DiscountType } from "@/lib/constants";
+import { formatPrice } from "@/lib/utils";
 
 interface BookingSession {
   starts_at: string;
@@ -200,7 +201,7 @@ export default function WorkshopReservasPage() {
   function formatDiscount(d: Discount) {
     return d.type === DiscountType.PERCENT
       ? `${d.value}% de descuento`
-      : `$${Math.round(d.value).toLocaleString("es-CL", { maximumFractionDigits: 0 })} de descuento`;
+      : `$${formatPrice(d.value)} de descuento`;
   }
 
   // Session label for discount card (resolves from loaded sessions)
@@ -325,7 +326,7 @@ export default function WorkshopReservasPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 text-right font-medium">
-                              {idx === 0 ? `$${Math.round(Number(b.amount)).toLocaleString("es-CL", { maximumFractionDigits: 0 })}` : (
+                              {idx === 0 ? `$${formatPrice(b.amount)}` : (
                                 <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </td>
@@ -349,7 +350,7 @@ export default function WorkshopReservasPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right font-medium">
-                            ${Math.round(Number(b.amount)).toLocaleString("es-CL", { maximumFractionDigits: 0 })}
+                            ${formatPrice(b.amount)}
                           </td>
                           <td className="px-4 py-3 text-right text-muted-foreground text-xs">
                             {new Date(b.created_at).toLocaleDateString("es-CL")}

@@ -10,6 +10,7 @@ import { BookOpen, Eye, Pencil, Clock, CheckCircle2, AlertCircle, Plus, Archive,
 import { toast } from "sonner";
 import { adminApi, api, type AdminWorkshop } from "@/lib/api";
 import { ModalityLabel, WorkshopTypeLabel } from "@/lib/constants";
+import { formatPrice } from "@/lib/utils";
 
 const APPROVAL_LABEL: Record<string, string> = {
   not_submitted:     "Sin enviar",
@@ -142,7 +143,7 @@ export default function AdminTalleresPage() {
               {" · "}
               {ModalityLabel[w.modality] ?? w.modality}
               {" · "}
-              <span className="font-medium">${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} {w.currency}</span>
+              <span className="font-medium">${formatPrice(w.price)} {w.currency}</span>
             </p>
             {w.admin_observations && (
               <p className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mt-1 truncate max-w-lg">

@@ -35,7 +35,7 @@ class ProfileController extends Controller
         $workshops = DB::select(
             "SELECT w.id, w.title, w.slug,
                     COALESCE(w.description,'') as description,
-                    w.type, w.modality, w.price, w.currency,
+                    w.type, w.modality, w.price::int as price, w.currency,
                     COALESCE(w.location,'') as location,
                     w.lat, w.lng,
                     COALESCE(w.cover_image_url,'') as cover_image_url,

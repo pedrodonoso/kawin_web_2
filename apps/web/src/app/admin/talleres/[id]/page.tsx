@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { adminApi, type AdminWorkshop, type Category, type PendingChanges, type Schedule, api } from "@/lib/api";
 import { ApprovalStatus, ModalityLabel, WorkshopStatusLabel, WorkshopTypeLabel } from "@/lib/constants";
+import { formatPrice } from "@/lib/utils";
 import { AdminContactCard } from "@/components/AdminContactCard";
 import dynamic from "next/dynamic";
 
@@ -345,8 +346,10 @@ export default function AdminWorkshopReviewPage() {
                 <Label>Precio ({form.currency ?? "CLP"})</Label>
                 <Input
                   type="number"
+                  step="1"
+                  min="0"
                   value={form.price ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
+                  onChange={(e) => setForm((f) => ({ ...f, price: Math.round(Number(e.target.value)) }))}
                 />
               </div>
               <div className="space-y-1">
@@ -517,14 +520,14 @@ export default function AdminWorkshopReviewPage() {
                   label="Precio"
                   value={
                     workshop.price > 0
-                      ? `$${Math.round(Number(workshop.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${workshop.currency}`
+                      ? `$${formatPrice(workshop.price)} ${workshop.currency}`
                       : "Gratuito"
                   }
                   proposed={
                     workshop.pending_changes?.price !== undefined &&
                     Number(workshop.pending_changes.price) !== Number(workshop.price)
                       ? workshop.pending_changes.price! > 0
-                        ? `$${Math.round(workshop.pending_changes.price!).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${workshop.pending_changes.currency ?? workshop.currency}`
+                        ? `$${formatPrice(workshop.pending_changes.price!)} ${workshop.pending_changes.currency ?? workshop.currency}`
                         : "Gratuito"
                       : undefined
                   }

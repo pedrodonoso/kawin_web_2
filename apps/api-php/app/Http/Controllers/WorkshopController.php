@@ -20,7 +20,7 @@ class WorkshopController extends Controller
         $categorySlug = $request->query('category', '');
 
         $sql = "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
-                       w.type, w.modality, w.price, w.currency,
+                       w.type, w.modality, w.price::int as price, w.currency,
                        w.capacity, COALESCE(w.location,'') as location,
                        COALESCE(w.address,'') as address,
                        w.lat, w.lng,
@@ -71,7 +71,7 @@ class WorkshopController extends Controller
     {
         $w = DB::selectOne(
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
-                    w.type, w.modality, w.price, w.currency,
+                    w.type, w.modality, w.price::int as price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
                     COALESCE(w.address,'') as address,
                     w.lat, w.lng,

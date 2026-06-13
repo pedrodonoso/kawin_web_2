@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide
 import { MapPin, X, Clock, Maximize2, Minimize2 } from "lucide-react";
 import { type Workshop } from "@/lib/api";
 import { ModalityLabel } from "@/lib/constants";
+import { formatPrice } from "@/lib/utils";
 
 // ─── Brand colors (mirrors globals.css) ────────────────────────────────────
 const C = {
@@ -355,7 +356,7 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], userLocatio
                   <div className="min-w-0">
                     <p className="text-xs font-medium leading-tight line-clamp-1 group-hover:text-foreground">{w.title}</p>
                     <p className={`text-xs mt-0.5 ${Number(w.price) === 0 ? "text-emerald-600 font-bold" : "text-muted-foreground"}`}>
-                      {Number(w.price) === 0 ? "Gratuito - Aporte consciente" : `$${Math.round(Number(w.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${w.currency}`}
+                      {Number(w.price) === 0 ? "Gratuito - Aporte consciente" : `$${formatPrice(w.price)} ${w.currency}`}
                     </p>
                   </div>
                 </button>
@@ -467,7 +468,7 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], userLocatio
             
             {Number(selected.price) > 0 ? (
               <span className={`text-sm font-bold text-emerald-600`}>
-                {`$${Math.round(Number(selected.price)).toLocaleString("es-CL", { maximumFractionDigits: 0 })} ${selected.currency}`}
+                {`$${formatPrice(selected.price)} ${selected.currency}`}
               </span>
             ) : (
               <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">

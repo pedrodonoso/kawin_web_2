@@ -22,7 +22,7 @@ class WorkshopWriteController extends Controller
 
         $workshops = DB::select(
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
-                    w.type, w.modality, w.price, w.currency,
+                    w.type, w.modality, w.price::int as price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
                     COALESCE(w.address,'') as address,
                     w.lat, w.lng,
@@ -56,7 +56,7 @@ class WorkshopWriteController extends Controller
 
         $w = DB::selectOne(
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
-                    w.type, w.modality, w.price, w.currency,
+                    w.type, w.modality, w.price::int as price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
                     COALESCE(w.address,'') as address,
                     w.lat, w.lng,
@@ -161,7 +161,7 @@ class WorkshopWriteController extends Controller
                 $request->input('description', ''),
                 $request->input('type'),
                 $request->input('modality'),
-                (float)$request->input('price', 0),
+                (int) round((float)$request->input('price', 0)),
                 $currency,
                 $request->input('capacity'),
                 $request->input('location', ''),
@@ -233,7 +233,7 @@ class WorkshopWriteController extends Controller
                 'title'       => $request->input('title'),
                 'description' => $request->input('description', ''),
                 'modality'    => $request->input('modality'),
-                'price'       => (float)$request->input('price', 0),
+                'price'       => (int) round((float)$request->input('price', 0)),
                 'currency'    => $request->input('currency', 'CLP') ?: 'CLP',
                 'capacity'    => $request->input('capacity'),
                 'location'    => $request->input('location', ''),
@@ -271,7 +271,7 @@ class WorkshopWriteController extends Controller
             ], 403);
         }
 
-        $price    = $confirmedBookings > 0 ? $workshop->price    : (float)$request->input('price', 0);
+        $price    = $confirmedBookings > 0 ? $workshop->price    : (int) round((float)$request->input('price', 0));
         $capacity = $confirmedBookings > 0 ? $workshop->capacity : $request->input('capacity');
 
         if ($newStatus === WorkshopStatus::DRAFT && $wasPublished) {

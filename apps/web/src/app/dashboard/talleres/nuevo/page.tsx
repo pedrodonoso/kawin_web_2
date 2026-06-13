@@ -455,10 +455,11 @@ export default function NuevoTallerPage() {
                       type="number"
                       min="1"
                       max="9999999"
+                      step="1"
                       placeholder="Ej: 15000"
                       required
                       value={form.price}
-                      onChange={(e) => set("price", e.target.value)}
+                      onChange={(e) => set("price", e.target.value.replace(/[.,]/g, ""))}
                     />
                   </div>
                 </div>

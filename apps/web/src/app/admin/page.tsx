@@ -12,6 +12,7 @@ import {
   AlertCircle, CheckCircle2, Clock, XCircle, ArrowRight, LayoutDashboard,
 } from "lucide-react";
 import { adminApi, type AdminStats } from "@/lib/api";
+import { formatPrice } from "@/lib/utils";
 
 function StatCard({
   icon: Icon, label, value, sub, color = "text-foreground",
@@ -48,8 +49,8 @@ export default function AdminPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const fmt = (n: number) => Math.round(n).toLocaleString("es-CL", { maximumFractionDigits: 0 });
-  const money = (n: number) => `$${Math.round(n).toLocaleString("es-CL", { maximumFractionDigits: 0 })}`;
+  const fmt = (n: number) => formatPrice(n);
+  const money = (n: number) => `$${formatPrice(n)}`;
 
   return (
     <div className="space-y-8">

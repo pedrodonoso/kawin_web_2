@@ -21,7 +21,7 @@ class Workshop extends Model
 
     protected $casts = [
         'pending_changes' => 'array',
-        'price'           => 'float',
+        'price'           => 'integer',
         'lat'             => 'float',
         'lng'             => 'float',
     ];

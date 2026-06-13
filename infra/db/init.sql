@@ -61,7 +61,7 @@ CREATE TABLE workshops (
   description     TEXT,
   type            workshop_type NOT NULL DEFAULT 'workshop',
   modality        workshop_modality NOT NULL DEFAULT 'in-person',
-  price           NUMERIC(10,2) NOT NULL DEFAULT 0,
+  price           INTEGER NOT NULL DEFAULT 0,
   currency        VARCHAR(3) NOT NULL DEFAULT 'CLP',
   capacity        INTEGER,
   location        VARCHAR(255),
