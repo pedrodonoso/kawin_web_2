@@ -23,6 +23,10 @@ import { ArrowLeft, Plus, X, AlertCircle, Pencil, Trash2, CalendarDays, Lock, Se
 import { Switch } from "@/components/ui/switch";
 import { LocationPicker } from "@/components/map/LocationPicker";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { DateTimeRangePicker } from "@/components/ui/date-time-range-picker";
+import { TimePicker } from "@/components/ui/time-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import Link from "next/link";
 
 interface SessionDraft {
@@ -52,18 +56,6 @@ const DAYS = [
 
 function emptyScheduleDraft(): ScheduleDraft {
   return { days_of_week: [], time_start: "", duration_min: 60, valid_from: "", valid_until: "" };
-}
-
-// Convierte ISO a valor compatible con datetime-local input
-function toLocalInput(iso: string): string {
-  if (!iso) return "";
-  try {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  } catch {
-    return iso.slice(0, 16);
-  }
 }
 
 function formatDays(days: number[] | undefined | null): string {
@@ -183,8 +175,8 @@ export default function EditarTallerPage() {
         setSessions(
           (w.sessions ?? []).map((s) => ({
             id: s.id,
-            starts_at: toLocalInput(s.starts_at),
-            ends_at: toLocalInput(s.ends_at),
+            starts_at: s.starts_at,
+            ends_at: s.ends_at,
             notes: s.notes ?? "",
           }))
         );
@@ -873,11 +865,10 @@ export default function EditarTallerPage() {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs">Hora de inicio *</Label>
-                            <Input
-                              type="time"
+                            <TimePicker
                               value={changeForm.time_start}
-                              onChange={(e) =>
-                                setChangeForm({ ...changeForm, time_start: e.target.value })
+                              onChange={(v) =>
+                                setChangeForm({ ...changeForm, time_start: v })
                               }
                             />
                           </div>
@@ -899,27 +890,20 @@ export default function EditarTallerPage() {
                         </div>
 
                         {/* Valid range */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Válido desde (opcional)</Label>
-                            <Input
-                              type="date"
-                              value={changeForm.valid_from}
-                              onChange={(e) =>
-                                setChangeForm({ ...changeForm, valid_from: e.target.value })
-                              }
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Válido hasta (opcional)</Label>
-                            <Input
-                              type="date"
-                              value={changeForm.valid_until}
-                              onChange={(e) =>
-                                setChangeForm({ ...changeForm, valid_until: e.target.value })
-                              }
-                            />
-                          </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Vigencia (opcional)</Label>
+                          <DateRangePicker
+                            from={changeForm.valid_from}
+                            to={changeForm.valid_until}
+                            onFromChange={(v) =>
+                              setChangeForm((prev) => prev ? { ...prev, valid_from: v } : prev)
+                            }
+                            onToChange={(v) =>
+                              setChangeForm((prev) => prev ? { ...prev, valid_until: v } : prev)
+                            }
+                            placeholder="Sin límite de vigencia"
+                            minDate={new Date()}
+                          />
                         </div>
 
                         {/* Change date (required) */}
@@ -927,12 +911,19 @@ export default function EditarTallerPage() {
                           <Label className="text-xs font-semibold">
                             Fecha de inicio del cambio *
                           </Label>
-                          <Input
-                            type="date"
+                          <DatePicker
                             value={changeForm.change_date}
-                            onChange={(e) =>
-                              setChangeForm({ ...changeForm, change_date: e.target.value })
+                            onChange={(v) =>
+                              setChangeForm({ ...changeForm, change_date: v })
                             }
+                            minDate={changeForm.valid_from ? (() => {
+                              const p = changeForm.valid_from.split("-").map(Number)
+                              return new Date(p[0], p[1] - 1, p[2])
+                            })() : undefined}
+                            maxDate={changeForm.valid_until ? (() => {
+                              const p = changeForm.valid_until.split("-").map(Number)
+                              return new Date(p[0], p[1] - 1, p[2])
+                            })() : undefined}
                           />
                           <p className="text-xs text-muted-foreground/70">
                             Las reservas a partir de esta fecha serán afectadas.
@@ -1043,11 +1034,10 @@ export default function EditarTallerPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Hora de inicio *</Label>
-                        <Input
-                          type="time"
+                        <TimePicker
                           value={newScheduleDraft.time_start}
-                          onChange={(e) =>
-                            setNewScheduleDraft({ ...newScheduleDraft, time_start: e.target.value })
+                          onChange={(v) =>
+                            setNewScheduleDraft({ ...newScheduleDraft, time_start: v })
                           }
                         />
                       </div>
@@ -1068,30 +1058,20 @@ export default function EditarTallerPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Válido desde (opcional)</Label>
-                        <Input
-                          type="date"
-                          value={newScheduleDraft.valid_from}
-                          onChange={(e) =>
-                            setNewScheduleDraft({ ...newScheduleDraft, valid_from: e.target.value })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Válido hasta (opcional)</Label>
-                        <Input
-                          type="date"
-                          value={newScheduleDraft.valid_until}
-                          onChange={(e) =>
-                            setNewScheduleDraft({
-                              ...newScheduleDraft,
-                              valid_until: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Vigencia (opcional)</Label>
+                      <DateRangePicker
+                        from={newScheduleDraft.valid_from}
+                        to={newScheduleDraft.valid_until}
+                        onFromChange={(v) =>
+                          setNewScheduleDraft((prev) => prev ? { ...prev, valid_from: v } : prev)
+                        }
+                        onToChange={(v) =>
+                          setNewScheduleDraft((prev) => prev ? { ...prev, valid_until: v } : prev)
+                        }
+                        placeholder="Sin límite de vigencia"
+                        minDate={new Date()}
+                      />
                     </div>
 
                     <div className="flex justify-end gap-2">
@@ -1148,26 +1128,13 @@ export default function EditarTallerPage() {
                       <Badge variant="outline" className="text-xs">
                         Sesión {i + 1}
                       </Badge>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Inicio</Label>
-                          <Input
-                            type="datetime-local"
-                            value={s.starts_at}
-                            onChange={(e) => updateSession(i, "starts_at", e.target.value)}
-                            disabled={bookingsCount > 0}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Fin</Label>
-                          <Input
-                            type="datetime-local"
-                            value={s.ends_at}
-                            onChange={(e) => updateSession(i, "ends_at", e.target.value)}
-                            disabled={bookingsCount > 0}
-                          />
-                        </div>
-                      </div>
+                      <DateTimeRangePicker
+                        startDate={s.starts_at ? new Date(s.starts_at) : undefined}
+                        endDate={s.ends_at ? new Date(s.ends_at) : undefined}
+                        onStartChange={(d) => updateSession(i, "starts_at", d.toISOString())}
+                        onEndChange={(d) => updateSession(i, "ends_at", d.toISOString())}
+                        disabled={bookingsCount > 0}
+                      />
                       <div className="space-y-1">
                         <Label className="text-xs">Notas (opcional)</Label>
                         {bookingsCount > 0 ? (

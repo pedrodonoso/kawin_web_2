@@ -20,6 +20,9 @@ import { api, adminApi, type Category } from "@/lib/api";
 import { Modality, WorkshopType } from "@/lib/constants";
 import { LocationPicker } from "@/components/map/LocationPicker";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { DateTimeRangePicker } from "@/components/ui/date-time-range-picker";
+import { TimePicker } from "@/components/ui/time-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ArrowLeft, Plus, Send, X, Repeat, Info } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
@@ -554,10 +557,9 @@ export default function NuevoTallerPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Hora de inicio *</Label>
-                        <Input
-                          type="time"
+                        <TimePicker
                           value={sch.time_start}
-                          onChange={(e) => updateSchedule(i, "time_start", e.target.value)}
+                          onChange={(v) => updateSchedule(i, "time_start", v)}
                         />
                       </div>
                       <div className="space-y-1">
@@ -576,23 +578,16 @@ export default function NuevoTallerPage() {
                     </div>
 
                     {/* Valid range */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Válido desde (opcional)</Label>
-                        <Input
-                          type="date"
-                          value={sch.valid_from}
-                          onChange={(e) => updateSchedule(i, "valid_from", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Válido hasta (opcional)</Label>
-                        <Input
-                          type="date"
-                          value={sch.valid_until}
-                          onChange={(e) => updateSchedule(i, "valid_until", e.target.value)}
-                        />
-                      </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Vigencia (opcional)</Label>
+                      <DateRangePicker
+                        from={sch.valid_from}
+                        to={sch.valid_until}
+                        onFromChange={(v) => updateSchedule(i, "valid_from", v)}
+                        onToChange={(v) => updateSchedule(i, "valid_until", v)}
+                        placeholder="Sin límite de vigencia"
+                        minDate={new Date()}
+                      />
                     </div>
                   </div>
                 ))}
@@ -626,24 +621,12 @@ export default function NuevoTallerPage() {
                         <X className="h-4 w-4" />
                       </button>
                       <Badge variant="outline" className="text-xs">Sesión {i + 1}</Badge>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Inicio</Label>
-                          <Input
-                            type="datetime-local"
-                            value={s.starts_at}
-                            onChange={(e) => updateSession(i, "starts_at", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Fin</Label>
-                          <Input
-                            type="datetime-local"
-                            value={s.ends_at}
-                            onChange={(e) => updateSession(i, "ends_at", e.target.value)}
-                          />
-                        </div>
-                      </div>
+                      <DateTimeRangePicker
+                        startDate={s.starts_at ? new Date(s.starts_at) : undefined}
+                        endDate={s.ends_at ? new Date(s.ends_at) : undefined}
+                        onStartChange={(d) => updateSession(i, "starts_at", d.toISOString())}
+                        onEndChange={(d) => updateSession(i, "ends_at", d.toISOString())}
+                      />
                       <div className="space-y-1">
                         <Label className="text-xs">Notas (opcional)</Label>
                         <RichTextEditor

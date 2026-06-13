@@ -53,13 +53,19 @@ class ScheduleController extends Controller
             return response()->json(['message' => 'valid_from inválido, usa YYYY-MM-DD'], 400);
         }
 
+        $validUntil = $request->input('valid_until') ?: null;
+        if ($validUntil) {
+            try { Carbon::createFromFormat('Y-m-d', $validUntil); }
+            catch (\Throwable $e) { $validUntil = null; }
+        }
+
         $pgArray = '{' . implode(',', $days) . '}';
 
         $row = DB::selectOne(
-            "INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, valid_from)
-             VALUES (?, ?, ?, ?, ?)
+            "INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, valid_from, valid_until)
+             VALUES (?, ?, ?, ?, ?, ?)
              RETURNING id",
-            [$id, $pgArray, $request->input('time_start'), $durationMin, $validFrom]
+            [$id, $pgArray, $request->input('time_start'), $durationMin, $validFrom, $validUntil]
         );
 
         return response()->json(['data' => ['id' => $row->id]], 201);
@@ -160,9 +166,15 @@ class ScheduleController extends Controller
         try {
             DB::update("UPDATE schedules SET valid_until = ? WHERE id = ?", [$validUntilOld, $id]);
 
+            $validUntilNew = $request->input('valid_until') ?: null;
+            if ($validUntilNew) {
+                try { Carbon::createFromFormat('Y-m-d', $validUntilNew); }
+                catch (\Throwable $e) { $validUntilNew = null; }
+            }
+
             $row = DB::selectOne(
-                "INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, valid_from)
-                 VALUES (?, ?, ?, ?, ?)
+                "INSERT INTO schedules (workshop_id, days_of_week, time_start, duration_min, valid_from, valid_until)
+                 VALUES (?, ?, ?, ?, ?, ?)
                  RETURNING id",
                 [
                     $ownership->workshop_id,
@@ -170,6 +182,7 @@ class ScheduleController extends Controller
                     $request->input('time_start'),
                     $durationMin,
                     $changeDate->format('Y-m-d'),
+                    $validUntilNew,
                 ]
             );
 
