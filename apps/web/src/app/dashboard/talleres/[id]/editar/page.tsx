@@ -795,6 +795,7 @@ export default function EditarTallerPage() {
                   </Link>.
                 </p>
                 <div className="flex gap-2 flex-wrap pt-1">
+                  {/* Gestionar sesiones — oculto hasta habilitar materialización
                   <Button
                     type="button"
                     variant="outline"
@@ -806,6 +807,7 @@ export default function EditarTallerPage() {
                       Gestionar sesiones
                     </Link>
                   </Button>
+                  */}
                   {!newScheduleDraft && !bookingsCount && (
                     <Button
                       type="button"

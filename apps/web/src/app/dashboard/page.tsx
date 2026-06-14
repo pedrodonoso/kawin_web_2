@@ -182,7 +182,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Hola, {userName} 👋</h1>
-            <p className="text-muted-foreground mt-1">Gestiona tus talleres y reservas</p>
+            <p className="text-muted-foreground mt-1">Gestiona tus talleres</p>
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
             <Button variant="outline" asChild>
@@ -218,6 +218,7 @@ export default function DashboardPage() {
               <p className="text-3xl font-bold">{loading ? "—" : published}</p>
             </CardContent>
           </Card>
+          {/* Reservas e ingresos — ocultos hasta habilitar reservas
           <Card>
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
@@ -245,6 +246,7 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
+          */}
         </div>
 
         <Separator />
@@ -272,7 +274,7 @@ export default function DashboardPage() {
               <CardContent className="py-16 text-center text-muted-foreground">
                 <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-40" />
                 <p className="font-medium">No existen talleres</p>
-                <p className="text-sm mt-1">Crea tu primer taller y comienza a recibir reservas.</p>
+                <p className="text-sm mt-1">Crea tu primer taller para comenzar.</p>
                 <Button className="mt-4" asChild>
                   <Link href="/dashboard/talleres/nuevo">
                     <Plus className="h-4 w-4 mr-2" />
@@ -293,7 +295,7 @@ export default function DashboardPage() {
                 <CardContent className="py-16 text-center text-muted-foreground">
                   <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-40" />
                   <p className="font-medium">No existen talleres</p>
-                  <p className="text-sm mt-1">Crea tu primer taller y comienza a recibir reservas.</p>
+                  <p className="text-sm mt-1">Crea tu primer taller para comenzar.</p>
                   <Button className="mt-4" asChild>
                     <Link href="/dashboard/talleres/nuevo">
                       <Plus className="h-4 w-4 mr-2" />

@@ -40,7 +40,7 @@ const roles: { id: Role; label: string; description: string; icon: React.ReactNo
 export default function RegistroPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<Role>("student");
+  const [role, setRole] = useState<Role>("instructor");
   const [form, setForm] = useState({ email: "", password: "", name: "" });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -73,11 +73,11 @@ export default function RegistroPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Crear cuenta</CardTitle>
-          <CardDescription>Elige cómo quieres usar Kawin</CardDescription>
+          <CardDescription>Regístrate como tallerista en Kawin</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-5">
-            {/* Role selector */}
+            {/* Role selector — oculto hasta habilitar registro de estudiantes
             <div className="grid grid-cols-2 gap-3">
               {roles.map((r) => (
                 <button
@@ -105,6 +105,7 @@ export default function RegistroPage() {
                 </button>
               ))}
             </div>
+            */}
 
             <div className="space-y-2">
               <Label htmlFor="name">Nombre completo</Label>
