@@ -178,7 +178,8 @@ class WorkshopController extends Controller
     // GET /api/v1/workshops/:id/available-slots  (instructor only)
     public function availableSlots(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
         $winfo = DB::selectOne(
             "SELECT instructor_id::text as instructor_id, capacity FROM workshops WHERE id = ?",
@@ -187,7 +188,7 @@ class WorkshopController extends Controller
         if (!$winfo) {
             return response()->json(['message' => 'Taller no encontrado'], 404);
         }
-        if ($winfo->instructor_id !== $userID) {
+        if (!$isAdmin && $winfo->instructor_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para ver este calendario'], 403);
         }
 

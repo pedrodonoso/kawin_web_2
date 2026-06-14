@@ -18,10 +18,10 @@ class WorkshopWriteController extends Controller
     // GET /api/v1/my-workshops
     public function index(Request $request): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
-        $workshops = DB::select(
-            "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
+        $sql = "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
                     w.type, w.modality, w.price::int as price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
                     COALESCE(w.address,'') as address,
@@ -40,11 +40,13 @@ class WorkshopWriteController extends Controller
                      WHERE b.workshop_id = w.id AND b.status = ?) AS bookings_count
              FROM workshops w
              LEFT JOIN categories c ON c.id = w.category_id
-             LEFT JOIN profiles p ON p.user_id = w.instructor_id
-             WHERE w.instructor_id = ?
-             ORDER BY w.created_at DESC",
-            [BookingStatus::CONFIRMED, $userID]
-        );
+             LEFT JOIN profiles p ON p.user_id = w.instructor_id";
+
+        if ($isAdmin) {
+            $workshops = DB::select($sql . " ORDER BY w.created_at DESC", [BookingStatus::CONFIRMED]);
+        } else {
+            $workshops = DB::select($sql . " WHERE w.instructor_id = ? ORDER BY w.created_at DESC", [BookingStatus::CONFIRMED, $userID]);
+        }
 
         return response()->json(['data' => $workshops]);
     }
@@ -52,10 +54,10 @@ class WorkshopWriteController extends Controller
     // GET /api/v1/my-workshops/:id
     public function show(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
-        $w = DB::selectOne(
-            "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
+        $sql = "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
                     w.type, w.modality, w.price::int as price, w.currency,
                     w.capacity, COALESCE(w.location,'') as location,
                     COALESCE(w.address,'') as address,
@@ -75,9 +77,13 @@ class WorkshopWriteController extends Controller
              FROM workshops w
              LEFT JOIN categories c ON c.id = w.category_id
              LEFT JOIN profiles p ON p.user_id = w.instructor_id
-             WHERE w.id = ? AND w.instructor_id = ?",
-            [$id, $userID]
-        );
+             WHERE w.id = ?";
+
+        if ($isAdmin) {
+            $w = DB::selectOne($sql, [$id]);
+        } else {
+            $w = DB::selectOne($sql . " AND w.instructor_id = ?", [$id, $userID]);
+        }
 
         if (!$w) {
             return response()->json(['message' => 'Taller no encontrado'], 404);

@@ -291,7 +291,8 @@ class BookingController extends Controller
     // POST /api/v1/bookings/:id/migrate
     public function migrate(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
         $this->validate($request, ['target_session_id' => 'required|string']);
 
@@ -306,7 +307,7 @@ class BookingController extends Controller
         if (!$bookingInfo) {
             return response()->json(['message' => 'Reserva no encontrada'], 404);
         }
-        if ($bookingInfo->owner_id !== $userID) {
+        if (!$isAdmin && $bookingInfo->owner_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para modificar esta reserva'], 403);
         }
 
@@ -359,7 +360,8 @@ class BookingController extends Controller
     // POST /api/v1/bookings/:id/refund
     public function refund(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
         $bookingInfo = DB::selectOne(
             "SELECT b.workshop_id::text as workshop_id, b.status, b.payment_status,
@@ -374,7 +376,7 @@ class BookingController extends Controller
         if (!$bookingInfo) {
             return response()->json(['message' => 'Reserva no encontrada'], 404);
         }
-        if ($bookingInfo->owner_id !== $userID) {
+        if (!$isAdmin && $bookingInfo->owner_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para modificar esta reserva'], 403);
         }
 

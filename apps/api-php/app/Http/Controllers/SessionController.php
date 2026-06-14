@@ -16,7 +16,8 @@ class SessionController extends Controller
     // POST /api/v1/sessions/materialize
     public function materialize(Request $request): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
         $this->validate($request, [
             'workshop_id' => 'required|string',
@@ -41,7 +42,7 @@ class SessionController extends Controller
         if (!$schedInfo) {
             return response()->json(['message' => 'Schedule no encontrado o no pertenece al taller'], 404);
         }
-        if ($schedInfo->owner_id !== $userID) {
+        if (!$isAdmin && $schedInfo->owner_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para materializar sesiones de este taller'], 403);
         }
 
@@ -126,7 +127,8 @@ class SessionController extends Controller
     // PATCH /api/v1/sessions/:id/url
     public function updateUrl(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
         $owner = DB::selectOne(
             "SELECT w.instructor_id::text as instructor_id FROM sessions s
@@ -137,7 +139,7 @@ class SessionController extends Controller
         if (!$owner) {
             return response()->json(['message' => 'Sesión no encontrada'], 404);
         }
-        if ($owner->instructor_id !== $userID) {
+        if (!$isAdmin && $owner->instructor_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para editar esta sesión'], 403);
         }
 
@@ -151,7 +153,8 @@ class SessionController extends Controller
     // POST /api/v1/sessions/:id/reactivate
     public function reactivate(Request $request, string $id): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
         $sessionInfo = DB::selectOne(
             "SELECT s.workshop_id::text as workshop_id, w.instructor_id::text as owner_id, s.cancelled
@@ -163,7 +166,7 @@ class SessionController extends Controller
         if (!$sessionInfo) {
             return response()->json(['message' => 'Sesión no encontrada'], 404);
         }
-        if ($sessionInfo->owner_id !== $userID) {
+        if (!$isAdmin && $sessionInfo->owner_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para reactivar esta sesión'], 403);
         }
         if (!$sessionInfo->cancelled) {
@@ -178,7 +181,8 @@ class SessionController extends Controller
     // POST /api/v1/sessions/cancel
     public function cancel(Request $request): JsonResponse
     {
-        $userID = $this->userId($request);
+        $userID  = $this->userId($request);
+        $isAdmin = $this->userRole($request) === 'admin';
 
         $this->validate($request, ['session_id' => 'required|string']);
         $sessionID = $request->input('session_id');
@@ -194,7 +198,7 @@ class SessionController extends Controller
         if (!$sessionInfo) {
             return response()->json(['message' => 'Sesión no encontrada'], 404);
         }
-        if ($sessionInfo->owner_id !== $userID) {
+        if (!$isAdmin && $sessionInfo->owner_id !== $userID) {
             return response()->json(['message' => 'No tienes permiso para cancelar sesiones de este taller'], 403);
         }
         if ($sessionInfo->already_cancelled) {

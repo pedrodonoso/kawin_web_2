@@ -12,7 +12,7 @@ class DiscountController extends Controller
     // GET /api/v1/workshops/{id}/discounts
     public function index(Request $request, string $id): JsonResponse
     {
-        if (!$this->ownsWorkshop($id, $this->userId($request))) {
+        if (!$this->canAccessWorkshop($request, $id)) {
             return response()->json(['message' => 'No tienes acceso a este taller'], 403);
         }
 
@@ -30,7 +30,7 @@ class DiscountController extends Controller
     // POST /api/v1/workshops/{id}/discounts
     public function store(Request $request, string $id): JsonResponse
     {
-        if (!$this->ownsWorkshop($id, $this->userId($request))) {
+        if (!$this->canAccessWorkshop($request, $id)) {
             return response()->json(['message' => 'No tienes acceso a este taller'], 403);
         }
 
@@ -72,7 +72,7 @@ class DiscountController extends Controller
         if (!$discount) {
             return response()->json(['message' => 'Descuento no encontrado'], 404);
         }
-        if (!$this->ownsWorkshop($discount->workshop_id, $this->userId($request))) {
+        if (!$this->canAccessWorkshop($request, $discount->workshop_id)) {
             return response()->json(['message' => 'No tienes acceso a este descuento'], 403);
         }
 
@@ -130,7 +130,7 @@ class DiscountController extends Controller
         if (!$discount) {
             return response()->json(['message' => 'Descuento no encontrado'], 404);
         }
-        if (!$this->ownsWorkshop($discount->workshop_id, $this->userId($request))) {
+        if (!$this->canAccessWorkshop($request, $discount->workshop_id)) {
             return response()->json(['message' => 'No tienes acceso a este descuento'], 403);
         }
 
@@ -210,6 +210,14 @@ class DiscountController extends Controller
     }
 
     // -------------------------------------------------------------------------
+
+    private function canAccessWorkshop(Request $request, string $id): bool
+    {
+        if ($this->userRole($request) === 'admin') {
+            return true;
+        }
+        return $this->ownsWorkshop($id, $this->userId($request));
+    }
 
     private function ownsWorkshop(string $id, string $userId): bool
     {
