@@ -9,6 +9,7 @@ import {
   Search, MapPin, ArrowRight, Code2, ShieldCheck,
   Palette, ChefHat, Music, Sprout, Hammer, Globe, Activity,
   HandHeart, Camera, Scissors,
+  CalendarCheck, GraduationCap, Repeat, PartyPopper,
   type LucideIcon,
 } from "lucide-react";
 import InstallAppSection from "./InstallAppSection";
@@ -26,10 +27,47 @@ const categories: { name: string; Icon: LucideIcon; slug: string }[] = [
   { name: "Artesanía",            Icon: Scissors,  slug: "artesania" },
 ];
 
+const activityTypes: {
+  name: string;
+  Icon: LucideIcon;
+  tagline: string;
+  desc: string;
+  example: string;
+}[] = [
+  {
+    name: "Taller",
+    Icon: CalendarCheck,
+    tagline: "Una experiencia puntual",
+    desc: "Uno o pocos encuentros con fecha fija. Te contactas con quien lo hace y vas.",
+    example: "Ej: taller de cerámica, un sábado por la tarde.",
+  },
+  {
+    name: "Curso",
+    Icon: GraduationCap,
+    tagline: "Aprende paso a paso",
+    desc: "Un programa de varias sesiones en orden. Coordinas con quien lo imparte y lo sigues de principio a fin.",
+    example: "Ej: curso de guitarra para principiantes, 6 clases.",
+  },
+  {
+    name: "Clase",
+    Icon: Repeat,
+    tagline: "A tu ritmo, los días que quieras",
+    desc: "Una actividad que se repite en horarios fijos. Contactas a quien la da y eliges a qué sesiones ir.",
+    example: "Ej: yoga los lunes y miércoles a las 19:00.",
+  },
+  {
+    name: "Evento",
+    Icon: PartyPopper,
+    tagline: "Un encuentro especial",
+    desc: "Un acontecimiento con fecha fija, sin estructura de clases. Contactas a quien lo organiza y participas.",
+    example: "Ej: feria de productores, charla o tocata.",
+  },
+];
+
 const manifesto = [
   { phrase: "Compartir.", sub: "Nadie lo sabe todo, todos sabemos algo. Acá puedes compartirlo." },
   { phrase: "El valor del trabajo.", sub: "Quien enseña su oficio merece reconocimiento, no caridad ni propina." },
-  { phrase: "Autogestión.", sub: "Autogestión: cada quien pone su precio, su tiempo y sus reglas." },
+  { phrase: "Autogestión.", sub: "Cada quien pone su precio, su tiempo y sus reglas." },
 ];
 
 export default function Home() {
@@ -215,7 +253,7 @@ export default function Home() {
           <div className="space-y-5">
             <p className="text-xs font-semibold tracking-widest text-primary uppercase">Pertenecer</p>
             <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
-              El territorio se aprende <span className="text-primary">caminándolo.</span>
+              El territorio se aprende <span className="text-primary">en la calle.</span>
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
               No somos una plataforma para consumir contenido. Somos un punto de encuentro
@@ -261,7 +299,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { n: "01", title: "Encuentra", desc: "Busca un taller cerca de ti. Arte, cocina, oficios, huerta — lo que tu barrio tiene para dar." },
-              { n: "02", title: "Reserva", desc: "Agenda en segundos, directo con quien enseña. Sin intermediarios que se queden con todo." },
+              { n: "02", title: "Contacta", desc: "Por ahora la reserva no se hace en la plataforma: escríbele directo por sus redes sociales o datos de contacto y coordinan entre ustedes." },
               { n: "03", title: "Reúnete", desc: "Aparece. Conoce a la persona. Aprende con las manos y quédate a conversar." },
             ].map(({ n, title, desc }) => (
               <div key={n} className="space-y-3">
@@ -279,6 +317,44 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Tipos de actividad ── */}
+      <section className="py-20 px-4 bg-background">
+        <div className="max-w-6xl mx-auto space-y-10">
+          <div className="text-center space-y-2 max-w-2xl mx-auto">
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">Distintas formas de juntarse</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold">No todos los encuentros son iguales</h2>
+            <p className="text-muted-foreground text-base leading-relaxed pt-1">
+              En Kawin cada publicación tiene un formato según cómo funciona. Esto te dice qué esperar
+              antes de escribirle a quien la organiza.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {activityTypes.map(({ name, Icon, tagline, desc, example }) => (
+              <div
+                key={name}
+                className="flex flex-col gap-3 p-6 border rounded-2xl hover:border-primary hover:bg-primary/5 transition-all"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold leading-tight">{name}</h3>
+                  <p className="text-primary text-sm font-medium">{tagline}</p>
+                </div>
+                <p className="text-muted-foreground text-sm leading-relaxed flex-1">{desc}</p>
+                <p className="text-muted-foreground/80 text-xs leading-relaxed italic border-t pt-3">{example}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-muted-foreground text-sm leading-relaxed text-center max-w-2xl mx-auto">
+            <strong className="text-foreground">¿La gran diferencia?</strong> Una <strong className="text-foreground">Clase</strong> se
+            repite y eliges a qué días ir. Un <strong className="text-foreground">Taller</strong>,
+            <strong className="text-foreground"> Curso</strong> o <strong className="text-foreground">Evento</strong> es una actividad
+            puntual que tomas completa. En todos los casos coordinas directamente con quien la hace, escribiéndole por sus redes o contacto.
+          </p>
+        </div>
+      </section>
+
       {/* ── Infraestructura y cuidado ── */}
       <section className="py-20 px-4 bg-secondary/40">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10">
@@ -291,7 +367,7 @@ export default function Home() {
               Un proyecto <span className="text-primary">pequeño y honesto.</span>
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Kawin no corre sobre Google ni Amazon. Los servicios se levantan en
+              Kawin no usa servicios de Google ni Amazon. Los servicios se levantan en
               <strong className="text-foreground"> Railway</strong>, y para encontrar lugares usamos la
               capa demo de <strong className="text-foreground">Photon</strong> (photon.komoot.io). Es una
               infraestructura modesta y de bajo costo: te pedimos paciencia y consideración al usar el
@@ -322,8 +398,7 @@ export default function Home() {
             <p className="text-muted-foreground text-lg leading-relaxed">
               Para que el barrio se mantenga sano, Kawin necesita administración. Revisamos las
               publicaciones para evitar el spam y los avisos mal intencionados, de modo que lo que
-              encuentres sean talleres y encuentros reales de personas reales. Cuidar el espacio común
-              también es parte del apoyo mutuo.
+              encuentres sean talleres y encuentros reales de personas reales. Cuida nuestro espacio.
             </p>
           </div>
         </div>
