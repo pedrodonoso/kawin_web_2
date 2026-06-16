@@ -6,11 +6,12 @@ use Firebase\JWT\JWT;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Cookie;
 
 class AuthController extends Controller
 {
     private const ALLOWED_ROLES = ['student', 'instructor'];
-    private const TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days
+    private const TOKEN_TTL = 24 * 60 * 60; // 24 hours
 
     // POST /api/v1/auth/register
     public function register(Request $request): JsonResponse
@@ -18,8 +19,21 @@ class AuthController extends Controller
         $this->validate($request, [
             'name'     => 'required|string|max:120',
             'email'    => 'required|email|max:255',
-            'password' => 'required|min:8|max:128',
+            'password' => [
+                'required', 'min:8', 'max:128',
+                'regex:/[A-Z]/',
+                'regex:/[a-z]/',
+                'regex:/[0-9]/',
+                'regex:/[@$!%*?&#._\-]/',
+            ],
             'role'     => 'sometimes|string|in:student,instructor',
+        ], [
+            'name.required'     => 'El nombre es obligatorio.',
+            'email.required'    => 'El email es obligatorio.',
+            'email.email'       => 'El email no tiene un formato válido.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.min'      => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.regex'    => 'La contraseña debe incluir mayúscula, minúscula, número y símbolo (@$!%*?&#._-).',
         ]);
 
         $role = $request->input('role', 'student') ?: 'student';
@@ -28,6 +42,7 @@ class AuthController extends Controller
         }
 
         $email = mb_strtolower(trim($request->input('email')));
+        $name = strip_tags(trim($request->input('name')));
         $hash = password_hash($request->input('password'), PASSWORD_BCRYPT);
 
         try {
@@ -38,21 +53,25 @@ class AuthController extends Controller
                 [$email, $hash, $role]
             )->id;
         } catch (\Exception $e) {
-            return response()->json(['message' => 'El email ya está registrado'], 409);
+            // Generic message to prevent user enumeration (SEC-06)
+            return response()->json(['message' => 'No se pudo crear la cuenta. Intenta con otro email.'], 422);
         }
 
         DB::insert(
             "INSERT INTO profiles (user_id, name) VALUES (?, ?)
              ON CONFLICT (user_id) DO NOTHING",
-            [$userId, trim($request->input('name'))]
+            [$userId, $name]
         );
 
         $token = $this->makeToken($userId, $email, $role);
-
-        return response()->json([
+        $response = response()->json([
             'token' => $token,
             'user'  => ['id' => $userId, 'email' => $email, 'role' => $role],
         ], 201);
+
+        $response->headers->setCookie($this->makeTokenCookie($token));
+
+        return $response;
     }
 
     // POST /api/v1/auth/login
@@ -74,12 +93,23 @@ class AuthController extends Controller
             return response()->json(['message' => 'Credenciales incorrectas'], 401);
         }
 
-        $token = $this->makeToken($user->id, $email, $user->role);
-
-        return response()->json([
+        $token    = $this->makeToken($user->id, $email, $user->role);
+        $response = response()->json([
             'token' => $token,
             'user'  => ['id' => $user->id, 'email' => $email, 'role' => $user->role],
         ]);
+
+        $response->headers->setCookie($this->makeTokenCookie($token));
+
+        return $response;
+    }
+
+    // POST /api/v1/auth/logout
+    public function logout(): JsonResponse
+    {
+        $response = response()->json(['message' => 'Sesión cerrada']);
+        $response->headers->setCookie($this->makeTokenCookie('', 0));
+        return $response;
     }
 
     // -----------------------------------------------------------------------
@@ -100,5 +130,23 @@ class AuthController extends Controller
         ];
 
         return JWT::encode($payload, $secret, 'HS256');
+    }
+
+    private function makeTokenCookie(string $value, ?int $ttl = null): Cookie
+    {
+        $ttl    = $ttl ?? self::TOKEN_TTL;
+        $secure = app()->environment('production');
+
+        return new Cookie(
+            'token',
+            $value,
+            time() + $ttl,
+            '/',
+            null,
+            $secure,
+            true,    // httpOnly — JS cannot read this cookie
+            false,
+            'Strict'
+        );
     }
 }

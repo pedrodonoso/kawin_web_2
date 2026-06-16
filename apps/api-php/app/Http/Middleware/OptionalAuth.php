@@ -15,7 +15,12 @@ class OptionalAuth
         $header = $request->header('Authorization', '');
 
         if (str_starts_with($header, 'Bearer ')) {
-            $token  = substr($header, 7);
+            $token = substr($header, 7);
+        } else {
+            $token = $request->cookie('token') ?? '';
+        }
+
+        if ($token !== '') {
             $secret = env('API_SECRET');
             if (!$secret) {
                 return $next($request);

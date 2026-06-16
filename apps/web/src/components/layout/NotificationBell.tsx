@@ -65,19 +65,18 @@ export function NotificationBell() {
 
   // ── Service Worker + Push subscription (runs once on mount) ───────────
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    const isLoggedIn = !!localStorage.getItem("user");
+    if (!isLoggedIn) return;
 
     registerServiceWorker().then((reg) => {
-      if (reg) subscribeToPush(token).catch(() => {});
+      if (reg) subscribeToPush().catch(() => {});
     });
   }, []); // runs once on mount
 
   // ── WebSocket via Soketi (runs once on mount) ───────────────────────────
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const raw   = localStorage.getItem("user");
-    if (!token || !raw) return;
+    const raw = localStorage.getItem("user");
+    if (!raw) return;
 
     const user = JSON.parse(raw) as { id: string };
 
@@ -92,12 +91,11 @@ export function NotificationBell() {
       disableStats:      true,
       authorizer: (channel) => ({
         authorize: (socketId: string, callback: import("pusher-js").AuthorizerCallback) => {
-          const t = localStorage.getItem("token");
           fetch("/api/v1/broadcasting/auth", {
             method: "POST",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${t}`,
             },
             body: JSON.stringify({ socket_id: socketId, channel_name: channel.name }),
           })

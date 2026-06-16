@@ -29,10 +29,13 @@ export function Navbar() {
     if (raw) setUser(JSON.parse(raw));
   }, []);
 
-  function logout() {
-    localStorage.removeItem("token");
+  async function logout() {
+    try {
+      await fetch("/api/v1/auth/logout", { method: "POST", credentials: "include" });
+    } catch {
+      // Proceed even if the request fails — clear local state regardless
+    }
     localStorage.removeItem("user");
-    document.cookie = "token=; path=/; max-age=0";
     setUser(null);
     window.location.href = "/";
   }
@@ -130,7 +133,7 @@ export function Navbar() {
                 <Link href="/login">Iniciar sesión</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/registro">Soy tallerista</Link>
+                <Link href="/registro">Regístrate como tallerista</Link>
               </Button>
             </>
           )}

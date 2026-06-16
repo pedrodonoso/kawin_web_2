@@ -9,15 +9,35 @@ class CorsMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        $response = $next($request);
+        $allowedOrigins = array_filter(
+            array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')))
+        );
 
-        $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+        $origin = $request->header('Origin', '');
 
         if ($request->isMethod('OPTIONS')) {
-            return response('', 204, $response->headers->all());
+            $headers = [
+                'Access-Control-Allow-Methods'  => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers'  => 'Content-Type, Authorization, X-Requested-With',
+                'Access-Control-Allow-Credentials' => 'true',
+                'Access-Control-Max-Age'        => '86400',
+                'Vary'                          => 'Origin',
+            ];
+            if (in_array($origin, $allowedOrigins, true)) {
+                $headers['Access-Control-Allow-Origin'] = $origin;
+            }
+            return response('', 204, $headers);
         }
+
+        $response = $next($request);
+
+        if (in_array($origin, $allowedOrigins, true)) {
+            $response->headers->set('Access-Control-Allow-Origin', $origin);
+        }
+        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+        $response->headers->set('Access-Control-Allow-Credentials', 'true');
+        $response->headers->set('Vary', 'Origin');
 
         return $response;
     }

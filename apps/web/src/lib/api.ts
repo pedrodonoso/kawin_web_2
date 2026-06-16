@@ -19,12 +19,14 @@ async function getTokenServerSide(): Promise<string | null> {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("token")
-      : await getTokenServerSide();
+  // Client-side: HttpOnly cookie is sent automatically via credentials: include.
+  // Server-side (SSR): no cookie jar in Node — read from next/headers and pass as Bearer.
+  const isServer = typeof window === "undefined";
+  const token = isServer ? await getTokenServerSide() : null;
+
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
+    credentials: "include",
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -34,7 +36,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message ?? "Error de servidor");
+    // Lumen validation errors come as { field: ["msg", ...] } with no top-level "message"
+    const message =
+      err.message ??
+      (Object.values(err as Record<string, string[]>)[0]?.[0]) ??
+      "Error de servidor";
+    throw new Error(message);
   }
   return res.json();
 }

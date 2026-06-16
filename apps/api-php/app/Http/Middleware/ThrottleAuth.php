@@ -32,7 +32,9 @@ class ThrottleAuth
 
         $response = $next($request);
 
-        if ($response->getStatusCode() === 401 || $response->getStatusCode() === 409) {
+        $status = $response->getStatusCode();
+        // Count failures AND successful registrations (201) to prevent spam accounts (SEC-10)
+        if (in_array($status, [401, 409, 422, 201], true)) {
             Cache::put($key, $attempts + 1, self::DECAY_SECONDS);
             Cache::put("{$key}:timer", time() + self::DECAY_SECONDS, self::DECAY_SECONDS);
         }

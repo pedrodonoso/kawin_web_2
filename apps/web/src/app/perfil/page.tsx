@@ -30,8 +30,8 @@ export default function PerfilPage() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    const user = localStorage.getItem("user");
+    if (!user) {
       router.push("/login");
       return;
     }

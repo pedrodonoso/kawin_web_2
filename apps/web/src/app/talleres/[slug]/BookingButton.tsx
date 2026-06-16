@@ -29,7 +29,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
   const isFull = capacity != null && currentCount >= capacity;
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const isLoggedIn = !!localStorage.getItem("user");
 
     // Check if current user is the instructor
     if (instructorId) {
@@ -43,7 +43,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
       } catch { /* ignore */ }
     }
 
-    if (!token || workshopType === WorkshopType.CLASS) {
+    if (!isLoggedIn || workshopType === WorkshopType.CLASS) {
       setCheckingStatus(false);
       return;
     }
@@ -68,8 +68,7 @@ export function BookingButton({ workshopId, workshopType, capacity, bookingsCoun
   }
 
   async function handleBook() {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!localStorage.getItem("user")) {
       router.push("/login");
       return;
     }

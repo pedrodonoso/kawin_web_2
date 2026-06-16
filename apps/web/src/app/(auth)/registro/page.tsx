@@ -51,10 +51,8 @@ export default function RegistroPage() {
         ...form,
         role,
       });
-      localStorage.setItem("token", data.token);
+      // Token is set as HttpOnly cookie by the server — do NOT store in localStorage or JS cookies.
       localStorage.setItem("user", JSON.stringify(data.user));
-      const secure = window.location.protocol === "https:" ? "; Secure" : "";
-      document.cookie = `token=${data.token}; path=/; SameSite=Lax; max-age=604800${secure}`;
       toast.success("¡Cuenta creada exitosamente!");
       if (role === UserRole.INSTRUCTOR) {
         window.location.href = "/dashboard";
@@ -139,6 +137,9 @@ export default function RegistroPage() {
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground">
+                Debe incluir mayúscula, minúscula, número y símbolo (@$!%*?&#._-)
+              </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">

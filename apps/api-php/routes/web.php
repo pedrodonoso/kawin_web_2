@@ -22,6 +22,8 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
         $router->post('/auth/login',      'AuthController@login');
     });
 
+    $router->post('/auth/logout', 'AuthController@logout');
+
     // Public instructor profile
     $router->get('/instructors/{id}/profile', 'ProfileController@publicShow');
 

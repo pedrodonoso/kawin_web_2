@@ -14,11 +14,14 @@ class Authenticate
     {
         $header = $request->header('Authorization', '');
 
-        if (!str_starts_with($header, 'Bearer ')) {
-            return response()->json(['message' => 'Token requerido'], 401);
+        if (str_starts_with($header, 'Bearer ')) {
+            $token = substr($header, 7);
+        } else {
+            $token = $request->cookie('token');
+            if (!$token) {
+                return response()->json(['message' => 'Token requerido'], 401);
+            }
         }
-
-        $token = substr($header, 7);
         $secret = env('API_SECRET');
         if (!$secret) {
             return response()->json(['message' => 'Server misconfigured'], 500);

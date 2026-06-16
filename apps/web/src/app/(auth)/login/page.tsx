@@ -21,10 +21,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await api.post<AuthResponse>("/api/v1/auth/login", form);
-      localStorage.setItem("token", data.token);
+      // Token is set as HttpOnly cookie by the server — do NOT store in localStorage or JS cookies.
       localStorage.setItem("user", JSON.stringify(data.user));
-      const secure = window.location.protocol === "https:" ? "; Secure" : "";
-      document.cookie = `token=${data.token}; path=/; SameSite=Lax; max-age=604800${secure}`;
       toast.success("¡Bienvenido de vuelta!");
       // Use full reload so the navbar re-mounts and reads the updated localStorage
       if (data.user.role === UserRole.INSTRUCTOR || data.user.role === UserRole.BOTH) {

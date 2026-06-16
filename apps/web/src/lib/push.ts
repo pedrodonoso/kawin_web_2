@@ -16,7 +16,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
-export async function subscribeToPush(token: string): Promise<void> {
+export async function subscribeToPush(): Promise<void> {
   if (!VAPID_PUBLIC_KEY || !("PushManager" in window)) return;
 
   const permission = await Notification.requestPermission();
@@ -34,15 +34,15 @@ export async function subscribeToPush(token: string): Promise<void> {
 
   await fetch("/api/v1/push/subscribe", {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(sub.toJSON()),
   });
 }
 
-export async function unsubscribeFromPush(token: string): Promise<void> {
+export async function unsubscribeFromPush(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
 
   const reg = await navigator.serviceWorker.ready;
@@ -51,9 +51,9 @@ export async function unsubscribeFromPush(token: string): Promise<void> {
 
   await fetch("/api/v1/push/subscribe", {
     method: "DELETE",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ endpoint: sub.endpoint }),
   });
