@@ -10,6 +10,7 @@ import {
   Palette, ChefHat, Music, Sprout, Hammer, Globe, Activity,
   HandHeart, Camera, Scissors,
   CalendarCheck, GraduationCap, Repeat, PartyPopper,
+  Instagram, Facebook, MessageCircle, Phone, MapPinned,
   type LucideIcon,
 } from "lucide-react";
 import InstallAppSection from "./InstallAppSection";
@@ -38,29 +39,29 @@ const activityTypes: {
     name: "Taller",
     Icon: CalendarCheck,
     tagline: "Una experiencia puntual",
-    desc: "Uno o pocos encuentros con fecha fija. Te contactas con quien lo hace y vas.",
-    example: "Ej: taller de cerámica, un sábado por la tarde.",
+    desc: "Uno o pocos encuentros con fecha fija.",
+    example: "Ej: Taller de cerámica, un sábado por la tarde.",
   },
   {
     name: "Curso",
     Icon: GraduationCap,
     tagline: "Aprende paso a paso",
     desc: "Un programa de varias sesiones en orden. Coordinas con quien lo imparte y lo sigues de principio a fin.",
-    example: "Ej: curso de guitarra para principiantes, 6 clases.",
+    example: "Ej: Curso de guitarra para principiantes, 6 clases.",
   },
   {
     name: "Clase",
     Icon: Repeat,
     tagline: "A tu ritmo, los días que quieras",
-    desc: "Una actividad que se repite en horarios fijos. Contactas a quien la da y eliges a qué sesiones ir.",
-    example: "Ej: yoga los lunes y miércoles a las 19:00.",
+    desc: "Una actividad que se repite en horarios fijos.",
+    example: "Ej: Tejido los lunes y miércoles a las 19:00.",
   },
   {
     name: "Evento",
     Icon: PartyPopper,
     tagline: "Un encuentro especial",
-    desc: "Un acontecimiento con fecha fija, sin estructura de clases. Contactas a quien lo organiza y participas.",
-    example: "Ej: feria de productores, charla o tocata.",
+    desc: "Un acontecimiento con fecha fija, sin estructura de clases.",
+    example: "Ej: Feria, charla, festival o tocata.",
   },
 ];
 
@@ -102,12 +103,12 @@ export default function Home() {
           </span>
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight">
-            El conocimiento es de quien<br />
-            <span className="text-primary">lo trabaja.</span>
+            El conocimiento es del<br />
+            <span className="text-primary">barrio.</span>
           </h1>
 
           <p className="text-background/65 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            El conocimiento vive en el territorio: en las manos del vecino, en la mesa común,
+            El conocimiento vive en el territorio: en las manos del vecino,
             en el taller de la esquina. Acá nos juntamos a aprenderlo cara a cara,
             sin algoritmos decidiendo por ti.
           </p>
@@ -355,6 +356,64 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Cómo te conectamos ── */}
+      <section className="py-20 px-4 bg-foreground text-background">
+        <div className="max-w-5xl mx-auto space-y-10">
+          <div className="text-center space-y-2 max-w-2xl mx-auto">
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">Cómo te conectamos</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold">Contacto directo, sin intermediarios</h2>
+            <p className="text-background/65 text-base leading-relaxed pt-1">
+              Kawin no se mete en la conversación ni cobra comisión por contactar. Solo muestra el
+              enlace que cada persona decide compartir; el resto lo arreglan entre ustedes.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-px bg-background/15 rounded-2xl overflow-hidden">
+            <div className="bg-foreground px-8 py-10 space-y-4">
+              <div className="flex items-center gap-3">
+                <Instagram className="h-6 w-6 text-primary" />
+                <p className="text-sm font-semibold tracking-widest text-primary uppercase">Redes y mensajería</p>
+              </div>
+              <h3 className="text-2xl font-bold leading-snug">Le escribes por sus redes</h3>
+              <p className="text-background/70 text-base leading-relaxed">
+                Cada tallerista publica el link a su perfil de <strong className="text-background">Instagram o Facebook</strong>.
+                Lo visitas, conoces su trabajo y le escribes directo por ahí. Si lo prefiere, también
+                puede dejar su <strong className="text-background">número de teléfono y WhatsApp</strong> para
+                coordinar al tiro. Kawin solo enlaza al perfil que la persona elige mostrar.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium border border-background/25 rounded-full px-3 py-1">
+                  <Instagram className="h-3.5 w-3.5" /> Instagram
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium border border-background/25 rounded-full px-3 py-1">
+                  <Facebook className="h-3.5 w-3.5" /> Facebook
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium border border-background/25 rounded-full px-3 py-1">
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium border border-background/25 rounded-full px-3 py-1">
+                  <Phone className="h-3.5 w-3.5" /> Teléfono
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-foreground px-8 py-10 space-y-4">
+              <div className="flex items-center gap-3">
+                <MapPinned className="h-6 w-6 text-primary" />
+                <p className="text-sm font-semibold tracking-widest text-primary uppercase">Ubicación con Google Maps</p>
+              </div>
+              <h3 className="text-2xl font-bold leading-snug">Sabes exactamente dónde llegar</h3>
+              <p className="text-background/70 text-base leading-relaxed">
+                Al crear su actividad, la persona pega el <strong className="text-background">link de “compartir” de Google Maps</strong> del
+                lugar. Aunque admitimos ese enlace, <strong className="text-background">Kawin no integra los servicios de Google</strong>:
+                solo extraemos las coordenadas del lugar y las mostramos sobre <strong className="text-background">mapas de código
+                abierto</strong>, los mismos que usamos en todo el sitio. Así sabes exactamente dónde llegar.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Infraestructura y cuidado ── */}
       <section className="py-20 px-4 bg-secondary/40">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-10">
@@ -371,7 +430,7 @@ export default function Home() {
               <strong className="text-foreground"> Railway</strong>, y para encontrar lugares usamos la
               capa demo de <strong className="text-foreground">Photon</strong> (photon.komoot.io). Es una
               infraestructura modesta y de bajo costo: te pedimos paciencia y consideración al usar el
-              sitio, porque sostiene una comunidad, no una gran corporación.
+              sitio.
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               {[
