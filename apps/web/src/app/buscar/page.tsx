@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Search, MapPin, Clock, LayoutGrid, Map, BookOpen, CalendarDays, Brush, GraduationCap, Repeat } from "lucide-react";
+import { Search, MapPin, Clock, LayoutGrid, Map } from "lucide-react";
 import { api, type Workshop, type Category } from "@/lib/api";
 import { Modality } from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
@@ -161,39 +161,15 @@ function WorkshopCard({ w }: { w: Workshop }) {
     event: "bg-emerald-100 text-emerald-700",
   };
 
-  const typeBg: Record<string, string> = {
-    workshop: "bg-orange-950/30",
-    course: "bg-amber-950/30",
-    class: "bg-indigo-950/30",
-    event: "bg-emerald-950/30",
-  };
-
-  const TypeIcon: Record<string, React.ElementType> = {
-    workshop: Brush,
-    course: GraduationCap,
-    class: Repeat,
-    event: CalendarDays,
-  };
-
-  const typeIconColor: Record<string, string> = {
-    workshop: "text-orange-400",
-    course: "text-amber-400",
-    class: "text-indigo-400",
-    event: "text-emerald-400",
-  };
-
   return (
     <Link href={`/talleres/${w.slug}`}>
       <Card className="hover:shadow-md transition-shadow h-full flex flex-col">
-        <div className={`${typeBg[w.type] ?? "bg-secondary"} h-40 rounded-t-lg flex items-center justify-center text-muted-foreground text-sm shrink-0`}>
-          {w.cover_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={w.cover_image_url} alt={w.title} className="h-full w-full object-cover rounded-t-lg" />
-          ) : (() => {
-            const Icon = TypeIcon[w.type] ?? BookOpen;
-            return <Icon className={`w-10 h-10 opacity-50 ${typeIconColor[w.type] ?? "text-muted-foreground"}`} />;
-          })()}
-        </div>
+        {w.cover_image_url && (
+          <div className="h-40 rounded-t-lg overflow-hidden shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={w.cover_image_url} alt={w.title} className="h-full w-full object-cover" />
+          </div>
+        )}
         <CardContent className="p-4 pb-5 flex flex-col flex-1">
           {/* Title | Type */}
           <div className="flex items-start justify-between gap-2">
@@ -264,12 +240,21 @@ function WorkshopCard({ w }: { w: Workshop }) {
 function WorkshopSkeleton() {
   return (
     <Card>
-      <Skeleton className="h-40 rounded-t-lg rounded-b-none" />
-      <CardContent className="p-4 space-y-3">
-        <Skeleton className="h-5 w-3/4" />
+      <CardContent className="p-4 pb-5 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-5 w-14 rounded-full" />
+        </div>
         <Skeleton className="h-4 w-1/3" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-2/3" />
+        <Separator />
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+        <Separator />
+        <Skeleton className="h-4 w-1/3" />
       </CardContent>
     </Card>
   );
