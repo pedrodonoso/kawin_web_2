@@ -139,8 +139,8 @@ export default function Home() {
       <section className="py-20 px-4 bg-background">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="text-center space-y-2">
-            <p className="text-xs font-semibold tracking-widest text-primary uppercase">Nuestra forma de hacer</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold">Un mercado que no se siente como mercado</h2>
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">En qué creemos</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold">Más comunidad que mercado</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-foreground rounded-2xl overflow-hidden">
             {manifesto.map(({ phrase, sub }) => (
