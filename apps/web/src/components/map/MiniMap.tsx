@@ -43,11 +43,12 @@ interface Props {
   lat: number;
   lng: number;
   label?: string;
+  mapsUrl?: string;
 }
 
-export function MiniMap({ lat, lng, label }: Props) {
+export function MiniMap({ lat, lng, label, mapsUrl }: Props) {
   return (
-    <FullscreenMapWrapper className="h-48 w-full rounded-lg overflow-hidden" lat={lat} lng={lng}>
+    <FullscreenMapWrapper className="h-48 w-full rounded-lg overflow-hidden" lat={lat} lng={lng} mapsUrl={mapsUrl}>
       {(fullscreen) => (
         <MapContainer
           center={[lat, lng]}

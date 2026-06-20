@@ -9,12 +9,18 @@ interface Props {
   className?: string;
   lat?: number;
   lng?: number;
+  mapsUrl?: string;
+  showGoogleMaps?: boolean;
 }
 
-export function FullscreenMapWrapper({ children, className = "", lat, lng }: Props) {
-  const googleMapsUrl = lat != null && lng != null
-    ? `https://www.google.com/maps?q=${lat},${lng}`
-    : null;
+export function FullscreenMapWrapper({ children, className = "", lat, lng, mapsUrl, showGoogleMaps = true }: Props) {
+  const googleMapsUrl = !showGoogleMaps
+    ? null
+    : mapsUrl
+      ? mapsUrl
+      : lat != null && lng != null
+        ? `https://www.google.com/maps?q=${lat},${lng}`
+        : null;
   const [fullscreen, setFullscreen] = useState(false);
 
   const exit = useCallback(() => setFullscreen(false), []);

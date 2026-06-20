@@ -322,7 +322,7 @@ export default function AdminWorkshopReviewPage() {
               </div>
               <div className="space-y-1">
                 <Label>Modalidad</Label>
-                <Select value={form.modality} onValueChange={(v) => setForm((f) => ({ ...f, modality: v as AdminWorkshop["modality"] }))}>
+                <Select value={form.modality ?? ""} onValueChange={(v) => setForm((f) => ({ ...f, modality: v as AdminWorkshop["modality"] }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="in-person">Presencial</SelectItem>

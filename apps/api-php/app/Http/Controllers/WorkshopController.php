@@ -18,13 +18,18 @@ class WorkshopController extends Controller
         $modality     = $request->query('modality', '');
         $type         = $request->query('type', '');
         $categorySlug = $request->query('category', '');
+        $venue        = $request->query('venue', '');
 
+        // When a workshop belongs to a venue, the venue's coordinates / address
+        // take precedence over the workshop's own fields.
         $sql = "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
                        w.type, w.modality, w.price::int as price, w.currency,
-                       w.capacity, COALESCE(w.location,'') as location,
-                       COALESCE(w.address,'') as address,
-                       w.lat, w.lng,
+                       w.capacity, COALESCE(v.name, NULLIF(w.location,''), '') as location,
+                       COALESCE(NULLIF(v.address,''), w.address, '') as address,
+                       COALESCE(v.lat, w.lat) as lat,
+                       COALESCE(v.lng, w.lng) as lng,
                        COALESCE(w.online_url,'') as online_url,
+                       COALESCE(w.maps_url,'') as maps_url,
                        COALESCE(w.cover_image_url,'') as cover_image_url,
                        w.status, COALESCE(w.created_at::text,'') as created_at,
                        COALESCE(c.id::text,'') as category_id,
@@ -32,11 +37,15 @@ class WorkshopController extends Controller
                        COALESCE(c.slug,'') as category_slug,
                        COALESCE(gc.name, p.name, '') as instructor_name,
                        w.instructor_id::text as instructor_id,
-                       gc.id::text as guest_contact_id
+                       gc.id::text as guest_contact_id,
+                       v.id::text as venue_id,
+                       COALESCE(v.name,'') as venue_name,
+                       COALESCE(v.slug,'') as venue_slug
                 FROM workshops w
                 LEFT JOIN categories c ON c.id = w.category_id
                 LEFT JOIN profiles p ON p.user_id = w.instructor_id
                 LEFT JOIN guest_contacts gc ON gc.id = w.guest_contact_id
+                LEFT JOIN venues v ON v.id = w.venue_id
                 WHERE w.status = 'published'";
 
         $bindings = [];
@@ -58,6 +67,11 @@ class WorkshopController extends Controller
             $sql .= " AND c.slug = ?";
             $bindings[] = $categorySlug;
         }
+        if ($venue !== '') {
+            $sql .= " AND (v.id::text = ? OR v.slug = ?)";
+            $bindings[] = $venue;
+            $bindings[] = $venue;
+        }
 
         $sql .= " ORDER BY w.created_at DESC LIMIT 50";
 
@@ -72,10 +86,12 @@ class WorkshopController extends Controller
         $w = DB::selectOne(
             "SELECT w.id, w.title, w.slug, COALESCE(w.description,'') as description,
                     w.type, w.modality, w.price::int as price, w.currency,
-                    w.capacity, COALESCE(w.location,'') as location,
-                    COALESCE(w.address,'') as address,
-                    w.lat, w.lng,
+                    w.capacity, COALESCE(v.name, NULLIF(w.location,''), '') as location,
+                    COALESCE(NULLIF(v.address,''), w.address, '') as address,
+                    COALESCE(v.lat, w.lat) as lat,
+                    COALESCE(v.lng, w.lng) as lng,
                     COALESCE(w.online_url,'') as online_url,
+                    COALESCE(w.maps_url,'') as maps_url,
                     COALESCE(w.notes,'') as notes,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, COALESCE(w.created_at::text,'') as created_at,
@@ -84,6 +100,9 @@ class WorkshopController extends Controller
                     COALESCE(c.slug,'') as category_slug,
                     w.instructor_id::text as instructor_id,
                     gc.id::text as guest_contact_id,
+                    v.id::text as venue_id,
+                    COALESCE(v.name,'') as venue_name,
+                    COALESCE(v.slug,'') as venue_slug,
                     w.use_guest_contact,
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.name,   p.name,          '') ELSE COALESCE(p.name,          '') END as instructor_name,
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.bio,    p.bio,           '') ELSE COALESCE(p.bio,           '') END as instructor_bio,
@@ -95,6 +114,7 @@ class WorkshopController extends Controller
              LEFT JOIN categories c ON c.id = w.category_id
              LEFT JOIN profiles p ON p.user_id = w.instructor_id
              LEFT JOIN guest_contacts gc ON gc.id = w.guest_contact_id
+             LEFT JOIN venues v ON v.id = w.venue_id
              WHERE (w.id::text = ? OR w.slug = ?)",
             [$id, $id]
         );

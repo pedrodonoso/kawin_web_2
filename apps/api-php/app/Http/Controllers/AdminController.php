@@ -99,8 +99,10 @@ class AdminController extends Controller
                     COALESCE(w.address,'') as address,
                     w.lat, w.lng,
                     COALESCE(w.online_url,'') as online_url,
+                    COALESCE(w.maps_url,'') as maps_url,
                     COALESCE(w.notes,'') as notes,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
+                    w.venue_id::text as venue_id,
                     w.status, w.approval_status,
                     COALESCE(w.admin_observations,'') as admin_observations,
                     w.pending_changes,
@@ -197,7 +199,7 @@ class AdminController extends Controller
             // Apply all pending fields if present
             $scalarFields = ['title', 'description', 'modality', 'price', 'currency',
                              'capacity', 'location', 'address', 'lat', 'lng',
-                             'online_url', 'notes', 'category_id'];
+                             'online_url', 'notes', 'category_id', 'venue_id'];
             foreach ($scalarFields as $field) {
                 if (array_key_exists($field, $pending)) {
                     $fillData[$field] = $pending[$field];
@@ -280,6 +282,7 @@ class AdminController extends Controller
             'online_url'  => $request->input('online_url', ''),
             'notes'       => $request->input('notes', '') ?: null,
             'category_id' => $catID,
+            'venue_id'    => $request->input('venue_id') ?: null,
         ]);
         $workshop->notifyContext = ['action' => 'admin_update', 'was_published' => $wasPublished];
         $workshop->save();

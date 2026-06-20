@@ -11,6 +11,7 @@ import { DiscountType, Modality, WorkshopType } from "@/lib/constants";
 import { UpcomingSessionsList } from "./UpcomingSessionsList";
 import { OnlineUrlDisplay } from "./OnlineUrlDisplay";
 import { MiniMapWrapper } from "./MiniMapWrapper";
+import { LocationDetails } from "./LocationDetails";
 import { DescriptionSection } from "./DescriptionSection";
 import { ShareButtons } from "./ShareButtons";
 import { RichTextDisplay } from "@/components/ui/rich-text-display";
@@ -216,13 +217,27 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           {workshop.lat != null && workshop.lng != null && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold">Ubicación</h2>
-              <MiniMapWrapper lat={workshop.lat} lng={workshop.lng} label={workshop.location} />
-              {workshop.address && (
-                <p className="text-sm text-muted-foreground flex items-start gap-2">
-                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-                  {workshop.address}
-                </p>
-              )}
+              <MiniMapWrapper lat={workshop.lat} lng={workshop.lng} label={workshop.location} mapsUrl={workshop.maps_url} />
+              <LocationDetails location={workshop.location} address={workshop.address} />
+            </div>
+          )}
+
+          {/* Sede / venue */}
+          {workshop.venue_id && workshop.venue_name && workshop.venue_slug && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">Sede</h2>
+              <Link
+                href={`/sedes/${workshop.venue_slug}`}
+                className="flex items-center gap-3 p-4 border rounded-lg bg-card hover:bg-accent/10 transition-colors"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <MapPin className="h-6 w-6" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold hover:underline truncate">{workshop.venue_name}</p>
+                  <p className="text-xs text-muted-foreground">Ver todos los talleres y eventos de esta sede</p>
+                </div>
+              </Link>
             </div>
           )}
 

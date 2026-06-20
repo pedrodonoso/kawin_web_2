@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, BookOpen, ShieldCheck } from "lucide-react";
+import { BarChart3, BookOpen, ShieldCheck, Building2 } from "lucide-react";
 import { UserRole } from "@/lib/constants";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +35,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/talleres" className="text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
             <BookOpen className="h-3.5 w-3.5" />
             Talleres
+          </Link>
+          <Link href="/admin/sedes" className="text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+            <Building2 className="h-3.5 w-3.5" />
+            Sedes
           </Link>
         </div>
       </div>

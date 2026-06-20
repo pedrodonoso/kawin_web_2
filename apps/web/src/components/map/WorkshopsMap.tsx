@@ -10,8 +10,8 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { MapPin, X, Clock, Maximize2, Minimize2 } from "lucide-react";
-import { type Workshop } from "@/lib/api";
+import { MapPin, X, Clock, Maximize2, Minimize2, Building2 } from "lucide-react";
+import { type Workshop, type Venue } from "@/lib/api";
 import { ModalityLabel } from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
 
@@ -144,6 +144,23 @@ function makePinSvg(iconPath: string, size: number, selected: boolean, color?: s
     </svg>`;
 }
 
+const VENUE_ICON_PATH = `
+  <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+  <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+  <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+  <path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>`;
+
+function createVenueIcon(selected: boolean): L.DivIcon {
+  const size = selected ? 48 : 42;
+  return L.divIcon({
+    html: makePinSvg(VENUE_ICON_PATH, size, selected, C.accent, C.accentDark),
+    className: "",
+    iconSize: [size, size + 8],
+    iconAnchor: [size / 2, size + 8],
+    popupAnchor: [0, -(size + 8)],
+  });
+}
+
 function createCategoryIcon(categorySlug: string | undefined, selected: boolean, workshopType?: string): L.DivIcon {
   const typeIcon = workshopType ? TYPE_ICON_PATHS[workshopType] : undefined;
   const typeCol = workshopType ? TYPE_COLORS[workshopType] : undefined;
@@ -215,19 +232,24 @@ function SyncCenter({ center }: { center: [number, number] }) {
 // ─── Main component ─────────────────────────────────────────────────────────
 interface Props {
   workshops: Workshop[];
+  venues?: Venue[];
   center?: [number, number];
   userLocation?: [number, number];
   zoom?: number;
   visible?: boolean;
 }
 
-export function WorkshopsMap({ workshops, center = [-33.45, -70.65], userLocation, zoom = 12, visible }: Props) {
+export function WorkshopsMap({ workshops, venues = [], center = [-33.45, -70.65], userLocation, zoom = 12, visible }: Props) {
   const [selected, setSelected] = useState<Workshop | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [listOpen, setListOpen] = useState(true);
   const [listPage, setListPage] = useState(0);
   const PAGE_SIZE = 5;
-  const mapped = workshops.filter((w) => w.lat != null && w.lng != null);
+  // Workshops that belong to a venue are represented by the venue marker —
+  // don't render a duplicate marker on top of it.
+  const mapped = workshops.filter((w) => w.lat != null && w.lng != null && !w.venue_id);
+  const mappedVenues = venues.filter((v) => v.lat != null && v.lng != null);
   const mapRef = useRef<L.Map | null>(null);
 
   const totalPages = Math.ceil(workshops.length / PAGE_SIZE);
@@ -278,7 +300,7 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], userLocatio
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         <SyncCenter center={center} />
-        <MapClickOutside onClose={() => setSelected(null)} />
+        <MapClickOutside onClose={() => { setSelected(null); setSelectedVenue(null); }} />
 
         {userLocation && (
           <>
@@ -303,16 +325,33 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], userLocatio
               eventHandlers={{
                 click(e) {
                   e.originalEvent.stopPropagation();
+                  setSelectedVenue(null);
                   setSelected(w);
                 },
               }}
             />
           ))}
         </MarkerClusterGroup>
+
+        {/* Venue markers (not clustered, distinct icon) */}
+        {mappedVenues.map((v) => (
+          <Marker
+            key={v.id}
+            position={[v.lat!, v.lng!]}
+            icon={createVenueIcon(selectedVenue?.id === v.id)}
+            eventHandlers={{
+              click(e) {
+                e.originalEvent.stopPropagation();
+                setSelected(null);
+                setSelectedVenue(v);
+              },
+            }}
+          />
+        ))}
       </MapContainer>
 
       {/* ── Mini list ── */}
-      {!selected && workshops.length > 0 && (
+      {!selected && !selectedVenue && workshops.length > 0 && (
         <div className={
           fullscreen
             ? "absolute z-[1000] bg-background/95 backdrop-blur-sm border shadow-lg overflow-hidden flex flex-col " +
@@ -465,7 +504,7 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], userLocatio
           )}
 
           <div className="flex items-center justify-between pt-1">
-            
+
             {Number(selected.price) > 0 ? (
               <span className={`text-sm font-bold text-emerald-600`}>
                 {`$${formatPrice(selected.price)} ${selected.currency}`}
@@ -475,17 +514,74 @@ export function WorkshopsMap({ workshops, center = [-33.45, -70.65], userLocatio
                 Gratuito
               </span>
             )}
-            <Link
-              href={`/talleres/${selected.slug}`}
-              className="text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Ver taller →
-            </Link>
+            <div className="flex items-center gap-1.5">
+              {selected.maps_url && (
+                <a
+                  href={selected.maps_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium px-2.5 py-1.5 rounded-md border border-border bg-background hover:bg-secondary/60 transition-colors flex items-center gap-1"
+                >
+                  <MapPin className="h-3 w-3" />
+                  Maps
+                </a>
+              )}
+              <Link
+                href={`/talleres/${selected.slug}`}
+                className="text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Ver taller →
+              </Link>
+            </div>
           </div>
 
           {selected.instructor_name && (
             <p className="text-xs text-muted-foreground/70">por {selected.instructor_name}</p>
           )}
+        </div>
+      )}
+
+      {/* ── Venue detail panel ── */}
+      {selectedVenue && (
+        <div className="absolute top-3 right-3 z-[1000] w-72 bg-background border rounded-xl shadow-lg p-4 space-y-3">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: C.accent }}
+          >
+            <Building2 className="h-4 w-4" style={{ color: C.bg }} />
+          </div>
+
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold leading-tight text-sm">{selectedVenue.name}</h3>
+            <button onClick={() => setSelectedVenue(null)} className="text-muted-foreground hover:text-foreground shrink-0">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <Badge variant="outline" className="text-xs">Sede</Badge>
+
+          {(selectedVenue.address || selectedVenue.city) && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0" />
+              {[selectedVenue.address, selectedVenue.city].filter(Boolean).join(", ")}
+            </p>
+          )}
+
+          {selectedVenue.description && (
+            <p className="text-xs text-muted-foreground line-clamp-3">{selectedVenue.description}</p>
+          )}
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs text-muted-foreground">
+              {selectedVenue.workshops_count ?? 0} taller{(selectedVenue.workshops_count ?? 0) !== 1 ? "es" : ""}
+            </span>
+            <Link
+              href={`/sedes/${selectedVenue.slug}`}
+              className="text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Ver sede →
+            </Link>
+          </div>
         </div>
       )}
 

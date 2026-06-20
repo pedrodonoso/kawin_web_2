@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, adminApi, type Category } from "@/lib/api";
+import { api, adminApi, venuesApi, type Category, type Venue } from "@/lib/api";
 import { Modality, WorkshopType } from "@/lib/constants";
 import { LocationPicker } from "@/components/map/LocationPicker";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -61,6 +61,7 @@ export default function NuevoTallerPage() {
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [sessions, setSessions] = useState<SessionDraft[]>([]);
   const [schedules, setSchedules] = useState<ScheduleDraft[]>([emptySchedule()]);
   const [isRecurring, setIsRecurring] = useState(false);
@@ -78,9 +79,11 @@ export default function NuevoTallerPage() {
     address: "",
     lat: "",
     lng: "",
+    maps_url: "",
     online_url: "",
     notes: "",
     category_id: "",
+    venue_id: "",
     status: "draft",
   });
 
@@ -92,6 +95,7 @@ export default function NuevoTallerPage() {
       if (user?.role === "admin") setIsAdmin(true);
     } catch { /* ignore */ }
     api.getList<Category>("/api/v1/categories").then(setCategories).catch(() => {});
+    venuesApi.list().then(setVenues).catch(() => {});
   }, [router]);
 
   function set(field: string, value: string) {
@@ -383,23 +387,64 @@ export default function NuevoTallerPage() {
 
               {form.modality !== Modality.ONLINE && (
                 <>
-                  <LocationPicker
-                    location={form.location}
-                    lat={form.lat}
-                    lng={form.lng}
-                    onLocationChange={(v) => set("location", v)}
-                    onCoordsChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
-                  />
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Indicaciones adicionales</Label>
-                    <Input
-                      id="address"
-                      placeholder="Ej: Piso 3, al lado de Walmart, tocar timbre 4B..."
-                      value={form.address}
-                      onChange={(e) => set("address", e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground/70">Instrucciones para llegar o encontrar el lugar.</p>
-                  </div>
+                  {venues.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Sede (opcional)</Label>
+                      <Select
+                        value={form.venue_id || "none"}
+                        onValueChange={(v) => set("venue_id", v === "none" ? "" : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin sede" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin sede</SelectItem>
+                          {venues.map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              {v.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground/70">
+                        Si eliges una sede, su dirección y ubicación en el mapa se usan para este taller.
+                      </p>
+                    </div>
+                  )}
+
+                  {form.venue_id ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Indicaciones adicionales</Label>
+                      <Input
+                        id="address"
+                        placeholder="Ej: Piso 3, sala 2, tocar timbre 4B..."
+                        value={form.address}
+                        onChange={(e) => set("address", e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground/70">La ubicación principal la define la sede.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <LocationPicker
+                        location={form.location}
+                        lat={form.lat}
+                        lng={form.lng}
+                        onLocationChange={(v) => set("location", v)}
+                        onCoordsChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+                        onMapsUrlChange={(v) => set("maps_url", v)}
+                      />
+                      <div className="space-y-2">
+                        <Label htmlFor="address">Indicaciones adicionales</Label>
+                        <Input
+                          id="address"
+                          placeholder="Ej: Piso 3, al lado de Walmart, tocar timbre 4B..."
+                          value={form.address}
+                          onChange={(e) => set("address", e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground/70">Instrucciones para llegar o encontrar el lugar.</p>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
               {(form.modality === Modality.ONLINE || form.modality === Modality.HYBRID) && (

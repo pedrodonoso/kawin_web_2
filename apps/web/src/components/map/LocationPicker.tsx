@@ -37,9 +37,10 @@ interface Props {
   lng: string;
   onLocationChange: (v: string) => void;
   onCoordsChange: (lat: string, lng: string) => void;
+  onMapsUrlChange?: (url: string) => void;
 }
 
-export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsChange }: Props) {
+export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsChange, onMapsUrlChange }: Props) {
   const [query, setQuery] = useState(location);
   const [suggestions, setSuggestions] = useState<PhotonFeature[]>([]);
   const [searching, setSearching] = useState(false);
@@ -117,6 +118,8 @@ export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsC
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error desconocido");
       onCoordsChange(String(data.lat), String(data.lng));
+      // Reuse the pasted link as the public "open in Google Maps" redirect.
+      onMapsUrlChange?.(gmapsUrl.trim());
       const label = data.location ?? data.name ?? null;
       if (label) {
         setQuery(label);
@@ -157,56 +160,10 @@ export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsC
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5" ref={containerRef}>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="location">Ubicación</Label>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-foreground gap-1"
-              onClick={() => { setShowGmaps((v) => !v); setGmapsError(""); }}
-            >
-              <Link className="h-3 w-3" />
-              Google Maps
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-foreground gap-1"
-              onClick={useMyLocation}
-              disabled={locating}
-            >
-              {locating ? <Loader2 className="h-3 w-3 animate-spin" /> : <LocateFixed className="h-3 w-3" />}
-              Usar mi ubicación
-            </Button>
-          </div>
-        </div>
+      <div className="space-y-2" ref={containerRef}>
+        <Label htmlFor="location">Ubicación</Label>
 
-        {showGmaps && (
-          <div className="flex gap-2">
-            <Input
-              placeholder="Pega el link de Google Maps..."
-              value={gmapsUrl}
-              onChange={(e) => { setGmapsUrl(e.target.value); setGmapsError(""); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); resolveGmapsUrl(); } }}
-              className="text-sm"
-            />
-            <Button
-              type="button"
-              size="sm"
-              onClick={resolveGmapsUrl}
-              disabled={gmapsLoading || !gmapsUrl.trim()}
-            >
-              {gmapsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
-            </Button>
-          </div>
-        )}
-        {gmapsError && (
-          <p className="text-xs text-destructive">{gmapsError}</p>
-        )}
+        {/* Primary action: search by address */}
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
@@ -249,14 +206,68 @@ export function LocationPicker({ location, lat, lng, onLocationChange, onCoordsC
             </ul>
           )}
         </div>
-        {hasCoords && (
+
+        {/* Alternative methods */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={showGmaps ? "secondary" : "outline"}
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            onClick={() => { setShowGmaps((v) => !v); setGmapsError(""); }}
+          >
+            <Link className="h-3.5 w-3.5" />
+            Pegar enlace de Google Maps
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            onClick={useMyLocation}
+            disabled={locating}
+          >
+            {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
+            Usar mi ubicación
+          </Button>
+        </div>
+
+        {/* Google Maps link panel */}
+        {showGmaps && (
+          <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://maps.google.com/..."
+                value={gmapsUrl}
+                onChange={(e) => { setGmapsUrl(e.target.value); setGmapsError(""); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); resolveGmapsUrl(); } }}
+                className="text-sm"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={resolveGmapsUrl}
+                disabled={gmapsLoading || !gmapsUrl.trim()}
+              >
+                {gmapsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground/70">
+              Posiciona el marcador automáticamente y abre esta ubicación con el botón &ldquo;Google Maps&rdquo; en la ficha del taller.
+            </p>
+            {gmapsError && (
+              <p className="text-xs text-destructive">{gmapsError}</p>
+            )}
+          </div>
+        )}
+
+        {hasCoords ? (
           <p className="text-xs text-muted-foreground/70">
             {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)} · Arrastra el marcador o haz clic en el mapa para ajustar
           </p>
-        )}
-        {!hasCoords && (
+        ) : (
           <p className="text-xs text-muted-foreground/70">
-            Busca una dirección para ubicar el taller en el mapa
+            Busca una dirección o pega un enlace de Google Maps para ubicar el taller
           </p>
         )}
       </div>

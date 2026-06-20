@@ -83,6 +83,7 @@ export interface Workshop {
   lat?: number | null;
   lng?: number | null;
   online_url?: string;
+  maps_url?: string;
   notes?: string;
   cover_image_url?: string;
   status: "draft" | "published" | "archived";
@@ -100,6 +101,9 @@ export interface Workshop {
   instructor_facebook?: string;
   instructor_whatsapp?: string;
   instructor_phone?: string;
+  venue_id?: string | null;
+  venue_name?: string;
+  venue_slug?: string;
   schedule?: string;
   sessions?: Session[];
   schedules?: Schedule[];
@@ -202,8 +206,10 @@ export interface PendingChanges {
   lat?:         number | null;
   lng?:         number | null;
   online_url?:  string;
+  maps_url?:    string | null;
   notes?:       string | null;
   category_id?: string;
+  venue_id?:    string | null;
 }
 
 export interface AdminWorkshop extends Workshop {
@@ -388,4 +394,75 @@ export const guestContactsApi = {
     api.put<{ data: { id: string } }>(`/api/v1/admin/guest-contacts/${id}`, body).then((r) => r.data),
   delete: (id: string) =>
     api.delete<{ data: { id: string } }>(`/api/v1/admin/guest-contacts/${id}`).then((r) => r.data),
+};
+
+// ---------------------------------------------------------------------------
+// Venues ("sedes") — a way to group workshops; no booking logic.
+// ---------------------------------------------------------------------------
+
+export interface Venue {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  address: string;
+  city: string;
+  country: string;
+  lat?: number | null;
+  lng?: number | null;
+  cover_image_url: string;
+  status: "active" | "inactive";
+  workshops_count?: number;
+  created_at?: string;
+}
+
+export interface VenueProfile extends Venue {
+  phone: string;
+  whatsapp: string;
+  instagram_url: string;
+  facebook_url: string;
+  website: string;
+  workshops: Workshop[];
+}
+
+export interface VenueInput {
+  name: string;
+  description?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  lat?: string | number | null;
+  lng?: string | number | null;
+  cover_image_url?: string;
+  phone?: string;
+  whatsapp?: string;
+  instagram_url?: string;
+  facebook_url?: string;
+  website?: string;
+}
+
+// Public venue endpoints (active only)
+export const venuesApi = {
+  list: () =>
+    api.get<{ data: Venue[] }>("/api/v1/venues").then((r) => r.data),
+  get: (id: string) =>
+    api.get<{ data: VenueProfile }>(`/api/v1/venues/${id}`).then((r) => r.data),
+};
+
+// Admin venue maintainer (all statuses)
+export const adminVenuesApi = {
+  list: () =>
+    api.get<{ data: Venue[] }>("/api/v1/admin/venues").then((r) => r.data),
+  get: (id: string) =>
+    api.get<{ data: VenueProfile }>(`/api/v1/admin/venues/${id}`).then((r) => r.data),
+  create: (body: VenueInput) =>
+    api.post<{ data: { id: string; slug: string } }>("/api/v1/admin/venues", body).then((r) => r.data),
+  update: (id: string, body: VenueInput) =>
+    api.put<{ data: { id: string } }>(`/api/v1/admin/venues/${id}`, body).then((r) => r.data),
+  archive: (id: string) =>
+    api.delete<{ data: { id: string; status: string } }>(`/api/v1/admin/venues/${id}`).then((r) => r.data),
+  restore: (id: string) =>
+    api.post<{ data: { id: string; status: string } }>(`/api/v1/admin/venues/${id}/restore`, {}).then((r) => r.data),
+  delete: (id: string) =>
+    api.delete<{ data: { id: string; deleted: boolean } }>(`/api/v1/admin/venues/${id}/permanent`).then((r) => r.data),
 };

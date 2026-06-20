@@ -27,6 +27,7 @@ class WorkshopWriteController extends Controller
                     COALESCE(w.address,'') as address,
                     w.lat, w.lng,
                     COALESCE(w.online_url,'') as online_url,
+                    COALESCE(w.maps_url,'') as maps_url,
                     COALESCE(w.notes,'') as notes,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
                     w.status, w.approval_status,
@@ -63,8 +64,10 @@ class WorkshopWriteController extends Controller
                     COALESCE(w.address,'') as address,
                     w.lat, w.lng,
                     COALESCE(w.online_url,'') as online_url,
+                    COALESCE(w.maps_url,'') as maps_url,
                     COALESCE(w.notes,'') as notes,
                     COALESCE(w.cover_image_url,'') as cover_image_url,
+                    w.venue_id::text as venue_id,
                     w.status, w.approval_status,
                     COALESCE(w.admin_observations,'') as admin_observations,
                     w.pending_changes,
@@ -156,8 +159,8 @@ class WorkshopWriteController extends Controller
         $row = DB::selectOne(
             "INSERT INTO workshops
                 (instructor_id, category_id, title, slug, description, type, modality,
-                 price, currency, capacity, location, address, lat, lng, online_url, notes, status, approval_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 price, currency, capacity, location, address, lat, lng, maps_url, online_url, notes, venue_id, status, approval_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING id",
             [
                 $userID,
@@ -174,8 +177,10 @@ class WorkshopWriteController extends Controller
                 $request->input('address', '') ?: null,
                 $request->input('lat') !== null ? (float)$request->input('lat') : null,
                 $request->input('lng') !== null ? (float)$request->input('lng') : null,
+                $request->input('maps_url', '') ?: null,
                 $request->input('online_url', ''),
                 $request->input('notes', '') ?: null,
+                $request->input('venue_id') ?: null,
                 $initialStatus,
                 $initialApproval,
             ]
@@ -246,9 +251,11 @@ class WorkshopWriteController extends Controller
                 'address'     => $request->input('address', '') ?: null,
                 'lat'         => $request->input('lat') !== null ? (float)$request->input('lat') : null,
                 'lng'         => $request->input('lng') !== null ? (float)$request->input('lng') : null,
+                'maps_url'    => $request->input('maps_url', '') ?: null,
                 'online_url'  => $request->input('online_url', ''),
                 'notes'       => $request->input('notes', '') ?: null,
                 'category_id' => $catID,
+                'venue_id'    => $request->input('venue_id') ?: null,
                 'status'      => $newStatus,
             ]);
             $workshop->save();
@@ -315,9 +322,11 @@ class WorkshopWriteController extends Controller
                 'address'     => $request->input('address', '') ?: null,
                 'lat'         => $newLat,
                 'lng'         => $newLng,
+                'maps_url'    => $request->input('maps_url', '') ?: null,
                 'online_url'  => $request->input('online_url', ''),
                 'notes'       => $request->input('notes', '') ?: null,
                 'category_id' => $catID,
+                'venue_id'    => $request->input('venue_id') ?: null,
                 'sessions'    => $request->input('sessions', []),
             ];
 
@@ -339,9 +348,11 @@ class WorkshopWriteController extends Controller
                 'address'     => $request->input('address', '') ?: null,
                 'lat'         => $newLat,
                 'lng'         => $newLng,
+                'maps_url'    => $request->input('maps_url', '') ?: null,
                 'online_url'  => $request->input('online_url', ''),
                 'notes'       => $request->input('notes', '') ?: null,
                 'category_id' => $catID,
+                'venue_id'    => $request->input('venue_id') ?: null,
                 'status'      => $newStatus,
             ]);
             $sensitiveChanged = false;

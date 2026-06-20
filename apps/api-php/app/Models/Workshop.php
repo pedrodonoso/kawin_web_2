@@ -14,7 +14,8 @@ class Workshop extends Model
     protected $fillable = [
         'instructor_id', 'category_id', 'title', 'slug', 'description',
         'type', 'modality', 'price', 'currency', 'capacity',
-        'location', 'address', 'lat', 'lng', 'online_url', 'notes', 'cover_image_url',
+        'location', 'address', 'lat', 'lng', 'maps_url', 'online_url', 'notes', 'cover_image_url',
+        'venue_id',
         'status', 'approval_status', 'admin_observations',
         'pending_changes', 'reviewed_by', 'reviewed_at',
     ];

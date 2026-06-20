@@ -83,7 +83,7 @@ interface Props {
 
 export function LocationPickerMap({ lat, lng, onDrag }: Props) {
   return (
-    <FullscreenMapWrapper className="h-52 w-full rounded-lg overflow-hidden" lat={lat} lng={lng}>
+    <FullscreenMapWrapper className="h-52 w-full rounded-lg overflow-hidden" lat={lat} lng={lng} showGoogleMaps={false}>
       {(fullscreen) => (
         <MapContainer
           center={[lat, lng]}

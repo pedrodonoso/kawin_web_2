@@ -27,6 +27,10 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
     // Public instructor profile
     $router->get('/instructors/{id}/profile', 'ProfileController@publicShow');
 
+    // Public venues ("sedes")
+    $router->get('/venues',        'VenueController@index');
+    $router->get('/venues/{id}',   'VenueController@show');
+
     // Active discounts for a workshop (public — no auth needed)
     $router->get('/workshops/{id}/active-discounts', 'DiscountController@publicDiscounts');
 
@@ -121,6 +125,15 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
             $router->post('/guest-contacts',            'GuestContactController@store');
             $router->put('/guest-contacts/{id}',        'GuestContactController@update');
             $router->delete('/guest-contacts/{id}',     'GuestContactController@destroy');
+
+            // Venues ("sedes") — admin maintainer
+            $router->get('/venues',                 'VenueController@adminIndex');
+            $router->get('/venues/{id}',            'VenueController@adminShow');
+            $router->post('/venues',                'VenueController@store');
+            $router->put('/venues/{id}',            'VenueController@update');
+            $router->delete('/venues/{id}',         'VenueController@archive');
+            $router->post('/venues/{id}/restore',   'VenueController@restore');
+            $router->delete('/venues/{id}/permanent', 'VenueController@destroy');
         });
     });
 });

@@ -11,9 +11,8 @@ interface Props {
   lat: number;
   lng: number;
   label?: string;
-  mapsUrl?: string;
 }
 
-export function MiniMapWrapper({ lat, lng, label, mapsUrl }: Props) {
-  return <MiniMap lat={lat} lng={lng} label={label} mapsUrl={mapsUrl} />;
+export function VenueMiniMap({ lat, lng, label }: Props) {
+  return <MiniMap lat={lat} lng={lng} label={label} />;
 }
