@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -17,8 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Search, MapPin, Clock, LayoutGrid, Map } from "lucide-react";
-import { api, type Workshop, type Category } from "@/lib/api";
+import { Search, MapPin, Clock, LayoutGrid, Map, Building2, Hammer, BookOpen, Users, CalendarDays } from "lucide-react";
+import { api, venuesApi, type Workshop, type Category, type Venue } from "@/lib/api";
 import { Modality } from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
 import { useUserLocation } from "@/hooks/useUserLocation";
@@ -140,6 +140,13 @@ const MOCK_WORKSHOPS: Workshop[] = [
   },
 ];
 
+const TYPE_META: Record<string, { label: string; iconBg: string; iconColor: string; badgeBg: string; Icon: React.ElementType }> = {
+  workshop: { label: "Taller",  iconBg: "bg-orange-100", iconColor: "text-orange-600", badgeBg: "bg-orange-100 text-orange-700", Icon: Hammer },
+  course:   { label: "Curso",   iconBg: "bg-amber-100",  iconColor: "text-amber-600",  badgeBg: "bg-amber-100 text-amber-700",  Icon: BookOpen },
+  class:    { label: "Clase",   iconBg: "bg-indigo-100", iconColor: "text-indigo-600", badgeBg: "bg-indigo-100 text-indigo-700", Icon: Users },
+  event:    { label: "Evento",  iconBg: "bg-emerald-100",iconColor: "text-emerald-600",badgeBg: "bg-emerald-100 text-emerald-700", Icon: CalendarDays },
+};
+
 function WorkshopCard({ w }: { w: Workshop }) {
   const modalityLabel: Record<string, string> = {
     "in-person": "Presencial",
@@ -147,19 +154,7 @@ function WorkshopCard({ w }: { w: Workshop }) {
     hybrid: "Híbrido",
   };
 
-  const typeLabel: Record<string, string> = {
-    workshop: "Taller",
-    course: "Curso",
-    class: "Clase",
-    event: "Evento",
-  };
-
-  const typeColor: Record<string, string> = {
-    workshop: "bg-orange-100 text-orange-700",
-    course: "bg-amber-100 text-amber-700",
-    class: "bg-indigo-100 text-indigo-700",
-    event: "bg-emerald-100 text-emerald-700",
-  };
+  const meta = TYPE_META[w.type] ?? { label: w.type, iconBg: "bg-muted", iconColor: "text-muted-foreground", badgeBg: "bg-muted text-muted-foreground", Icon: Hammer };
 
   return (
     <Link href={`/talleres/${w.slug}`}>
@@ -171,12 +166,17 @@ function WorkshopCard({ w }: { w: Workshop }) {
           </div>
         )}
         <CardContent className="p-4 pb-5 flex flex-col flex-1">
-          {/* Title | Type */}
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold leading-tight line-clamp-2">{w.title}</h3>
-            <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeColor[w.type] ?? "bg-muted text-muted-foreground"}`}>
-              {typeLabel[w.type] ?? w.type}
-            </span>
+          {/* Icon + Title | Type badge */}
+          <div className="flex items-start gap-3">
+            <div className={`shrink-0 h-10 w-10 rounded-lg ${meta.iconBg} flex items-center justify-center`}>
+              <meta.Icon className={`h-5 w-5 ${meta.iconColor}`} />
+            </div>
+            <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
+              <h3 className="font-semibold leading-tight line-clamp-2">{w.title}</h3>
+              <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${meta.badgeBg}`}>
+                {meta.label}
+              </span>
+            </div>
           </div>
 
           {w.category && (
@@ -237,6 +237,42 @@ function WorkshopCard({ w }: { w: Workshop }) {
   );
 }
 
+function VenueCard({ v }: { v: Venue }) {
+  const count = v.workshops_count ?? 0;
+  return (
+    <Link href={`/sedes/${v.slug}`}>
+      <Card className="hover:shadow-md transition-shadow h-full flex flex-col">
+        <CardContent className="p-4 pb-5 flex flex-col flex-1">
+          {/* Icon + name */}
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-muted-foreground/60" />
+            </div>
+            <h3 className="font-semibold leading-tight line-clamp-2 pt-1">{v.name}</h3>
+          </div>
+
+          {v.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2 mt-3 flex-1">{v.description}</p>
+          )}
+
+          <div className="mt-auto space-y-3 pt-3">
+            <Separator />
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 min-w-0">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{[v.city, v.country].filter(Boolean).join(", ") || "—"}</span>
+              </span>
+              <Badge variant="secondary" className="shrink-0 text-xs">
+                {count} taller{count !== 1 ? "es" : ""}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
 function WorkshopSkeleton() {
   return (
     <Card>
@@ -267,18 +303,24 @@ function BuscarContent() {
   const [modality, setModality] = useState("all");
   const [type, setType] = useState("all");
   const [category, setCategory] = useState(() => searchParams?.get("categoria") ?? "all");
+  const [venueFilter, setVenueFilter] = useState(() => searchParams?.get("sede") ?? "all");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"list" | "map">(() =>
-    searchParams?.get("vista") === "mapa" ? "map" : "list"
-  );
+  const [view, setView] = useState<"list" | "map" | "sedes">(() => {
+    const v = searchParams?.get("vista");
+    if (v === "mapa") return "map";
+    if (v === "sedes") return "sedes";
+    return "list";
+  });
   const { coords: userLocation, isReal: hasUserLocation } = useUserLocation();
 
-  function changeView(v: "list" | "map") {
+  function changeView(v: "list" | "map" | "sedes") {
     setView(v);
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     if (v === "map") params.set("vista", "mapa");
+    else if (v === "sedes") params.set("vista", "sedes");
     else params.set("vista", "talleres");
     router.replace(`/buscar?${params}`, { scroll: false });
   }
@@ -290,6 +332,7 @@ function BuscarContent() {
       .catch(() => {
         setCategories([]);
       });
+    venuesApi.list().then(setVenues).catch(() => setVenues([]));
   }, []);
 
   const fetchWorkshops = useCallback(async () => {
@@ -300,6 +343,7 @@ function BuscarContent() {
       if (modality !== "all") params.set("modality", modality);
       if (type !== "all") params.set("type", type);
       if (category !== "all") params.set("category", category);
+      if (venueFilter !== "all") params.set("venue", venueFilter);
       const data = await api.getList<Workshop>(`/api/v1/workshops?${params}`);
       setWorkshops(data);
     } catch {
@@ -307,7 +351,7 @@ function BuscarContent() {
     } finally {
       setLoading(false);
     }
-  }, [query, modality, type, category]);
+  }, [query, modality, type, category, venueFilter]);
 
   useEffect(() => {
     const t = setTimeout(fetchWorkshops, 300);
@@ -382,6 +426,22 @@ function BuscarContent() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {venues.length > 0 && (
+                <Select value={venueFilter} onValueChange={setVenueFilter}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="Sede" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las sedes</SelectItem>
+                    {venues.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* List / Map toggle */}
@@ -391,7 +451,14 @@ function BuscarContent() {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${view === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
               >
-                <LayoutGrid className="h-3.5 w-3.5" /> Lista
+                <LayoutGrid className="h-3.5 w-3.5" /> Talleres
+              </button>
+              <button
+                onClick={() => changeView("sedes")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${view === "sedes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+              >
+                <Building2 className="h-3.5 w-3.5" /> Sedes
               </button>
               <button
                 onClick={() => changeView("map")}
@@ -408,13 +475,18 @@ function BuscarContent() {
       {/* Results */}
       <div className="max-w-6xl mx-auto px-4 py-8">
         <p className="text-sm text-muted-foreground mb-6">
-          {loading ? "Buscando..." : `${workshops?.length ?? 0} resultado${(workshops?.length ?? 0) !== 1 ? "s" : ""}`}
+          {view === "sedes"
+            ? `${venues.length} sede${venues.length !== 1 ? "s" : ""}`
+            : loading
+              ? "Buscando..."
+              : `${workshops?.length ?? 0} resultado${(workshops?.length ?? 0) !== 1 ? "s" : ""}`}
         </p>
 
         {/* Map view — always mounted to avoid tile reload on tab switch */}
         <div className={view === "map" ? "block" : "hidden"}>
           <WorkshopsMap
             workshops={workshops.filter((w) => w.modality !== Modality.ONLINE)}
+            venues={venues}
             center={userLocation}
             userLocation={hasUserLocation ? userLocation : undefined}
             visible={view === "map"}
@@ -430,15 +502,29 @@ function BuscarContent() {
           </div>
         )}
 
-        {!loading && !workshops?.length && (
+        {/* Sedes view */}
+        {view === "sedes" && (
+          venues.length === 0 ? (
+            <div className="text-center py-20 text-muted-foreground">
+              <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="font-medium">Aún no hay sedes publicadas.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {venues.map((v) => <VenueCard key={v.id} v={v} />)}
+            </div>
+          )
+        )}
+
+        {view !== "sedes" && !loading && !workshops?.length && (
           <div className="text-center py-20 text-muted-foreground">
             <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="font-medium">
-              {query || modality !== "all" || type !== "all" || category !== "all"
+              {query || modality !== "all" || type !== "all" || category !== "all" || venueFilter !== "all"
                 ? "No encontramos talleres con esos filtros."
                 : "No existen talleres."}
             </p>
-            {(query || modality !== "all" || type !== "all" || category !== "all") && (
+            {(query || modality !== "all" || type !== "all" || category !== "all" || venueFilter !== "all") && (
               <p className="text-sm mt-1">Prueba con otras palabras o categorías.</p>
             )}
           </div>
