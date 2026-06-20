@@ -30,39 +30,51 @@ class UtilsController extends Controller
             return response()->json(['error' => 'No se pudo resolver el link'], 502);
         }
 
-        // 2. Extract map-center coords from /@lat,lng,zoom
+        // Decode once so coords inside an encoded `continue=` param (consent
+        // redirects) are also matchable.
+        $decoded = urldecode($resolved);
+
+        // 2. Extract coordinates from any known Google Maps pattern. Order
+        //    matters: the pinned place coords in the data param !3d<lat>!4d<lng>
+        //    are the most accurate and are often the ONLY coords present in links
+        //    shared from the mobile app (which usually omit /@lat,lng,zoom). The
+        //    /@ segment is what desktop browser address-bar URLs carry. The query
+        //    params cover the Maps URL API, dir/search links and dropped pins.
         $lat = null;
         $lng = null;
-        if (preg_match('/@(-?\d+\.\d+),(-?\d+\.\d+)/', $resolved, $m)) {
-            $lat = $m[1];
-            $lng = $m[2];
-        } elseif (preg_match('/[?&](?:q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/', $resolved, $m)) {
-            $lat = $m[1];
-            $lng = $m[2];
+        $coordPatterns = [
+            '/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/',                                               // pinned place (mobile + desktop place)
+            '/@(-?\d+\.\d+),(-?\d+\.\d+)/',                                                   // map center (desktop address bar)
+            '/[?&](?:q|ll|sll|daddr|destination|center|query)=(?:loc:)?(-?\d+\.\d+),(-?\d+\.\d+)/', // query / dir / API coords
+        ];
+        foreach ($coordPatterns as $re) {
+            if (preg_match($re, $decoded, $m)) {
+                $lat = $m[1];
+                $lng = $m[2];
+                break;
+            }
+        }
+
+        // 3. Place name / textual query from the URL — used as the address label
+        //    and, when no coords are present, as a forward-geocoding fallback.
+        $name = $this->extractPlaceQuery($resolved, $decoded);
+
+        // 4. Fallback: links without coordinates in the URL (plus codes,
+        //    name-only short links, ?query=Some+Place) — geocode the name.
+        $address = null;
+        if ((!$lat || !$lng) && $name) {
+            [$lat, $lng, $address] = $this->photonForward($name);
         }
 
         if (!$lat || !$lng) {
             return response()->json(['error' => 'No se encontraron coordenadas en el link'], 422);
         }
 
-        // 3. Use precise place coords from data param !3d<lat>!4d<lng> when available
-        //    These are the actual pinned location, more accurate than the map center
-        if (preg_match('/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/', $resolved, $pd)) {
-            $lat = $pd[1];
-            $lng = $pd[2];
+        // 5. Reverse geocode with Photon to get the street address (unless the
+        //    forward-geocode fallback already produced one).
+        if ($address === null) {
+            $address = $this->photonReverse((float) $lat, (float) $lng);
         }
-
-        // 4. Place name from URL path /maps/place/Name/@...
-        $name = null;
-        if (preg_match('|/maps/place/([^/@?]+)|', $resolved, $np)) {
-            $candidate = urldecode(str_replace('+', ' ', $np[1]));
-            if (!preg_match('/^-?\d/', $candidate) && strlen($candidate) > 1) {
-                $name = $candidate;
-            }
-        }
-
-        // 5. Reverse geocode with Photon to get the street address
-        $address = $this->photonReverse((float) $lat, (float) $lng);
 
         // 6. Build combined location label
         $location = null;
@@ -112,6 +124,37 @@ class UtilsController extends Controller
         return response()->json($data);
     }
 
+    // Pull a human place name / textual query out of a Google Maps URL. Used as
+    // the address label and as the forward-geocoding fallback when a link has no
+    // coordinates (plus codes, name-only short links, ?query=Some+Place).
+    private function extractPlaceQuery(string $resolved, string $decoded): ?string
+    {
+        // /maps/place/<Name> or /maps/search/<Name>
+        if (preg_match('#/maps/(?:place|search)/([^/@?]+)#', $resolved, $np)) {
+            $raw = rawurldecode($np[1]); // decodes %xx but keeps '+' (plus codes)
+            // Ignore segments that are really coordinates or Google Plus Codes
+            $isCoord    = (bool) preg_match('/^-?\d+\.\d+/', $raw);
+            $isPlusCode = (bool) preg_match('/^[A-Z0-9]{4,}\+[A-Z0-9]+/i', $raw);
+            if (!$isCoord && !$isPlusCode) {
+                $candidate = trim(str_replace('+', ' ', $raw));
+                if (strlen($candidate) > 1) {
+                    return $candidate;
+                }
+            }
+        }
+
+        // ?query=<text> / ?q=<text> that is not a coordinate pair
+        if (preg_match('/[?&](?:query|q)=([^&]+)/', $decoded, $qp)) {
+            $candidate = trim(str_replace('+', ' ', $qp[1]));
+            if ($candidate !== '' && !preg_match('/^-?\d+\.\d+,/', $candidate)
+                && !str_starts_with($candidate, 'loc:')) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
     // Photon reverse geocoding — free, no API key, OSM-based, better POI support
     private function photonReverse(float $lat, float $lng): ?string
     {
@@ -119,6 +162,57 @@ class UtilsController extends Controller
         $lang = env('PHOTON_LANG', 'en');
         $url = "{$base}/reverse?lat={$lat}&lon={$lng}&lang={$lang}";
 
+        $body = $this->httpGet($url);
+        if (!$body) return null;
+
+        $data = json_decode($body, true);
+        $features = $data['features'] ?? [];
+        if (empty($features)) return null;
+
+        return $this->formatPhotonProps($features[0]['properties'] ?? []);
+    }
+
+    // Photon forward geocoding — turn a place name / address into coordinates.
+    // Returns [lat, lng, address] or [null, null, null] when nothing is found.
+    private function photonForward(string $query): array
+    {
+        $base = rtrim(env('PHOTON_BASE_URL', 'https://photon.komoot.io'), '/');
+        $lang = env('PHOTON_LANG', 'en');
+        $url = "{$base}/api/?q=" . urlencode($query) . "&limit=1&lang={$lang}";
+
+        $body = $this->httpGet($url);
+        if (!$body) return [null, null, null];
+
+        $data = json_decode($body, true);
+        $feature = $data['features'][0] ?? null;
+        $coords  = $feature['geometry']['coordinates'] ?? null; // [lng, lat]
+        if (!$coords || count($coords) < 2) return [null, null, null];
+
+        return [
+            (string) $coords[1],
+            (string) $coords[0],
+            $this->formatPhotonProps($feature['properties'] ?? []),
+        ];
+    }
+
+    // Build a short "street number, city, state" label from Photon properties.
+    private function formatPhotonProps(array $p): ?string
+    {
+        $parts = [];
+        if (!empty($p['street'])) {
+            $parts[] = !empty($p['housenumber'])
+                ? $p['street'] . ' ' . $p['housenumber']
+                : $p['street'];
+        }
+        if (!empty($p['city']))  $parts[] = $p['city'];
+        if (!empty($p['state'])) $parts[] = $p['state'];
+
+        return $parts ? implode(', ', $parts) : null;
+    }
+
+    // Shared GET helper for Photon calls.
+    private function httpGet(string $url): ?string
+    {
         $ctx = stream_context_create([
             'http' => [
                 'method'        => 'GET',
@@ -130,24 +224,7 @@ class UtilsController extends Controller
         ]);
 
         $body = @file_get_contents($url, false, $ctx);
-        if (!$body) return null;
-
-        $data = json_decode($body, true);
-        $features = $data['features'] ?? [];
-        if (empty($features)) return null;
-
-        $p = $features[0]['properties'] ?? [];
-
-        $parts = [];
-        if (!empty($p['street'])) {
-            $parts[] = !empty($p['housenumber'])
-                ? $p['street'] . ' ' . $p['housenumber']
-                : $p['street'];
-        }
-        if (!empty($p['city']))  $parts[] = $p['city'];
-        if (!empty($p['state'])) $parts[] = $p['state'];
-
-        return $parts ? implode(', ', $parts) : null;
+        return $body !== false ? $body : null;
     }
 
     private function followRedirects(string $url, int $maxHops = 10): ?string
