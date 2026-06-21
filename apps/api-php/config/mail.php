@@ -22,6 +22,6 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'noreply@kawin.app'),
-        'name'    => env('MAIL_FROM_NAME', 'Kawin'),
+        'name'    => env('MAIL_FROM_NAME', 'Kwin'),
     ],
 ];

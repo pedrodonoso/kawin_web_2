@@ -57,7 +57,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Resumen del negocio</h1>
-          <p className="text-muted-foreground mt-1">Vista general de la plataforma Kawin</p>
+          <p className="text-muted-foreground mt-1">Vista general de la plataforma Kwin</p>
         </div>
         {stats && stats.pending_review > 0 && (
           <Button asChild>
@@ -136,7 +136,7 @@ export default function AdminPage() {
                 icon={DollarSign}
                 label="Ingresos totales"
                 value={money(stats?.total_revenue ?? 0)}
-                sub={`Comisión Kawin: ${money(stats?.platform_commission ?? 0)}`}
+                sub={`Comisión Kwin: ${money(stats?.platform_commission ?? 0)}`}
                 color="text-green-700"
               />
             </>

@@ -165,7 +165,7 @@ export default function Home() {
           <div className="text-center space-y-2">
             <p className="text-xs font-semibold tracking-widest text-primary uppercase">El nombre</p>
             <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
-              Kawin viene de <span className="text-primary">kawiñ</span>
+              Kwin viene de <span className="text-primary">kawiñ</span>
             </h2>
           </div>
 
@@ -202,7 +202,7 @@ export default function Home() {
               ¿Qué es <span className="text-primary">kawinear</span>?
             </h2>
             <p className="text-background/65 text-lg max-w-2xl mx-auto leading-relaxed">
-              Kawin es el punto de reunión donde el barrio se encuentra cara a cara para aprender, compartir un oficio, un evento de tu interés, una pichanga, una feria de moda, un café, un club de lectura o simplemente conversar. Una fiesta de saberes, hecha comunidad.
+              Kwin es el punto de reunión donde el barrio se encuentra cara a cara para aprender, compartir un oficio, un evento de tu interés, una pichanga, una feria de moda, un café, un club de lectura o simplemente conversar. Una fiesta de saberes, hecha comunidad.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
               <Button size="lg" asChild className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
@@ -325,7 +325,7 @@ export default function Home() {
             <p className="text-xs font-semibold tracking-widest text-primary uppercase">Distintas formas de juntarse</p>
             <h2 className="text-3xl md:text-4xl font-extrabold">No todos los encuentros son iguales</h2>
             <p className="text-muted-foreground text-base leading-relaxed pt-1">
-              En Kawin cada publicación tiene un formato según cómo funciona. Esto te dice qué esperar
+              En Kwin cada publicación tiene un formato según cómo funciona. Esto te dice qué esperar
               antes de escribirle a quien la organiza.
             </p>
           </div>
@@ -363,7 +363,7 @@ export default function Home() {
             <p className="text-xs font-semibold tracking-widest text-primary uppercase">Cómo te conectamos</p>
             <h2 className="text-3xl md:text-4xl font-extrabold">Contacto directo, sin intermediarios</h2>
             <p className="text-background/65 text-base leading-relaxed pt-1">
-              Kawin no se mete en la conversación ni cobra comisión por contactar. Solo muestra el
+              Kwin no se mete en la conversación ni cobra comisión por contactar. Solo muestra el
               enlace que cada persona decide compartir; el resto lo arreglan entre ustedes.
             </p>
           </div>
@@ -379,7 +379,7 @@ export default function Home() {
                 Cada tallerista publica el link a su perfil de <strong className="text-background">Instagram o Facebook</strong>.
                 Lo visitas, conoces su trabajo y le escribes directo por ahí. Si lo prefiere, también
                 puede dejar su <strong className="text-background">número de teléfono y WhatsApp</strong> para
-                coordinar al tiro. Kawin solo enlaza al perfil que la persona elige mostrar.
+                coordinar al tiro. Kwin solo enlaza al perfil que la persona elige mostrar.
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium border border-background/25 rounded-full px-3 py-1">
@@ -405,7 +405,7 @@ export default function Home() {
               <h3 className="text-2xl font-bold leading-snug">Sabes exactamente dónde llegar</h3>
               <p className="text-background/70 text-base leading-relaxed">
                 Al crear su actividad, la persona pega el <strong className="text-background">link de “compartir” de Google Maps</strong> del
-                lugar. Aunque admitimos ese enlace, <strong className="text-background">Kawin no integra los servicios de Google</strong>:
+                lugar. Aunque admitimos ese enlace, <strong className="text-background">Kwin no integra los servicios de Google</strong>:
                 solo extraemos las coordenadas del lugar y las mostramos sobre <strong className="text-background">mapas de código
                 abierto</strong>, los mismos que usamos en todo el sitio. Así sabes exactamente dónde llegar.
               </p>
@@ -426,7 +426,7 @@ export default function Home() {
               Un proyecto <span className="text-primary">pequeño y honesto.</span>
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Kawin no usa servicios de Google ni Amazon. Los servicios se levantan en
+              Kwin no usa servicios de Google ni Amazon. Los servicios se levantan en
               <strong className="text-foreground"> Railway</strong>, y para encontrar lugares usamos la
               capa demo de <strong className="text-foreground">Photon</strong> (photon.komoot.io). Es una
               infraestructura modesta y de bajo costo: te pedimos paciencia y consideración al usar el
@@ -455,7 +455,7 @@ export default function Home() {
               Un espacio <span className="text-primary">cuidado.</span>
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Para que el barrio se mantenga sano, Kawin necesita administración. Revisamos las
+              Para que el barrio se mantenga sano, Kwin necesita administración. Revisamos las
               publicaciones para evitar el spam y los avisos mal intencionados, de modo que lo que
               encuentres sean talleres y encuentros reales de personas reales. Cuida nuestro espacio.
             </p>
@@ -487,8 +487,8 @@ export default function Home() {
             Se agradece que nos lo comentes en la{" "}
             <Link href="/contacto" className="text-primary font-medium hover:underline">sección de contacto</Link>{" "}
             o directamente al correo{" "}
-            <a href="mailto:oasis.latam.info@gmail.com" className="text-primary font-medium hover:underline">
-              oasis.latam.info@gmail.com
+            <a href="mailto:kwin.latam@gmail.com" className="text-primary font-medium hover:underline">
+              kwin.latam@gmail.com
             </a>.
           </p>
         </div>
@@ -499,7 +499,7 @@ export default function Home() {
       {/* ── Footer ── */}
       <footer className="border-t py-8 px-4 bg-background">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-          <span>© 2026 Kawin · Conocimiento y territorio</span>
+          <span>© 2026 Kwin · Conocimiento y territorio</span>
           <div className="flex gap-6">
             <Link href="/privacidad" className="hover:text-foreground">Privacidad</Link>
             <Link href="/contacto" className="hover:text-foreground">Contacto</Link>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Contacto — Kawin" };
+export const metadata = { title: "Contacto — Kwin" };
 
 export default function ContactoPage() {
   return (
@@ -31,12 +31,12 @@ export default function ContactoPage() {
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_280px] gap-12 items-start">
           {/* Formulario */}
           <form
-            action="https://formsubmit.co/oasis.latam.info@gmail.com"
+            action="https://formsubmit.co/kwin.latam@gmail.com"
             method="POST"
             className="space-y-5"
           >
             <input type="hidden" name="_captcha" value="false" />
-            <input type="hidden" name="_subject" value="Nuevo mensaje desde Kawin" />
+            <input type="hidden" name="_subject" value="Nuevo mensaje desde Kwin" />
             <input type="hidden" name="_next" value="/contacto?enviado=1" />
 
             <div>
@@ -110,10 +110,10 @@ export default function ContactoPage() {
             <div className="rounded-xl border bg-secondary/30 p-6">
               <p className="text-sm font-semibold mb-1">Correo directo</p>
               <a
-                href="mailto:oasis.latam.info@gmail.com"
+                href="mailto:kwin.latam@gmail.com"
                 className="text-sm text-primary hover:underline break-all"
               >
-                oasis.latam.info@gmail.com
+                kwin.latam@gmail.com
               </a>
             </div>
 

@@ -1,13 +1,13 @@
 import Link from "next/link";
 
-export const metadata = { title: "Política de Privacidad — Kawin" };
+export const metadata = { title: "Política de Privacidad — Kwin" };
 
 const sections = [
   {
     number: "01",
     title: "Información que recopilamos",
     content:
-      "Al registrarte o usar Kawin recopilamos datos como nombre y correo electrónico. En el caso de talleristas, también información sobre los talleres que publicas. Adicionalmente recopilamos datos de uso de forma anónima para mejorar la plataforma.",
+      "Al registrarte o usar Kwin recopilamos datos como nombre y correo electrónico. En el caso de talleristas, también información sobre los talleres que publicas. Adicionalmente recopilamos datos de uso de forma anónima para mejorar la plataforma.",
   },
   {
     number: "02",
@@ -63,7 +63,7 @@ export default function PrivacidadPage() {
           <p className="text-sm font-medium text-primary mb-2 uppercase tracking-widest">Legal</p>
           <h1 className="text-4xl font-bold mb-4">Política de Privacidad</h1>
           <p className="text-muted-foreground text-lg max-w-xl">
-            En Kawin nos tomamos en serio la privacidad de tus datos. Aquí te explicamos qué
+            En Kwin nos tomamos en serio la privacidad de tus datos. Aquí te explicamos qué
             información recopilamos, cómo la usamos y cuáles son tus derechos.
           </p>
         </div>
@@ -84,10 +84,10 @@ export default function PrivacidadPage() {
                   <p className="text-muted-foreground leading-relaxed">
                     {s.content}
                     <a
-                      href="mailto:oasis.latam.info@gmail.com"
+                      href="mailto:kwin.latam@gmail.com"
                       className="text-primary hover:underline"
                     >
-                      oasis.latam.info@gmail.com
+                      kwin.latam@gmail.com
                     </a>
                     .
                   </p>

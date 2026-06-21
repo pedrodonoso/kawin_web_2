@@ -71,7 +71,7 @@ export default function RegistroPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Crear cuenta</CardTitle>
-          <CardDescription>Regístrate como tallerista en Kawin</CardDescription>
+          <CardDescription>Regístrate como tallerista en Kwin</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-5">

@@ -20,7 +20,7 @@ export default function CondicionesInstructorPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Comisión de plataforma</h2>
           <p className="text-foreground/60 text-sm leading-relaxed">
-            Kawin cobra una comisión del <strong>15%</strong> sobre el valor de cada reserva confirmada.
+            Kwin cobra una comisión del <strong>15%</strong> sobre el valor de cada reserva confirmada.
             Esta comisión cubre los costos operativos de la plataforma, procesamiento de pagos y soporte.
           </p>
         </section>
@@ -78,7 +78,7 @@ export default function CondicionesInstructorPage() {
         <p className="text-xs text-muted-foreground/70 border-t pt-4">
           Estas condiciones pueden actualizarse. Última revisión: marzo 2026.
           Ante cualquier duda escríbenos a{" "}
-          <a href="mailto:soporte@kawin.app" className="underline">soporte@kawin.app</a>.
+          <a href="mailto:kwin.latam@gmail.com" className="underline">kwin.latam@gmail.com</a>.
         </p>
       </div>
     </main>

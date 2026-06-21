@@ -189,7 +189,7 @@ export default function PerfilPage() {
           </div>
 
           <p className="mt-4 text-xs text-muted-foreground text-center leading-relaxed">
-            Tu información de contacto podría ser usada exclusivamente por Kawin para comunicarnos contigo
+            Tu información de contacto podría ser usada exclusivamente por Kwin para comunicarnos contigo
             en caso de necesitar consultar tu experiencia en el sitio, recibir sugerencias o
             atender reclamos. Nunca será compartida con terceros sin tu consentimiento.
             Recuerda que si decides mostrar tu teléfono o redes sociales, esta información sí será visible para otros usuarios en tu perfil público.
