@@ -12,13 +12,19 @@ class WebPushService
 
     public function __construct()
     {
-        $this->client = new WebPush([
-            'VAPID' => [
-                'subject'    => env('VAPID_SUBJECT', 'mailto:noreply@kawin.app'),
-                'publicKey'  => env('VAPID_PUBLIC_KEY', ''),
-                'privateKey' => env('VAPID_PRIVATE_KEY', ''),
+        $this->client = new WebPush(
+            [
+                'VAPID' => [
+                    'subject'    => env('VAPID_SUBJECT', 'mailto:noreply@kawin.app'),
+                    'publicKey'  => env('VAPID_PUBLIC_KEY', ''),
+                    'privateKey' => env('VAPID_PRIVATE_KEY', ''),
+                ],
             ],
-        ]);
+            [],   // default notification options
+            // Per-request timeout (seconds): a slow/unreachable push endpoint must
+            // never block the web request. Runs single-threaded under `php -S`.
+            5
+        );
     }
 
     /**

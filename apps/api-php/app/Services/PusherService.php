@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use GuzzleHttp\Client as GuzzleClient;
 use Pusher\Pusher;
 
 class PusherService
@@ -19,7 +20,10 @@ class PusherService
                 'port'   => (int) env('PUSHER_PORT', 6001),
                 'scheme' => 'http',
                 'useTLS' => false,
-            ]
+            ],
+            // Hard timeouts so an unreachable/slow realtime host can never block
+            // the (single-threaded) web request long enough to reset the socket.
+            new GuzzleClient(['connect_timeout' => 1.5, 'timeout' => 3.0])
         );
     }
 
