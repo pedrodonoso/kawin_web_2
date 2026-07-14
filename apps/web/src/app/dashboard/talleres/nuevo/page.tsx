@@ -23,6 +23,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { DateTimeRangePicker } from "@/components/ui/date-time-range-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { localDateToNaiveISO, naiveISOToLocalDate } from "@/lib/utils";
 import { ArrowLeft, Plus, Send, X, Repeat, Info } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
@@ -667,10 +668,10 @@ export default function NuevoTallerPage() {
                       </button>
                       <Badge variant="outline" className="text-xs">Sesión {i + 1}</Badge>
                       <DateTimeRangePicker
-                        startDate={s.starts_at ? new Date(s.starts_at) : undefined}
-                        endDate={s.ends_at ? new Date(s.ends_at) : undefined}
-                        onStartChange={(d) => updateSession(i, "starts_at", d.toISOString())}
-                        onEndChange={(d) => updateSession(i, "ends_at", d.toISOString())}
+                        startDate={s.starts_at ? naiveISOToLocalDate(s.starts_at) : undefined}
+                        endDate={s.ends_at ? naiveISOToLocalDate(s.ends_at) : undefined}
+                        onStartChange={(d) => updateSession(i, "starts_at", localDateToNaiveISO(d))}
+                        onEndChange={(d) => updateSession(i, "ends_at", localDateToNaiveISO(d))}
                       />
                       <div className="space-y-1">
                         <Label className="text-xs">Notas (opcional)</Label>
