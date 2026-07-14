@@ -300,6 +300,19 @@ export function AdminContactCard({
                 </div>
               )}
             </div>
+
+            {/* Action row — visible right below the form */}
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={cancel} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-1" />
+                {saving
+                  ? (createMode ? "Creando..." : "Guardando...")
+                  : (createMode ? "Crear y guardar" : "Guardar cambios")}
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
