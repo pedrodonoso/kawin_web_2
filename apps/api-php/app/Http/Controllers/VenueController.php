@@ -84,6 +84,49 @@ class VenueController extends Controller
             [$venue->id]
         );
 
+        // Attach date/time info per workshop:
+        //  - class type   -> active recurring schedule rules
+        //  - other types  -> next upcoming (non-cancelled) session
+        foreach ($venue->workshops as $w) {
+            $w->schedules = [];
+            $w->next_session_at = null;
+            $w->next_session_ends_at = null;
+
+            if ($w->type === 'class') {
+                $rows = DB::select(
+                    "SELECT array_to_string(days_of_week, ',') as days_of_week,
+                            time_start::text as time_start, duration_min
+                     FROM schedules
+                     WHERE workshop_id = ?
+                       AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
+                     ORDER BY valid_from, time_start",
+                    [$w->id]
+                );
+                $w->schedules = array_map(function ($r) {
+                    $r->days_of_week = ($r->days_of_week === null || $r->days_of_week === '')
+                        ? []
+                        : array_map('intval', explode(',', $r->days_of_week));
+                    return $r;
+                }, $rows);
+            } else {
+                $next = DB::selectOne(
+                    "SELECT starts_at::text as starts_at, ends_at::text as ends_at
+                     FROM sessions
+                     WHERE workshop_id = ?
+                       AND schedule_id IS NULL
+                       AND cancelled = false
+                       AND ends_at >= (NOW() AT TIME ZONE 'America/Santiago')::timestamp
+                     ORDER BY starts_at ASC
+                     LIMIT 1",
+                    [$w->id]
+                );
+                if ($next) {
+                    $w->next_session_at = $next->starts_at;
+                    $w->next_session_ends_at = $next->ends_at;
+                }
+            }
+        }
+
         return response()->json(['data' => $venue]);
     }
 

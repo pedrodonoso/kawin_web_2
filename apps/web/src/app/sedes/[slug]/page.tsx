@@ -1,7 +1,7 @@
 import type { ElementType } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { api, type VenueProfile, type ApiResponse } from "@/lib/api";
+import { api, type VenueProfile, type ApiResponse, type Schedule } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { ModalityLabel, WorkshopTypeLabel, Modality } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +9,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
   Instagram, Facebook, Phone, MessageCircle, MapPin, Globe,
-  ArrowLeft, ExternalLink, Hammer, BookOpen, Users, CalendarDays,
+  ArrowLeft, ExternalLink, Hammer, BookOpen, Users, CalendarDays, Clock,
 } from "lucide-react";
 import { VenueMiniMap } from "./VenueMiniMap";
+
+const DAYS_SHORT: Record<number, string> = {
+  0: "Dom", 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb",
+};
+
+/** Regla recurrente de clase → texto compacto. Ej: "Lun, Mié · 18:00" */
+function formatScheduleShort(sch: Schedule): string {
+  const sorted = [...sch.days_of_week].sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
+  const days = sorted.map((d) => DAYS_SHORT[d] ?? String(d)).join(", ");
+  const time = sch.time_start.slice(0, 5);
+  return days ? `${days} · ${time}` : time;
+}
+
+/** Próxima sesión → texto compacto. Ej: "sáb 20 jul · 10:00" */
+function formatNextSession(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("es-CL", {
+    weekday: "short", day: "numeric", month: "short", timeZone: "UTC",
+  });
+  const time = d.toLocaleTimeString("es-CL", {
+    hour: "2-digit", minute: "2-digit", timeZone: "UTC",
+  });
+  return `${date} · ${time}`;
+}
 
 const TYPE_META: Record<string, { iconBg: string; iconColor: string; badgeBg: string; Icon: ElementType }> = {
   workshop: { iconBg: "bg-orange-100", iconColor: "text-orange-600", badgeBg: "bg-orange-100 text-orange-700", Icon: Hammer },
@@ -187,6 +211,37 @@ export default async function SedePage({
                           {w.category_name}
                         </Badge>
                       )}
+
+                      {(() => {
+                        const lines =
+                          w.type === "class"
+                            ? (w.schedules ?? []).map(formatScheduleShort)
+                            : w.next_session_at
+                            ? [formatNextSession(w.next_session_at)]
+                            : [];
+                        if (lines.length === 0) return null;
+                        const shown = lines.slice(0, 2);
+                        const extra = lines.length - shown.length;
+                        const DateIcon = w.type === "class" ? Clock : CalendarDays;
+                        return (
+                          <div className="mt-2 space-y-1">
+                            {shown.map((line, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-1.5 text-xs text-foreground/70"
+                              >
+                                <DateIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <span className="truncate">{line}</span>
+                              </div>
+                            ))}
+                            {extra > 0 && (
+                              <span className="text-xs text-muted-foreground pl-5">
+                                +{extra} horario{extra > 1 ? "s" : ""} más
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       <div className="mt-auto space-y-3 pt-3">
                         <Separator />

@@ -107,6 +107,8 @@ export interface Workshop {
   schedule?: string;
   sessions?: Session[];
   schedules?: Schedule[];
+  next_session_at?: string | null;
+  next_session_ends_at?: string | null;
   bookings_count?: number;
   discounts?: Discount[];
   pending_changes?: PendingChanges | null;
