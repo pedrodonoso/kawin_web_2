@@ -69,7 +69,9 @@ abstract class Controller extends BaseController
 
     protected function parseIntCSV(?string $s): array
     {
-        if (empty($s)) {
+        // Nota: no usar empty(), porque empty("0") === true en PHP y
+        // eliminaría el domingo (día 0) cuando es el único seleccionado.
+        if ($s === null || $s === '') {
             return [];
         }
         return array_map('intval', explode(',', $s));
