@@ -249,16 +249,11 @@ export default function NuevoTallerPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="description">Descripción</Label>
-                <textarea
-                  id="description"
-                  rows={5}
-                  maxLength={2000}
-                  placeholder="Describe tu taller: qué aprenderán, qué incluye, quién puede asistir..."
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                <RichTextEditor
                   value={form.description}
-                  onChange={(e) => set("description", e.target.value)}
+                  onChange={(html) => set("description", html)}
+                  placeholder="Describe tu taller: qué aprenderán, qué incluye, quién puede asistir..."
                 />
-                <p className="text-xs text-muted-foreground/70 text-right">{form.description.length}/2000</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
