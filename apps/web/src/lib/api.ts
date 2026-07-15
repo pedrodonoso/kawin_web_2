@@ -99,8 +99,10 @@ export interface Workshop {
   instructor_bio?: string;
   instructor_instagram?: string;
   instructor_facebook?: string;
+  instructor_website?: string;
   instructor_whatsapp?: string;
   instructor_phone?: string;
+  co_instructors?: WorkshopInstructor[];
   venue_id?: string | null;
   venue_name?: string;
   venue_slug?: string;
@@ -113,6 +115,24 @@ export interface Workshop {
   discounts?: Discount[];
   pending_changes?: PendingChanges | null;
   created_at: string;
+}
+
+/**
+ * Co-tallerista adicional mostrado en la ficha pública (solo visibilidad).
+ * Resuelto en el backend desde un usuario registrado o un contacto fantasma.
+ */
+export interface WorkshopInstructor {
+  id: string;
+  user_id?: string | null;
+  is_guest: boolean;
+  name: string;
+  bio?: string;
+  avatar_url?: string;
+  instagram?: string;
+  facebook?: string;
+  website?: string;
+  whatsapp?: string;
+  phone?: string;
 }
 
 export interface Session {
@@ -361,7 +381,44 @@ export const adminApi = {
       guest_contact_id: guestContactId,
       use_guest_contact: useGuest,
     }),
+  // Co-talleristas (solo visibilidad)
+  getWorkshopInstructors: (workshopId: string) =>
+    api
+      .get<{ data: AdminCoInstructor[] }>(`/api/v1/admin/workshops/${workshopId}/instructors`)
+      .then((r) => r.data),
+  setWorkshopInstructors: (workshopId: string, instructors: CoInstructorRef[]) =>
+    api.put<{ data: { id: string; count: number } }>(
+      `/api/v1/admin/workshops/${workshopId}/instructors`,
+      { instructors }
+    ),
+  searchUsers: (q: string) =>
+    api
+      .get<{ data: UserSearchResult[] }>(`/api/v1/admin/users/search?q=${encodeURIComponent(q)}`)
+      .then((r) => r.data),
 };
+
+/** Referencia a un co-tallerista al guardar: exactamente uno de los dos. */
+export type CoInstructorRef =
+  | { user_id: string; guest_contact_id?: never }
+  | { guest_contact_id: string; user_id?: never };
+
+/** Co-tallerista tal como lo lista el panel admin (con refs para editar). */
+export interface AdminCoInstructor {
+  id: string;
+  user_id: string | null;
+  guest_contact_id: string | null;
+  is_guest: boolean;
+  display_order: number;
+  name: string;
+  email: string;
+}
+
+export interface UserSearchResult {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
 
 
 // ---------------------------------------------------------------------------

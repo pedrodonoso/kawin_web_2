@@ -107,7 +107,8 @@ class WorkshopController extends Controller
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.name,   p.name,          '') ELSE COALESCE(p.name,          '') END as instructor_name,
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.bio,    p.bio,           '') ELSE COALESCE(p.bio,           '') END as instructor_bio,
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.instagram, p.instagram_url,'') WHEN COALESCE(p.show_instagram,TRUE) THEN COALESCE(p.instagram_url,'') ELSE '' END as instructor_instagram,
-                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.website, p.facebook_url, '') WHEN COALESCE(p.show_facebook,TRUE)  THEN COALESCE(p.facebook_url, '') ELSE '' END as instructor_facebook,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN '' WHEN COALESCE(p.show_facebook,TRUE)  THEN COALESCE(p.facebook_url, '') ELSE '' END as instructor_facebook,
+                    CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.website, '') ELSE '' END as instructor_website,
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.whatsapp, p.whatsapp,   '') WHEN COALESCE(p.show_whatsapp,TRUE)  THEN COALESCE(p.whatsapp,    '') ELSE '' END as instructor_whatsapp,
                     CASE WHEN w.use_guest_contact AND gc.id IS NOT NULL THEN COALESCE(gc.phone,  p.phone,        '') WHEN COALESCE(p.show_phone,TRUE)     THEN COALESCE(p.phone,       '') ELSE '' END as instructor_phone
              FROM workshops w
@@ -132,6 +133,10 @@ class WorkshopController extends Controller
                 return response()->json(['message' => 'Taller no encontrado'], 404);
             }
         }
+
+        // Co-talleristas adicionales (solo visibilidad). El tallerista principal
+        // sigue en los campos instructor_* de arriba; esto agrega los extra.
+        $w->co_instructors = $this->loadCoInstructors($w->id);
 
         // Booking count
         $bc = DB::selectOne(
@@ -236,6 +241,50 @@ class WorkshopController extends Controller
     // -----------------------------------------------------------------------
     // Slot engine helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Co-talleristas adicionales de un taller, resueltos desde profiles (usuarios
+     * registrados) o guest_contacts (fantasma). Respeta los flags de visibilidad
+     * del perfil, igual que el tallerista principal. Solo informativo.
+     */
+    private function loadCoInstructors(string $workshopID): array
+    {
+        $rows = DB::select(
+            "SELECT wi.id,
+                    wi.user_id::text as user_id,
+                    CASE WHEN wi.user_id IS NOT NULL THEN COALESCE(p.name,'') ELSE COALESCE(gc.name,'') END as name,
+                    CASE WHEN wi.user_id IS NOT NULL THEN COALESCE(p.bio,'')  ELSE COALESCE(gc.bio,'')  END as bio,
+                    COALESCE(p.avatar_url,'') as avatar_url,
+                    CASE WHEN wi.user_id IS NOT NULL
+                         THEN (CASE WHEN COALESCE(p.show_instagram,TRUE) THEN COALESCE(p.instagram_url,'') ELSE '' END)
+                         ELSE COALESCE(gc.instagram,'') END as instagram,
+                    CASE WHEN wi.user_id IS NOT NULL
+                         THEN (CASE WHEN COALESCE(p.show_facebook,TRUE)  THEN COALESCE(p.facebook_url,'')  ELSE '' END)
+                         ELSE '' END as facebook,
+                    CASE WHEN wi.user_id IS NOT NULL
+                         THEN ''
+                         ELSE COALESCE(gc.website,'')  END as website,
+                    CASE WHEN wi.user_id IS NOT NULL
+                         THEN (CASE WHEN COALESCE(p.show_whatsapp,TRUE)  THEN COALESCE(p.whatsapp,'')      ELSE '' END)
+                         ELSE COALESCE(gc.whatsapp,'') END as whatsapp,
+                    CASE WHEN wi.user_id IS NOT NULL
+                         THEN (CASE WHEN COALESCE(p.show_phone,TRUE)     THEN COALESCE(p.phone,'')         ELSE '' END)
+                         ELSE COALESCE(gc.phone,'')    END as phone
+             FROM workshop_instructors wi
+             LEFT JOIN profiles p        ON p.user_id = wi.user_id
+             LEFT JOIN guest_contacts gc ON gc.id = wi.guest_contact_id
+             WHERE wi.workshop_id = ?
+             ORDER BY wi.display_order, wi.created_at",
+            [$workshopID]
+        );
+
+        // is_guest determinista (evita ambigüedad de boolean PDO 't'/'f').
+        foreach ($rows as $r) {
+            $r->is_guest = ($r->user_id === null);
+        }
+
+        return $rows;
+    }
 
     private function loadScheduleRows(string $workshopID): array
     {
