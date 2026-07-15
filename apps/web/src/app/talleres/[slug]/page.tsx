@@ -244,7 +244,7 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
           {/* Instructor */}
           {workshop.instructor && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">El tallerista</h2>
+              <h2 className="text-xl font-semibold">Tallerista</h2>
               <div className="flex items-start gap-4 p-4 border rounded-lg bg-card">
                 <Avatar className="h-14 w-14 shrink-0">
                   <AvatarFallback className="text-lg">
