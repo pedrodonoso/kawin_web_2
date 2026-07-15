@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Save, Plus } from "lucide-react";
+import { Save, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -53,8 +53,9 @@ export function AdminContactCard({
   // draft state
   const [draftUseGuest, setDraftUseGuest] = useState(useGuestContact);
   const [draftContactId, setDraftContactId] = useState<string>(currentContactId ?? "none");
-  const [createMode, setCreateMode] = useState(false);
-  const [createForm, setCreateForm] = useState<GuestContactInput>(EMPTY_FORM);
+  // form for creating a new guest contact or editing the selected one
+  const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
+  const [form, setForm] = useState<GuestContactInput>(EMPTY_FORM);
 
   useEffect(() => {
     guestContactsApi.list()
@@ -68,8 +69,8 @@ export function AdminContactCard({
     if (editing) {
       setDraftUseGuest(useGuestContact);
       setDraftContactId(currentContactId ?? "none");
-      setCreateMode(false);
-      setCreateForm(EMPTY_FORM);
+      setFormMode(null);
+      setForm(EMPTY_FORM);
     }
   }, [editing, useGuestContact, currentContactId]);
 
@@ -80,7 +81,24 @@ export function AdminContactCard({
 
   function cancel() {
     onEditingChange(false);
-    setCreateMode(false);
+    setFormMode(null);
+  }
+
+  function startCreate() {
+    setFormMode("create");
+    setForm(EMPTY_FORM);
+    setDraftUseGuest(true);
+  }
+
+  function startEdit() {
+    const c = contacts.find((x) => x.id === draftContactId);
+    if (!c) return;
+    setForm({
+      name: c.name ?? "", email: c.email ?? "", phone: c.phone ?? "",
+      whatsapp: c.whatsapp ?? "", bio: c.bio ?? "", instagram: c.instagram ?? "", website: c.website ?? "",
+    });
+    setFormMode("edit");
+    setDraftUseGuest(true);
   }
 
   async function handleSave() {
@@ -88,12 +106,18 @@ export function AdminContactCard({
     try {
       let contactId: string | null = draftContactId === "none" ? null : draftContactId;
 
-      if (createMode) {
-        if (!createForm.name.trim()) { toast.error("El nombre es obligatorio"); setSaving(false); return; }
-        const res = await guestContactsApi.create(createForm);
+      if (formMode === "create") {
+        if (!form.name.trim()) { toast.error("El nombre es obligatorio"); setSaving(false); return; }
+        const res = await guestContactsApi.create(form);
         const newContact = await guestContactsApi.get(res.id);
         setContacts((prev) => [...prev, newContact]);
         contactId = res.id;
+      } else if (formMode === "edit" && draftContactId !== "none") {
+        if (!form.name.trim()) { toast.error("El nombre es obligatorio"); setSaving(false); return; }
+        await guestContactsApi.update(draftContactId, form);
+        const updated = await guestContactsApi.get(draftContactId);
+        setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        contactId = draftContactId;
       }
 
       const useGuest = contactId !== null ? draftUseGuest : true;
@@ -106,7 +130,7 @@ export function AdminContactCard({
 
       onSaved(contactId, useGuest);
       onEditingChange(false);
-      setCreateMode(false);
+      setFormMode(null);
       toast.success("Cambios guardados");
     } catch {
       toast.error("Error al guardar");
@@ -119,17 +143,6 @@ export function AdminContactCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">Contacto</CardTitle>
-        {editing && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={cancel} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4 mr-1" />
-              {saving ? "Guardando..." : "Guardar cambios"}
-            </Button>
-          </div>
-        )}
       </CardHeader>
 
       <CardContent className="space-y-5">
@@ -208,7 +221,7 @@ export function AdminContactCard({
                 <button
                   type="button"
                   onClick={() => setDraftUseGuest(true)}
-                  disabled={draftContactId === "none" && !createMode}
+                  disabled={draftContactId === "none" && formMode !== "create"}
                   className={`flex-1 rounded-lg border px-4 py-3 text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                     draftUseGuest
                       ? "border-primary bg-primary/5 ring-1 ring-primary"
@@ -217,32 +230,49 @@ export function AdminContactCard({
                 >
                   <p className="text-sm font-medium">Contacto fantasma</p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {createMode
-                      ? (createForm.name || "Nuevo contacto")
-                      : (draftContact?.name ?? "Selecciona uno abajo")}
+                    {formMode === "create"
+                      ? (form.name || "Nuevo contacto")
+                      : formMode === "edit"
+                        ? (form.name || "Editando contacto")
+                        : (draftContact?.name ?? "Selecciona uno abajo")}
                   </p>
                 </button>
               </div>
             </div>
 
-            {/* Guest contact selector / creator */}
+            {/* Guest contact selector / creator / editor */}
             <div className="space-y-3 rounded-lg border p-4">
               <div className="flex items-center justify-between">
-                <Label className="text-sm">Contacto fantasma</Label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreateMode((v) => !v);
-                    if (!createMode) setDraftUseGuest(true);
-                  }}
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
-                >
-                  <Plus className="h-3 w-3" />
-                  {createMode ? "Seleccionar existente" : "Crear nuevo"}
-                </button>
+                <Label className="text-sm">
+                  {formMode === "edit"
+                    ? "Editar contacto fantasma"
+                    : formMode === "create"
+                      ? "Nuevo contacto fantasma"
+                      : "Contacto fantasma"}
+                </Label>
+                <div className="flex items-center gap-3">
+                  {formMode === null && draftContactId !== "none" && (
+                    <button
+                      type="button"
+                      onClick={startEdit}
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Editar seleccionado
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => (formMode === null ? startCreate() : setFormMode(null))}
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {formMode === null ? "Crear nuevo" : "Seleccionar existente"}
+                  </button>
+                </div>
               </div>
 
-              {!createMode ? (
+              {formMode === null ? (
                 <Select
                   value={draftContactId}
                   onValueChange={(v) => {
@@ -269,33 +299,33 @@ export function AdminContactCard({
                     <Label className="text-xs">Nombre *</Label>
                     <Input
                       placeholder="María González"
-                      value={createForm.name}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Email</Label>
-                    <Input type="email" placeholder="maria@ejemplo.com" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} />
+                    <Input type="email" placeholder="maria@ejemplo.com" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Teléfono</Label>
-                    <Input type="tel" placeholder="+56 9 1234 5678" value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))} />
+                    <Input type="tel" placeholder="+56 9 1234 5678" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">WhatsApp</Label>
-                    <Input type="tel" placeholder="+56 9 1234 5678" value={createForm.whatsapp} onChange={(e) => setCreateForm((f) => ({ ...f, whatsapp: e.target.value }))} />
+                    <Input type="tel" placeholder="+56 9 1234 5678" value={form.whatsapp} onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Instagram</Label>
-                    <Input placeholder="@usuario" value={createForm.instagram} onChange={(e) => setCreateForm((f) => ({ ...f, instagram: e.target.value }))} />
+                    <Input placeholder="@usuario" value={form.instagram} onChange={(e) => setForm((f) => ({ ...f, instagram: e.target.value }))} />
                   </div>
                   <div className="sm:col-span-2 space-y-1">
                     <Label className="text-xs">Sitio web</Label>
-                    <Input type="url" placeholder="https://..." value={createForm.website} onChange={(e) => setCreateForm((f) => ({ ...f, website: e.target.value }))} />
+                    <Input type="url" placeholder="https://..." value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} />
                   </div>
                   <div className="sm:col-span-2 space-y-1">
                     <Label className="text-xs">Bio</Label>
-                    <Textarea placeholder="Breve descripción..." rows={2} value={createForm.bio} onChange={(e) => setCreateForm((f) => ({ ...f, bio: e.target.value }))} />
+                    <Textarea placeholder="Breve descripción..." rows={2} value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} />
                   </div>
                 </div>
               )}
@@ -309,8 +339,8 @@ export function AdminContactCard({
               <Button size="sm" onClick={handleSave} disabled={saving}>
                 <Save className="h-4 w-4 mr-1" />
                 {saving
-                  ? (createMode ? "Creando..." : "Guardando...")
-                  : (createMode ? "Crear y guardar" : "Guardar cambios")}
+                  ? (formMode === "create" ? "Creando..." : "Guardando...")
+                  : (formMode === "create" ? "Crear y guardar" : "Guardar cambios")}
               </Button>
             </div>
           </div>
