@@ -249,8 +249,12 @@ class WorkshopController extends Controller
      */
     private function loadCoInstructors(string $workshopID): array
     {
-        $rows = DB::select(
-            "SELECT wi.id,
+        // La tabla workshop_instructors puede no existir aún en algunos
+        // entornos (migración pendiente). Si falla, degradamos a sin
+        // co-talleristas en lugar de romper la ficha del taller.
+        try {
+            $rows = DB::select(
+                "SELECT wi.id,
                     wi.user_id::text as user_id,
                     CASE WHEN wi.user_id IS NOT NULL THEN COALESCE(p.name,'') ELSE COALESCE(gc.name,'') END as name,
                     CASE WHEN wi.user_id IS NOT NULL THEN COALESCE(p.bio,'')  ELSE COALESCE(gc.bio,'')  END as bio,
@@ -275,8 +279,11 @@ class WorkshopController extends Controller
              LEFT JOIN guest_contacts gc ON gc.id = wi.guest_contact_id
              WHERE wi.workshop_id = ?
              ORDER BY wi.display_order, wi.created_at",
-            [$workshopID]
-        );
+                [$workshopID]
+            );
+        } catch (\Throwable $e) {
+            return [];
+        }
 
         // is_guest determinista (evita ambigüedad de boolean PDO 't'/'f').
         foreach ($rows as $r) {
