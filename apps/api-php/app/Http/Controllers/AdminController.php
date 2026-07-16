@@ -318,6 +318,33 @@ class AdminController extends Controller
         return response()->json(['data' => ['id' => $id]]);
     }
 
+    // GET /api/v1/admin/users/search?q=...
+    // Busca usuarios registrados por nombre o email (para asignar co-talleristas).
+    public function searchUsers(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['data' => []]);
+        }
+
+        $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
+
+        $rows = DB::select(
+            "SELECT u.id::text as id,
+                    COALESCE(p.name, '') as name,
+                    u.email,
+                    u.role
+             FROM users u
+             LEFT JOIN profiles p ON p.user_id = u.id
+             WHERE (p.name ILIKE ? OR u.email ILIKE ?)
+             ORDER BY (p.name IS NULL), p.name, u.email
+             LIMIT 20",
+            [$like, $like]
+        );
+
+        return response()->json(['data' => $rows]);
+    }
+
     // DELETE /api/v1/admin/workshops/:id
     public function archiveWorkshop(string $id): JsonResponse
     {

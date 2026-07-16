@@ -120,6 +120,11 @@ $router->group(['prefix' => 'api/v1'], function () use ($router) {
             $router->post('/workshops/{id}/restore',            'AdminController@restoreWorkshop');
             $router->patch('/workshops/{id}/guest-contact',     'AdminController@setWorkshopGuestContact');
 
+            // Co-talleristas (solo visibilidad)
+            $router->get('/workshops/{id}/instructors',         'WorkshopInstructorController@index');
+            $router->put('/workshops/{id}/instructors',         'WorkshopInstructorController@replace');
+            $router->get('/users/search',                       'AdminController@searchUsers');
+
             $router->get('/guest-contacts',             'GuestContactController@index');
             $router->get('/guest-contacts/{id}',        'GuestContactController@show');
             $router->post('/guest-contacts',            'GuestContactController@store');

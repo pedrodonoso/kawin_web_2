@@ -22,6 +22,7 @@ import { adminApi, type AdminWorkshop, type Category, type PendingChanges, type 
 import { ApprovalStatus, ModalityLabel, WorkshopStatusLabel, WorkshopTypeLabel } from "@/lib/constants";
 import { formatPrice } from "@/lib/utils";
 import { AdminContactCard } from "@/components/AdminContactCard";
+import { CoInstructorsCard } from "@/components/CoInstructorsCard";
 import dynamic from "next/dynamic";
 
 const MiniMapWrapper = dynamic(
@@ -292,6 +293,9 @@ export default function AdminWorkshopReviewPage() {
         onEditingChange={setEditingContact}
         onSaved={(cId, useG) => setWorkshop((prev) => prev ? { ...prev, guest_contact_id: cId, use_guest_contact: useG } : prev)}
       />
+
+      <CoInstructorsCard workshopId={id} primaryUserId={workshop.instructor_id} />
+
 
       {/* Datos del taller — edición inline */}
       {editing && (

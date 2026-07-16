@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MapPin, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag, Users } from "lucide-react";
+import { MapPin, Calendar, Clock, CheckCircle, Instagram, Facebook, Phone, MessageCircle, Tag, Users, Globe } from "lucide-react";
 import { api, type Workshop, type Schedule } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { DiscountType, Modality, WorkshopType } from "@/lib/constants";
@@ -72,6 +72,101 @@ function formatTime(start: string, end: string) {
   return `${fmt(start)} - ${fmt(end)}`;
 }
 
+
+type InstructorView = {
+  name: string;
+  bio?: string;
+  linkId?: string;
+  instagram?: string;
+  facebook?: string;
+  website?: string;
+  whatsapp?: string;
+  phone?: string;
+};
+
+function InstructorCard({ ins }: { ins: InstructorView }) {
+  const hasContacts = ins.instagram || ins.facebook || ins.website || ins.whatsapp || ins.phone;
+  return (
+    <div className="flex items-start gap-4 p-4 border rounded-lg bg-card">
+      <Avatar className="h-14 w-14 shrink-0">
+        <AvatarFallback className="text-lg">{ins.name[0]}</AvatarFallback>
+      </Avatar>
+      <div>
+        {ins.linkId ? (
+          <Link href={`/talleristas/${ins.linkId}`} className="font-semibold hover:underline">
+            {ins.name}
+          </Link>
+        ) : (
+          <p className="font-semibold">{ins.name}</p>
+        )}
+        {ins.bio && (
+          <p className="text-sm text-foreground/60 mt-1 leading-relaxed">{ins.bio}</p>
+        )}
+        {hasContacts && (
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            {ins.whatsapp && (
+              <a
+                href={`https://wa.me/${ins.whatsapp.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-green-600"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </a>
+            )}
+            {ins.phone && (
+              <a
+                href={`tel:${ins.phone}`}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Phone className="h-4 w-4" />
+                {ins.phone}
+              </a>
+            )}
+            {ins.instagram && (
+              <a
+                href={
+                  ins.instagram.startsWith("http://") || ins.instagram.startsWith("https://")
+                    ? ins.instagram
+                    : `https://instagram.com/${ins.instagram.replace(/^@/, "")}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Instagram className="h-4 w-4" />
+                Instagram
+              </a>
+            )}
+            {ins.facebook && (
+              <a
+                href={ins.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Facebook className="h-4 w-4" />
+                Facebook
+              </a>
+            )}
+            {ins.website && (
+              <a
+                href={ins.website.startsWith("http") ? ins.website : `https://${ins.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Globe className="h-4 w-4" />
+                Sitio web
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default async function TallerPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -241,83 +336,43 @@ export default async function TallerPage({ params }: { params: Promise<{ slug: s
             </div>
           )}
 
-          {/* Instructor */}
-          {workshop.instructor && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Tallerista</h2>
-              <div className="flex items-start gap-4 p-4 border rounded-lg bg-card">
-                <Avatar className="h-14 w-14 shrink-0">
-                  <AvatarFallback className="text-lg">
-                    {workshop.instructor.name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  {workshop.instructor_id ? (
-                    <Link href={`/talleristas/${workshop.instructor_id}`} className="font-semibold hover:underline">
-                      {workshop.instructor.name}
-                    </Link>
-                  ) : (
-                    <p className="font-semibold">{workshop.instructor.name}</p>
-                  )}
-                  {workshop.instructor.bio && (
-                    <p className="text-sm text-foreground/60 mt-1 leading-relaxed">
-                      {workshop.instructor.bio}
-                    </p>
-                  )}
-                  {(workshop.instructor_instagram || workshop.instructor_facebook || workshop.instructor_whatsapp || workshop.instructor_phone) && (
-                    <div className="flex flex-wrap items-center gap-3 mt-2">
-                      {workshop.instructor_whatsapp && (
-                        <a
-                          href={`https://wa.me/${workshop.instructor_whatsapp.replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-green-600"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          WhatsApp
-                        </a>
-                      )}
-                      {workshop.instructor_phone && (
-                        <a
-                          href={`tel:${workshop.instructor_phone}`}
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          <Phone className="h-4 w-4" />
-                          {workshop.instructor_phone}
-                        </a>
-                      )}
-                      {workshop.instructor_instagram && (
-                        <a
-                          href={
-                            workshop.instructor_instagram.startsWith("http://") || workshop.instructor_instagram.startsWith("https://")
-                              ? workshop.instructor_instagram
-                              : `https://instagram.com/${workshop.instructor_instagram.replace(/^@/, "")}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          <Instagram className="h-4 w-4" />
-                          Instagram
-                        </a>
-                      )}
-                      {workshop.instructor_facebook && (
-                        <a
-                          href={workshop.instructor_facebook}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          <Facebook className="h-4 w-4" />
-                          Facebook
-                        </a>
-                      )}
-                    </div>
-                  )}
+          {/* Talleristas: principal + co-talleristas (solo visibilidad) */}
+          {workshop.instructor && (() => {
+            const coInstructors = workshop.co_instructors ?? [];
+            const primary: InstructorView = {
+              name: workshop.instructor.name,
+              bio: workshop.instructor.bio,
+              linkId: workshop.instructor_id,
+              instagram: workshop.instructor_instagram,
+              facebook: workshop.instructor_facebook,
+              website: workshop.instructor_website,
+              whatsapp: workshop.instructor_whatsapp,
+              phone: workshop.instructor_phone,
+            };
+            const others: InstructorView[] = coInstructors.map((ci) => ({
+              name: ci.name,
+              bio: ci.bio,
+              linkId: ci.is_guest ? undefined : ci.user_id ?? undefined,
+              instagram: ci.instagram,
+              facebook: ci.facebook,
+              website: ci.website,
+              whatsapp: ci.whatsapp,
+              phone: ci.phone,
+            }));
+            const all = [primary, ...others];
+            return (
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">
+                  {all.length > 1 ? "Talleristas" : "Tallerista"}
+                </h2>
+                <div className="space-y-3">
+                  {all.map((ins, i) => (
+                    <InstructorCard key={ins.linkId ?? `${ins.name}-${i}`} ins={ins} />
+                  ))}
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Sidebar */}
