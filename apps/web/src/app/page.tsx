@@ -14,7 +14,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import InstallAppSection from "./InstallAppSection";
-import TecitoButton from "@/components/TecitoButton";
 
 const categories: { name: string; Icon: LucideIcon; slug: string }[] = [
   { name: "Arte y Creatividad",   Icon: Palette,   slug: "arte-creatividad" },
@@ -500,18 +499,19 @@ export default function Home() {
       {/* ── Footer ── */}
       <footer className="border-t py-8 px-4 bg-background">
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-6">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <p className="text-sm text-muted-foreground max-w-md">
-              Kwin es un proyecto comunitario. Tu aporte nos ayuda a mantener la
-              infraestructura y a seguir conectando talleristas con su barrio.
-            </p>
-            <TecitoButton />
-          </div>
           <div className="w-full flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <span>© 2026 Kwin · Conocimiento y territorio</span>
             <div className="flex gap-6">
               <Link href="/privacidad" className="hover:text-foreground">Privacidad</Link>
               <Link href="/contacto" className="hover:text-foreground">Contacto</Link>
+              <a
+                href="https://tecito.app/kwin"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground"
+              >
+                Donación
+              </a>
             </div>
           </div>
         </div>
