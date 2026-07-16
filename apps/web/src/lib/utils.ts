@@ -6,6 +6,27 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Extrae texto plano de un string HTML (p. ej. el que genera el editor de
+ * texto enriquecido) para mostrar previews limpios en cards y popups.
+ * Elimina etiquetas, decodifica entidades básicas y colapsa espacios.
+ */
+export function htmlToPlainText(html: string): string {
+  if (!html) return "";
+  return html
+    .replace(/<\/(p|div|li|h[1-6]|br)>/gi, " ")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Formatea un monto en pesos chilenos: sin decimales y con punto como
  * separador de miles (p. ej. 65000 -> "65.000"). Acepta number o string.
  * El agrupado se hace manualmente para no depender de los datos de locale

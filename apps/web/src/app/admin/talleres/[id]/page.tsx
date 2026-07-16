@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -318,10 +319,9 @@ export default function AdminWorkshopReviewPage() {
               </div>
               <div className="sm:col-span-2 space-y-1">
                 <Label>Descripción</Label>
-                <Textarea
+                <RichTextEditor
                   value={form.description ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  rows={4}
+                  onChange={(html) => setForm((f) => ({ ...f, description: html }))}
                 />
               </div>
               <div className="space-y-1">
@@ -415,11 +415,10 @@ export default function AdminWorkshopReviewPage() {
                   }
                 />
               </div>
-              <DiffDetail
+              <DiffRichText
                 label="Descripción"
-                value={workshop.description || "—"}
-                proposed={workshop.pending_changes?.description}
-                multiline
+                value={workshop.description || null}
+                proposed={workshop.pending_changes?.description !== undefined ? (workshop.pending_changes.description ?? null) : undefined}
               />
               <DiffRichText
                 label="Notas para participantes"

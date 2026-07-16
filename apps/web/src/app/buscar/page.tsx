@@ -20,7 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Search, MapPin, Clock, LayoutGrid, Map, Building2, Hammer, BookOpen, Users, CalendarDays } from "lucide-react";
 import { api, venuesApi, type Workshop, type Category, type Venue } from "@/lib/api";
 import { Modality } from "@/lib/constants";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, htmlToPlainText } from "@/lib/utils";
 import { useUserLocation } from "@/hooks/useUserLocation";
 
 const WorkshopsMap = dynamic(
@@ -185,7 +185,7 @@ function WorkshopCard({ w }: { w: Workshop }) {
             </Badge>
           )}
 
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-2 flex-1">{w.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-2 flex-1">{htmlToPlainText(w.description)}</p>
 
           <div className="mt-3 space-y-3">
             <Separator />

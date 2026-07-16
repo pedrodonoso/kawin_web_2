@@ -13,7 +13,7 @@ import { ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide
 import { MapPin, X, Clock, Maximize2, Minimize2, Building2 } from "lucide-react";
 import { type Workshop, type Venue } from "@/lib/api";
 import { ModalityLabel } from "@/lib/constants";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, htmlToPlainText } from "@/lib/utils";
 
 // ─── Brand colors (mirrors globals.css) ────────────────────────────────────
 const C = {
@@ -471,7 +471,7 @@ export function WorkshopsMap({ workshops, venues = [], center = [-33.45, -70.65]
           )}
 
           {selected.description && (
-            <p className="text-xs text-muted-foreground line-clamp-3">{selected.description}</p>
+            <p className="text-xs text-muted-foreground line-clamp-3">{htmlToPlainText(selected.description)}</p>
           )}
 
           {selected.schedules && selected.schedules.length > 0 && (
