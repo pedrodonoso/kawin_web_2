@@ -24,6 +24,8 @@ export default function ContactoPage() {
           <h1 className="text-4xl font-bold mb-4">Contacto</h1>
           <p className="text-muted-foreground text-lg max-w-xl">
             ¿Tienes una sugerencia o un reclamo? Escríbenos y te respondemos a la brevedad.
+            ¿Eres tallerista y quieres publicar tu taller? Mándanos los datos y la
+            administración lo sube por ti.
           </p>
         </div>
 
@@ -78,6 +80,7 @@ export default function ContactoPage() {
                 className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Selecciona una opción</option>
+                <option value="Publicar un taller">Quiero publicar un taller</option>
                 <option value="Sugerencia">Sugerencia</option>
                 <option value="Reclamo">Reclamo</option>
               </select>
@@ -92,7 +95,7 @@ export default function ContactoPage() {
                 name="message"
                 required
                 rows={6}
-                placeholder="Escribe tu mensaje aquí..."
+                placeholder="Escribe tu mensaje aquí... Si quieres publicar un taller, incluye los datos que te pedimos en el recuadro de la derecha."
                 className="w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
               />
             </div>
@@ -118,8 +121,41 @@ export default function ContactoPage() {
             </div>
 
             <div className="rounded-xl border bg-secondary/30 p-6">
+              <p className="text-sm font-semibold mb-2">¿Eres tallerista?</p>
+              <p className="text-sm text-muted-foreground mb-3">
+                Escríbenos con estos datos y la administración publica tu taller por ti:
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <span><strong className="text-foreground">Nombre y descripción</strong> del taller.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <span><strong className="text-foreground">Tipo</strong> — taller, curso, clase o evento.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <span><strong className="text-foreground">Modalidad, lugar y horarios</strong> o fechas.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <span><strong className="text-foreground">Precio y cupos</strong> disponibles.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <span><strong className="text-foreground">Tus datos de contacto</strong> (redes o teléfono) para que los estudiantes coordinen contigo.</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border bg-secondary/30 p-6">
               <p className="text-sm font-semibold mb-2">¿Qué tipo de mensaje envío?</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <span><strong className="text-foreground">Publicar un taller</strong> — para que subamos tu actividad.</span>
+                </li>
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                   <span><strong className="text-foreground">Sugerencia</strong> — ideas para mejorar la plataforma.</span>
